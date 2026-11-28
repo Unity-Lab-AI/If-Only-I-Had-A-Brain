@@ -3276,16 +3276,35 @@ class ServerBrain {
       // of cells from the machine she is running on at that wiring — never
       // the other way round (fewer wires to fit more cells is how she came to
       // have cells that could not learn).
-      //   inside a region : 100 wires a cell. Measured through her own
-      //     teaching call, 1,000 taught pairs: 841 right at 30 wires, 1,000 at 100.
-      //   between regions : 100 wires a cell. Measured on all 14 pathways: 100
-      //     of 100 and 400 of 400 taught pairs at 100 wires; at the 3–10 wires
-      //     she had, 6–54 of 100.
+      //
+      // WHAT SETS THE NUMBER: A TAUGHT CELL HAS TO FIRE. A cell fires when its
+      // input passes its threshold, and it can only be taught to do that for a
+      // word it receives several LIT inputs from. A word lights 2.67 % of a
+      // region, so lit inputs a cell = its wires × 0.0267. Measured (200 taught
+      // pairs, share of taught cells past threshold / share of other cells):
+      //     30 wires →  0.8 lit →  2 %          100 wires → 2.7 lit → 20 %
+      //    200 wires →  5.3 lit → 95 % / 0.13 %  300 wires → 8 lit → 99.3 % / 0.02 %
+      // (At 30 and 100 the right pattern still RANKED first every time — which
+      // is what the earlier 100-wire figure was measuring, and is not firing.)
+      // Lighting more of a region instead makes other cells fire (8 % lit: 1.5 %
+      // strays), so the wires are the lever.
+      //   between regions : 300 wires a cell, on every pathway, with no cut for
+      //     pathways that cross between cluster groups and no density ceiling
+      //     (`betweenClusterDensityScale: 1`, `crossDensityCap: 1` below — the
+      //     0.3 cut is what left sound↔meaning at 30 wires).
+      //   inside a region : 300 wires a cell, drawn from across the cell's own
+      //     region (`regionWiring`): 98.1 % / 0.03 %; from its neighbours only,
+      //     78.8 %.
       // docs/WHOLE-BRAIN-DESIGN.md holds the tables. Both must equal what
       // `js/brain/cluster.js` builds (`targetFanout`, `crossTargetFanout`),
       // which this method passes below.
-      const CORTEX_TARGET_FANOUT = 100;
-      const CROSS_TARGET_FANOUT = 100;
+      const CORTEX_TARGET_FANOUT = 300;
+      const CROSS_TARGET_FANOUT = 300;
+      // The cells of her speaking state: a fixed run at the end of the cortex,
+      // one per unit, with no wires of the kinds priced here (their wiring is
+      // grown where lessons need it). Every size below is "wired cells + these".
+      const { SPEECH_LAYOUT } = await import('../js/brain/speech-readout.js');
+      const SPEECH_CELLS = SPEECH_LAYOUT.G;
 
       // Prior commit had LANG_CLUSTER_BYTES_PER_NEURON=8192 which was
       // wrong — ignored that cross-projection sparse matrices scale
@@ -3353,7 +3372,14 @@ class ServerBrain {
       // unit of between-region fan-out. The host holds the same matrices, so
       // its allowance is that with the same 1.7 safety:
       //   1.7 × (8.46 × inside + 8.82 × between)  = 581 at 30/10, 2,938 at 100/100.
-      const LANG_CLUSTER_BYTES_PER_NEURON = Math.ceil(1.7 * (8.46 * CORTEX_TARGET_FANOUT + 8.82 * CROSS_TARGET_FANOUT));
+      // ⭐ AND AGAIN FOR THE WIRING THAT MAKES CELLS FIRE: with no between-group
+      // cut, a cell carries 1.859 between-region wires per unit of fan-out
+      // (the sum over the 16 pathways of their target region's share of the
+      // cortex, the motor-bound ones doubled) — 14.9 bytes per unit, where the
+      // cut had made it 8.82. So, per WIRED cell:
+      //   1.7 × (8.46 × inside + 14.9 × between)  = 11,914 at 300 / 300.
+      // The speaking-state cells carry no wires and are counted apart.
+      const LANG_CLUSTER_BYTES_PER_NEURON = Math.ceil(1.7 * (8.46 * CORTEX_TARGET_FANOUT + 14.9 * CROSS_TARGET_FANOUT));
       const freeRamBytes = os.freemem();
       // LANGRAM (2026-08-19) — the free-RAM fraction was 0.5 and it cost the 12M
       // language cortex by 2.4%. Live boot line from the box:
@@ -3382,7 +3408,7 @@ class ServerBrain {
         ? Math.min(0.9, Number(process.env.DREAM_LANG_RAM_FRACTION))
         : 0.6;
       const ramBudget = freeRamBytes * LANG_RAM_FRACTION;
-      const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON);
+      const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON) + SPEECH_CELLS;   // wired cells this RAM holds + the speaking-state run
       // V8 heap sized from start.bat --max-old-space-size. Read the
       // actual limit from v8.getHeapStatistics() so env overrides flow
       // through correctly.
@@ -3393,7 +3419,7 @@ class ServerBrain {
         const heapLimit = heapStats.heap_size_limit;
         // Reserve 2 GB of the heap for non-cluster allocations.
         const clusterHeapBudget = Math.max(0, heapLimit - 2 * 1024 * 1024 * 1024);
-        v8BasedMax = Math.floor(clusterHeapBudget / LANG_CLUSTER_BYTES_PER_NEURON);
+        v8BasedMax = Math.floor(clusterHeapBudget / LANG_CLUSTER_BYTES_PER_NEURON) + SPEECH_CELLS;
       } catch { /* v8 module missing — skip heap-based bound */ }
 
       // VRAM budget pre-flight with auto-rescale loop-back — scales
@@ -3502,7 +3528,7 @@ class ServerBrain {
       // without affecting at-scale where the runtime clamp via
       // (CORTEX_TARGET_FANOUT / size) keeps actual density much smaller.
       const INTRA_CONNECTIVITY_CAP = 0.05;
-      const CROSS_DENSITY_CAP = 0.005;          // cluster.js cross-projection clamp
+      const CROSS_DENSITY_CAP = 1;              // no ceiling: the cortex is built with `crossDensityCap: 1`, so a pathway gets its full fan-out whatever the source region's size (the 0.005 ceiling cut pathways out of small regions below what a cell needs to fire)
       // SCALEAUDIT.1 (2026-08-20) — PARITY RESTORED. This table's own contract is
       // "Fractions match js/brain/cluster.js `this.regions`… Must match cluster.js
       // values exactly", and it had DRIFTED: `sem` 0.167 (real 0.125 — semStart
@@ -3584,10 +3610,17 @@ class ServerBrain {
         sem: 'association', fineType: 'association', free: 'association',
         motor: 'output', word_motor: 'output',
       };
-      const EST_BETWEEN_CLUSTER_SCALE = 0.3;
+      // 1 since the cortex is built with `betweenClusterDensityScale: 1` (the
+      // 0.3 it used to be left the pathways between cluster groups too thin
+      // for a taught cell to fire).
+      const EST_BETWEEN_CLUSTER_SCALE = 1;
 
-      function estimateLangCortexVramBytes(trial) {
-        if (trial <= 0) return 0;
+      // `total` cells = wired cells + the speaking-state run. Only the wired
+      // cells are laid out by FRACTIONS and carry inside wires and pathways;
+      // the run adds its row pointers and nothing else.
+      function estimateLangCortexVramBytes(total_) {
+        const trial = total_ - SPEECH_CELLS;
+        if (trial <= 0) return Infinity;
         const regions = {};
         for (const [name, frac] of Object.entries(FRACTIONS)) {
           regions[name] = Math.floor(trial * frac);
@@ -3595,7 +3628,7 @@ class ServerBrain {
         // Intra-synapse matrix
         const intraDensity = Math.min(INTRA_CONNECTIVITY_CAP, CORTEX_TARGET_FANOUT / Math.max(1, trial));
         const intraNnz = Math.floor(trial * intraDensity * trial);
-        let total = intraNnz * BYTES_PER_NNZ + (trial + 1) * 4;
+        let total = intraNnz * BYTES_PER_NNZ + (total_ + 1) * 4;
         // 14 cross-projections (7 pairs × 2 directions) — the list above.
         for (const [src, dst] of CROSS_PAIRS) {
           const srcSize = regions[src] || 0;
@@ -3627,7 +3660,9 @@ class ServerBrain {
 
       const envOverride = parseInt(process.env.DREAM_LANG_CORTEX, 10);
       const configuredCortex = CLUSTER_SIZES.cortex;
-      const RESCALE_MIN_NEURONS = 10_000;
+      // The speaking-state run plus the smallest wired cortex worth building.
+      // Below it this machine cannot hold her; the sizing stops there and says so.
+      const RESCALE_MIN_NEURONS = SPEECH_CELLS + 50_000;
       const RESCALE_SAFETY = 0.95;              // 5% margin under budget so upload-time jitter doesn't trip
       const RESCALE_MAX_ITERS = 10;
 
@@ -4308,6 +4343,13 @@ class ServerBrain {
         // this wiring, so these two lines and that derivation cannot disagree).
         targetFanout: CORTEX_TARGET_FANOUT,
         crossTargetFanout: CROSS_TARGET_FANOUT,
+        // Every pathway gets its full fan-out: no cut for crossing between
+        // cluster groups, no density ceiling. And a cell's inside wires are
+        // drawn from across its own region. (The measurements behind each are
+        // with the two constants.)
+        betweenClusterDensityScale: 1,
+        crossDensityCap: 1,
+        regionWiring: true,
         // Every pathway, and the wiring inside her cortex, changes a wire only
         // where a cell is wrong (`SparseMatrix.errorUpdate`); the card is told
         // the same by `_sendPlasticityModes` once it holds her.
