@@ -169,7 +169,8 @@ struct ErrParams {
     /// First row to visit, and how many from there (0 = every row).
     row_start: u32,
     row_count: u32,
-    pad2: u32,
+    /// 0 = the rule decides; 1 = raise every row in the range; 2 = lower it.
+    force: u32,
 }
 
 #[repr(C)]
@@ -826,6 +827,45 @@ impl ComputeEngine {
         out
     }
 
+    /// Raise (`raise`) or lower by `eta` every wire from a LIT source cell into
+    /// the rows `row_start .. row_start + row_count` of a cluster-bound matrix.
+    /// The source is the bound cluster's resident spikes. This is the step a
+    /// lesson takes when its error is read at the word: the said-word's cells
+    /// up, the wrongly winning word's cells down. Ok(false) = skipped.
+    pub fn step_rows_bound(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 || row_count == 0 { return Ok(false); }
+        if (row_start as u64) + (row_count as u64) > (m.rows as u64) { return Ok(false); }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+        let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta: 0.0, margin: 0.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: 0, row_start, row_count, force: if raise { 1 } else { 2 } };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("step-rows-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("step-rows-bg"),
+            layout: &self.plasticity_error_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                // the forced step never reads the target pattern; the matrix's own buffer keeps the layout whole
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
+            ],
+        });
+        let wg = (row_count.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("step-rows") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("step-rows"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_error_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
+        Ok(true)
+    }
+
     /// Give an error-driven matrix the row spans its lessons lie in (her region
     /// table for the wiring inside a cluster). Empty clears them.
     pub fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
@@ -837,7 +877,7 @@ impl ComputeEngine {
         let (ub, pipe) = match self.err_mode.get(name) {
             Some(&(eta, theta, margin)) => {
                 if lr <= 0.0 { return None; }
-                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, row_start: range.0, row_count: range.1, pad2: 0 };
+                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, row_start: range.0, row_count: range.1, force: 0 };
                 (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-err-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_error_pipeline)
             }
             None => {
@@ -876,7 +916,7 @@ impl ComputeEngine {
         let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
         if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
         if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
-        let params = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start, row_start: 0, row_count: 0, pad2: 0 };
+        let params = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start, row_start: 0, row_count: 0, force: 0 };
         let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("err-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM });
         let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("err-bound-bg"),

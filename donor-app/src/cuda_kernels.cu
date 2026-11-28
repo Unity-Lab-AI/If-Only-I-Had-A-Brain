@@ -248,7 +248,7 @@ __global__ void plasticity(unsigned int rows, float lr, float reward, float wMin
 __global__ void plasticity_error(unsigned int rows, float eta, float theta, float margin,
                                  float wMin, float wMax,
                                  unsigned int srcOffset, unsigned int dstOffset,
-                                 unsigned int rowStart, unsigned int rowCount,
+                                 unsigned int rowStart, unsigned int rowCount, unsigned int force,
                                  float* values, const unsigned int* colIdx, const unsigned int* rowPtr,
                                  const unsigned int* preSpikes, const unsigned int* postSpikes) {
   // rowCount 0 = every row; otherwise the launch is sized to the count and
@@ -264,8 +264,11 @@ __global__ void plasticity_error(unsigned int rows, float eta, float theta, floa
   for (unsigned int k = start; k < end; k++) {
     if (preSpikes[srcOffset + colIdx[k]] != 0u) s += values[k];
   }
+  // force: 0 = the rule decides · 1 = raise every row in the range · 2 = lower it
   float d = 0.0f;
-  if (postSpikes[dstOffset + i] != 0u) { if (s < theta + margin) d = eta; }
+  if (force == 1u) d = eta;
+  else if (force == 2u) d = -eta;
+  else if (postSpikes[dstOffset + i] != 0u) { if (s < theta + margin) d = eta; }
   else if (s > theta - margin) d = -eta;
   if (d == 0.0f) return;
   for (unsigned int k = start; k < end; k++) {

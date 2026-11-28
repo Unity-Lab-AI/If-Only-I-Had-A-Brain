@@ -19,7 +19,7 @@ struct Params {
   dstOffset: u32,
   rowStart: u32,   // first row to visit
   rowCount: u32,   // how many rows from there; 0 = every row of the matrix
-  pad2: u32,
+  force: u32,      // 0 = the rule decides · 1 = raise every row in the range · 2 = lower every row in the range
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -45,8 +45,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (preSpikes[params.srcOffset + colIdx[k]] != 0u) { s = s + values[k]; }
   }
 
+  // A forced step is how a lesson whose error is read at the WORD is applied:
+  // the cells of the word that should have been said are raised, the cells of
+  // the word that wrongly won are lowered — each a launch over that word's rows.
   var d: f32 = 0.0;
-  if (postSpikes[params.dstOffset + i] != 0u) {
+  if (params.force == 1u) {
+    d = params.eta;
+  } else if (params.force == 2u) {
+    d = -params.eta;
+  } else if (postSpikes[params.dstOffset + i] != 0u) {
     if (s < params.theta + params.margin) { d = params.eta; }
   } else {
     if (s > params.theta - params.margin) { d = -params.eta; }

@@ -614,6 +614,27 @@ impl CudaEngine {
         self.launch_plasticity_rows(name, m, lr, src_off, dst_off, pre, post, None)
     }
 
+    /// Raise or lower by `eta` every wire from a lit source cell into the rows
+    /// `row_start .. row_start + row_count` of a cluster-bound matrix (source =
+    /// the bound cluster's resident spikes). Ok(false) = skipped, never a crash.
+    pub fn step_rows_bound(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 || row_count == 0 { return Ok(false); }
+        if (row_start as u64) + (row_count as u64) > (m.rows as u64) { return Ok(false); }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
+        let rows = m.rows;
+        let (zero, w_min, w_max) = (0.0f32, -2.0f32, 2.0f32);
+        let (src_off, dst_off, force) = (b.src_start, 0u32, if raise { 1u32 } else { 2u32 });
+        let mut bld = self.stream.launch_builder(&self.f_hebb_err);
+        bld.arg(&rows).arg(&eta).arg(&zero).arg(&zero).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+            .arg(&row_start).arg(&row_count).arg(&force)
+            .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(&src.spikes).arg(&m.post_spikes);
+        unsafe { bld.launch(cfg(row_count)) }.map(|_| ()).map_err(|e| format!("step-rows launch: {e}"))?;
+        Ok(true)
+    }
+
     /// Give an error-driven matrix the row spans its lessons lie in. Empty clears them.
     pub fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
         if spans.is_empty() { self.err_spans.remove(name); } else { self.err_spans.insert(name.to_string(), spans); }
@@ -631,7 +652,7 @@ impl CudaEngine {
                 let n = if row_count == 0 { rows } else { row_count };
                 let mut bld = self.stream.launch_builder(&self.f_hebb_err);
                 bld.arg(&rows).arg(&eta).arg(&theta).arg(&margin).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
-                    .arg(&row_start).arg(&row_count)
+                    .arg(&row_start).arg(&row_count).arg(&0u32)
                     .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
                 unsafe { bld.launch(cfg(n)) }.map(|_| ()).map_err(|e| e.to_string())?;
             }
@@ -672,6 +693,7 @@ impl CudaEngine {
             .arg(&dst_off)
             .arg(&row_start)
             .arg(&row_count)
+            .arg(&0u32)
             .arg(&m.values)
             .arg(&m.col_idx)
             .arg(&m.row_ptr)
