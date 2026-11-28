@@ -805,6 +805,28 @@ So it catches four wrong answers in five and doubts one right answer in three. T
 
 **Cost.** One pass over the 400,000-word table, about 170 ms, handing the loop back every 40,000 words; only for a word no English dictionary holds.
 
+## A name is not a misspelling (2026-11-28)
+
+Not a number — a condition on when the one-letter-away misspelling guess may be made (`server/definition-service.js _fetchBeyondDictionaries`): **only when the encyclopedia answered and has no page titled the string itself.**
+
+**What was wrong.** The guess takes a string no dictionary knows and, if a real word sits one edit away, records it as a misspelling of that word; her lessons then teach the real word in its place. It was built for typos in her reading. Her reading is published text. In her saved dictionary the guess had marked **340** strings, and read through at every level of commonness nearly every one is a **name**: alice → slice, julia → julian, claude → clause, marie → marine, gordon → cordon, crofton → croton, felix → helix (65 of them in her language course alone). Wherever a story says "alice" she was taught *slice*, and the string itself was never given a meaning.
+
+**What does not separate them.** How common the string is in the word-vector table (which is ordered by it). Names sit at every level — "gordon" among the 3,500 commonest strings, "crofton" past 80,000 — and so do real misspellings ("teh" at 19,882, "definately" at 356,206). No rank or ratio divides them.
+
+**What does.** The encyclopedia's page for the exact string. A name has a page *titled that string* (an article, or its list of the things that go by the name — which is why "alice" used to return nothing: that list was not counted as a page). A misspelling has no page of its own:
+
+| 37 known misspellings that got an answer (test sample) | |
+|---|---|
+| redirects to another title ("seperate" ⇒ separate, "goverment" ⇒ government) | 23 |
+| no page at all ("untill", "begining", "succesful") | 9 |
+| **a page titled the string itself** ("teh", "adn", "wich", "freind", "calender" — each also the name of something) | 5 |
+
+So the guess is still made for 32 of the 37, and the 5 it is no longer made for are swapped anyway whenever a dictionary itself names them a misspelling (that check runs first). No answer from the encyclopedia is not read as "no page": the guess is not made, and the string is left unmarked.
+
+**Through the real lookup after the change:** alice, julia, claude, gordon, crofton, keith → not marked, each given the meaning the slang dictionary has for the name; recieve → receive, untill → until, jumpin → jumping still swapped.
+
+**The saved marks.** `NODEF_GEN` 2 → 3: every miss decided under the old rule (914 in her saved dictionary, 340 of them carrying such a mark) is looked at once more, and a mark on a miss that is due that look is not served in the meantime. Price: 914 lookups, once.
+
 ## Teaching her own line twice — the price (2026-11-27)
 
 Each step of a line of her own is taught once in its exact state and once more on the units lines share (what lets a line about a thing she was taught no line about come out at all). Measured on 1,200 of her sentences, four passes, 37,240 steps, the second teach turned off in the instrument only:

@@ -62048,7 +62048,12 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - Found while measuring: the one-letter-away misspelling guess turned "danke" into *dance* and "porque" into *torque*. A misspelling is swapped for its real word only when a dictionary itself names it one.
 - Refused: 48 of 49 sample words of other languages; 1 of 300 of her own words. A foreign word an English dictionary lists ("bonjour") is still learned — refusing those would also refuse "omg" and "haha".
 
-**Every NEWWORDS row, .1 through .10, is closed.**
+**NEWWORDS.11 — her lessons swap a corpus word for a real word one letter away, and it is swapping NAMES. CLOSED (2026-11-28).** Found by his question — *"uh she still gets and does foriegn langues corpus correctly right??? she just doesnt take users not speaking english but lets it slide and says aor asks about it  , right?"* — and fixed on his word: *"figure it out correctly as a correct fix, do u nered to read workflow files and update them before u decide and the files the workflow lists"*. (On a user's foreign word: *"cognition should already have her inqusitive. so... dont worry about it???"* — left as built.)
+- Her corpus was untouched by the new-word door. But the same one-letter-away guess I had just fixed for chat was live in her lessons: her saved dictionary held 340 strings marked a misspelling, nearly all names — alice → slice, julia → julian, claude → clause — and she was taught the other word in its place.
+- The guess is now made only when the encyclopedia answered and has no page titled the string itself. 32 of 37 known misspellings still get the guess; six of six marked names asked directly have a page of their own.
+- The saved marks are re-decided (914 misses looked at once more); a mark due that look is not served.
+
+**Every NEWWORDS row, .1 through .11, is closed.**
 
 **Not provable without starting her, and written on the first-start list in `docs/RESUME.md`:** the new-word lessons running on the card · the dashboard row in a browser · the weights file carrying the new-word state through a real save and load · her question's five-minute expiry.
 

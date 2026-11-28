@@ -409,6 +409,7 @@ Pollinations       → GONE (2026-10-18); her images render locally via image-en
 - **A flag nothing reads is a claim, not a behaviour.** "Doubted — to be settled when she meets the word again" was settled by nothing.
 - **New units packed into a full stripe collide.** Said / not-said shared one unit of four. The salts are now checked when the module loads.
 - **A word she takes in was blocked from her own replies** by the reply vocabulary set, which is rebuilt only at boot and on a grade change.
+- **A fix at one caller leaves the bug live at the others.** I stopped the one-letter-away misspelling guess from turning "danke" into *dance* at the chat door — and the same guess was still swapping NAMES in her lessons (`NEWWORDS.11`: 340 marked strings, alice → slice, claude → clause). It took his question to find it. **When a shared answer is wrong, fix where the answer is made** (`definition-service.js`), not where I happened to meet it. The rule: no guess when the encyclopedia has a page titled the string itself.
 - ⚠ **Still unproven until she is started:** the new-word lessons on the card, and the dashboard row in a browser. Both are on the first-start list in `docs/RESUME.md`.
 
 ### The governing facts to check before believing any dashboard field
