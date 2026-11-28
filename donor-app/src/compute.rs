@@ -1547,6 +1547,14 @@ impl Backend {
             Backend::Cuda(e) => e.hebbian_bound(name, lr),
         }
     }
+    /// Put a matrix into / out of error-driven learning on this backend.
+    fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.set_plasticity_mode(name, mode),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.set_plasticity_mode(name, mode),
+        }
+    }
     /// Error-driven bound plasticity (a wire changes only when its cell is wrong).
     fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
         match self {
@@ -2056,6 +2064,14 @@ impl MultiEngine {
         self.engines[g].hebbian_bound(name, lr)
     }
 
+    /// Put a matrix into / out of error-driven learning on EVERY engine (a row-sliced
+    /// matrix lives on several cards). Returns how many engines hold it.
+    pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> usize {
+        let mut held = 0;
+        for e in self.engines.iter_mut() { if e.set_plasticity_mode(name, mode) { held += 1; } }
+        held
+    }
+
     /// Error-driven bound plasticity on the engine holding the matrix; Ok(false) = skipped.
     pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
@@ -2429,6 +2445,29 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             }
             let changed = want.iter().zip(values.iter()).filter(|(a, b)| a != b).count();
             println!("  {} — all 11 weights match the host rule ({} changed, {} left alone)", $label, changed, 11 - changed);
+            // THE PER-MATRIX MODE: a fresh copy of the same matrix put into
+            // error-driven learning must give the SAME weights from a plain
+            // `hebbian_bound` (the verb every lesson already uses), and an
+            // anti-Hebbian call on it must change nothing.
+            let binding2 = crate::frames::Binding {
+                src_cluster: "errcluster".to_string(), dst_cluster: "errcluster".to_string(),
+                src_start: 0, src_end: 8, dst_start: 0, dst_end: 8,
+            };
+            $eng.upload_sparse("errmat2", 8, 8, &row_ptr, &values, &col_idx, Some(binding2));
+            if !$eng.set_plasticity_mode("errmat2", Some((eta, theta, margin))) { return Err(format!("set_plasticity_mode did not find the matrix ({})", $label)); }
+            $eng.hebbian_bound("errmat2", 0.01)?;
+            $eng.hebbian_bound("errmat2", -0.01)?;
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat2", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("per-matrix mode MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            println!("  {} — a matrix in error-driven mode: plain hebbian_bound gave the error-rule weights, anti-Hebbian changed nothing", $label);
         }};
     }
     println!("self-test: error-driven plasticity parity...");

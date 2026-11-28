@@ -182,6 +182,8 @@ pub struct CudaEngine {
     f_tile_u32: CudaFunction,
     clusters: HashMap<String, CudaCluster>,
     sparse: HashMap<String, CudaSparse>,
+    /// Matrices that learn by the error-driven rule: name → (eta, theta, margin).
+    err_mode: HashMap<String, (f32, f32, f32)>,
 }
 
 impl CudaEngine {
@@ -254,6 +256,7 @@ impl CudaEngine {
             f_tile_u32,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
+            err_mode: HashMap::new(),
         })
     }
 
@@ -542,21 +545,7 @@ impl CudaEngine {
         self.dev_zero_u32(&m.post_spikes, 0, rows)?;
         self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
-        let (reward, w_min, w_max, src_off, dst_off) = (1.0f32, -2.0f32, 2.0f32, 0u32, 0u32);
-        let mut b = self.stream.launch_builder(&self.f_hebb);
-        b.arg(&rows)
-            .arg(&lr)
-            .arg(&reward)
-            .arg(&w_min)
-            .arg(&w_max)
-            .arg(&src_off)
-            .arg(&dst_off)
-            .arg(&m.values)
-            .arg(&m.col_idx)
-            .arg(&m.row_ptr)
-            .arg(&m.pre_spikes)
-            .arg(&m.post_spikes);
-        unsafe { b.launch(cfg(rows)) }.map_err(|e| format!("hebbian launch: {e}"))?;
+        self.launch_plasticity(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes).map_err(|e| format!("hebbian launch: {e}"))?;
         // No readback — ack-only, like the wgpu path (don't block the worker).
         Ok(())
     }
@@ -580,22 +569,8 @@ impl CudaEngine {
         self.dev_zero_u32(&m.post_spikes, 0, rows)?;
         self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
-        let (reward, w_min, w_max, src_off, dst_off) = (1.0f32, -2.0f32, 2.0f32, 0u32, 0u32);
         for _ in 0..reps.max(1) {
-            let mut b = self.stream.launch_builder(&self.f_hebb);
-            b.arg(&rows)
-                .arg(&lr)
-                .arg(&reward)
-                .arg(&w_min)
-                .arg(&w_max)
-                .arg(&src_off)
-                .arg(&dst_off)
-                .arg(&m.values)
-                .arg(&m.col_idx)
-                .arg(&m.row_ptr)
-                .arg(&m.pre_spikes)
-                .arg(&m.post_spikes);
-            unsafe { b.launch(cfg(rows)) }.map_err(|e| format!("hebbian-reps launch: {e}"))?;
+            self.launch_plasticity(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes).map_err(|e| format!("hebbian-reps launch: {e}"))?;
         }
         Ok(())
     }
@@ -617,24 +592,37 @@ impl CudaEngine {
         // buffers (CUDA OOB = crash, not a validation error).
         if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
         if (b.dst_start as u64) + (m.rows as u64) > (dst.spikes.len() as u64) { return Ok(false); }
-        let rows = m.rows;
-        let (reward, w_min, w_max) = (1.0f32, -2.0f32, 2.0f32);
-        let (src_off, dst_off) = (b.src_start, b.dst_start);
-        let mut bld = self.stream.launch_builder(&self.f_hebb);
-        bld.arg(&rows)
-            .arg(&lr)
-            .arg(&reward)
-            .arg(&w_min)
-            .arg(&w_max)
-            .arg(&src_off)
-            .arg(&dst_off)
-            .arg(&m.values)
-            .arg(&m.col_idx)
-            .arg(&m.row_ptr)
-            .arg(&src.spikes)
-            .arg(&dst.spikes);
-        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| format!("bound hebbian launch: {e}"))?;
+        self.launch_plasticity(name, m, lr, b.src_start, b.dst_start, &src.spikes, &dst.spikes).map_err(|e| format!("bound hebbian launch: {e}"))?;
         Ok(true)
+    }
+
+    /// Put a matrix into (Some) or out of (None) error-driven learning. Returns
+    /// whether the matrix is resident here.
+    pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
+        match mode { Some(m) => { self.err_mode.insert(name.to_string(), m); } None => { self.err_mode.remove(name); } }
+        self.sparse.contains_key(name)
+    }
+
+    /// Launch the kernel this matrix learns by: Oja / anti-Hebbian by default;
+    /// `plasticity_error` when the matrix is in error-driven mode and lr > 0;
+    /// nothing for an anti-Hebbian call on such a matrix. Every plasticity verb
+    /// on this engine launches through here, so they all agree.
+    #[allow(clippy::too_many_arguments)]
+    fn launch_plasticity(&self, name: &str, m: &CudaSparse, lr: f32, src_off: u32, dst_off: u32, pre: &CudaSlice<u32>, post: &CudaSlice<u32>) -> Result<(), String> {
+        let rows = m.rows;
+        let (w_min, w_max) = (-2.0f32, 2.0f32);
+        if let Some(&(eta, theta, margin)) = self.err_mode.get(name) {
+            if lr <= 0.0 { return Ok(()); }
+            let mut bld = self.stream.launch_builder(&self.f_hebb_err);
+            bld.arg(&rows).arg(&eta).arg(&theta).arg(&margin).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+                .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
+            return unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| e.to_string());
+        }
+        let reward = 1.0f32;
+        let mut bld = self.stream.launch_builder(&self.f_hebb);
+        bld.arg(&rows).arg(&lr).arg(&reward).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+            .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
+        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| e.to_string())
     }
 
     /// Error-driven bound plasticity (kernel `plasticity_error`): same resident
@@ -701,23 +689,8 @@ impl CudaEngine {
         }
         let m = self.sparse.get(name).unwrap();
         let src = self.clusters.get(&b.src_cluster).unwrap();
-        let (reward, w_min, w_max) = (1.0f32, -2.0f32, 2.0f32);
-        let (src_off, dst_off) = (b.src_start, 0u32);
         for _ in 0..reps.max(1) {
-            let mut bld = self.stream.launch_builder(&self.f_hebb);
-            bld.arg(&rows)
-                .arg(&lr)
-                .arg(&reward)
-                .arg(&w_min)
-                .arg(&w_max)
-                .arg(&src_off)
-                .arg(&dst_off)
-                .arg(&m.values)
-                .arg(&m.col_idx)
-                .arg(&m.row_ptr)
-                .arg(&src.spikes)
-                .arg(&m.post_spikes);
-            unsafe { bld.launch(cfg(rows)) }.map_err(|e| format!("masked bound hebbian launch: {e}"))?;
+            self.launch_plasticity(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes).map_err(|e| format!("masked bound hebbian launch: {e}"))?;
         }
         Ok(true)
     }
