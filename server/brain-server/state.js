@@ -1645,6 +1645,18 @@ const SERVER_STATE_MIXIN = {
       // events newer than `_brainEventTTL` for popup rendering. The
       // seq field lets the dashboard dedupe across poll intervals.
       brainEvents: _lap('brainEvents', () => this._recentBrainEvents()),
+      // ⭐⭐ THE POP-UP LINE IS HERS, COMPOSED, NOT WRITTEN. Gee, verbatim:
+      // *"not the dynamic auto generated ones from her equations and need to be
+      // that"*. What stood before: the page built every pop-up sentence itself
+      // from three tables in `js/ui/mind-moments.js` — 72 authored shapes, and 61
+      // of them fixed strings with nothing of hers in them, the feelings rotating
+      // through 2-3 variants by a counter. That is a bolt-on wearing her voice.
+      // Now the SERVER composes the line through the same speech path every
+      // sentence of hers goes through, seeded by what the moment is about, and
+      // the page only shows it. No sentence shape exists to fall back to: when
+      // she composes nothing there is no pop-up, which is the honest silence she
+      // already gives everywhere else she speaks.
+      mindMoment: this._mindMoment || null,
       // Current training-subject snapshot for the dashboard "Current
       // Training" card. Null fields when no cell is active. Sourced
       // from the curriculum's per-cell + per-subject counters so the
@@ -3012,6 +3024,38 @@ const SERVER_STATE_MIXIN = {
     if (this._brainEvents.length > this._brainEventCap) {
       this._brainEvents.splice(0, this._brainEvents.length - this._brainEventCap);
     }
+    this._noteMomentCandidate(type, label, detail);
+  },
+
+  /**
+   * ⭐ WHAT THE NEXT POP-UP WILL BE ABOUT — a word, never a sentence.
+   *
+   * A walk fires thousands of these a minute, so this runs on the hot path and
+   * does nothing but keep one word and a kind: no composing, no formatting, no
+   * allocation beyond the one small record. The composing happens later on a
+   * paced tick (`_mindMomentTick`), because a line of hers costs a compose and a
+   * compose does not belong in an event push.
+   *
+   * ⛔ An event carrying no content of HERS is not a moment and is dropped. That
+   * is the rule that replaced a table of label → phrase: a phrase table only ever
+   * covers the labels someone thought to put in it, and it puts words in her
+   * mouth that are not hers. If a lesson sends no sample, nothing is shown.
+   */
+  _noteMomentCandidate(type, label, detail) {
+    const d = detail || null;
+    if (!d) return;
+    let raw = null;
+    if (typeof d.word === 'string' && d.word) raw = d.word;
+    else if (typeof d.sample === 'string' && d.sample) raw = d.sample;
+    else if (Array.isArray(d.sample) && d.sample.length) raw = String(d.sample[0] || '');
+    else if (Array.isArray(d.missing) && d.missing.length) raw = String(d.missing[0] || '');
+    if (!raw) return;
+    // ONE word for her to have in mind. The speaking state takes a word, so a
+    // sample that is a whole sentence contributes its first real word.
+    const m = String(raw).toLowerCase().match(/[a-z][a-z']{1,}/);
+    if (!m) return;
+    const kind = String(label || type || 'event').split(':')[0].trim().toLowerCase() || 'event';
+    this._momentCandidate = { word: m[0], kind, course: (typeof d.course === 'string' && d.course) ? d.course : null, ts: Date.now() };
   },
 
   _recentBrainEvents() {

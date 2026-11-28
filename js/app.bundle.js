@@ -5793,556 +5793,52 @@ ${vis}${status.visionPaused ? "\n\n\u26A0 vision paused" : ""}`;
 };
 var sensoryStatus = new SensoryStatusUI();
 
-// ../js/ui/brain-event-detectors.js
-var CLUSTER_IDX = {
-  cortex: 0,
-  hippocampus: 1,
-  amygdala: 2,
-  basalGanglia: 3,
-  cerebellum: 4,
-  hypothalamus: 5,
-  mystery: 6
-};
-function contextDelta(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) {
-    const d = a[i] - b[i];
-    sum += d * d;
-  }
-  return Math.sqrt(sum);
-}
-function historyAt(history2, n) {
-  if (!history2 || history2.length <= n) return null;
-  return history2[history2.length - 1 - n];
-}
-var pick = (state, path, fallback = 0) => {
-  const parts = path.split(".");
-  let cur = state;
-  for (const p of parts) {
-    if (cur == null) return fallback;
-    cur = cur[p];
-  }
-  return cur == null ? fallback : cur;
-};
-var DETECTORS = [
-  // ─── Motor events (priority 9) ───
-  function motorCommitment(s, prev) {
-    const conf = pick(s, "motor.confidence", 0);
-    const prevConf = pick(prev, "motor.confidence", 0);
-    const action = pick(s, "motor.selectedAction", "idle");
-    if (conf > 0.85 && prevConf <= 0.85 && action !== "idle") {
-      return {
-        type: "motor_commit_" + action,
-        cluster: CLUSTER_IDX.basalGanglia,
-        metric: "confidence",
-        direction: "spike",
-        priority: 9,
-        magnitude: conf - prevConf
-      };
-    }
-    return null;
-  },
-  function motorIndecision(s) {
-    const dist = pick(s, "motor.channelDist", null);
-    if (!dist || typeof dist !== "object") return null;
-    const vals = Object.values(dist).filter((v) => typeof v === "number");
-    if (vals.length < 2) return null;
-    let entropy = 0;
-    for (const v of vals) if (v > 0) entropy -= v * Math.log2(v);
-    const maxEntropy = Math.log2(vals.length);
-    if (maxEntropy > 0 && entropy / maxEntropy > 0.85) {
-      return {
-        type: "motor_indecision",
-        cluster: CLUSTER_IDX.basalGanglia,
-        metric: "entropy",
-        direction: "spike",
-        priority: 9,
-        magnitude: entropy / maxEntropy
-      };
-    }
-    return null;
-  },
-  // ─── Cognitive landmarks (priority 8) ───
-  function recognition(s) {
-    const conf = pick(s, "memory.lastRecallConfidence", 0) || pick(s, "hippocampus.recallConfidence", 0);
-    if (conf > 0.6) {
-      return {
-        type: "recognition",
-        cluster: CLUSTER_IDX.hippocampus,
-        metric: "recallConfidence",
-        direction: "spike",
-        priority: 8,
-        magnitude: conf
-      };
-    }
-    return null;
-  },
-  function confusion(s) {
-    const err = pick(s, "cortex.predictionError", 0) || pick(s, "predictionError", 0);
-    if (err > 0.5) {
-      return {
-        type: "confusion",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "predictionError",
-        direction: "spike",
-        priority: 8,
-        magnitude: err
-      };
-    }
-    return null;
-  },
-  // ─── Emotional spikes (priority 7) ───
-  function emotionalSpike(s, prev) {
-    if (!prev) return null;
-    const dv = Math.abs(pick(s, "amygdala.valence", 0) - pick(prev, "amygdala.valence", 0));
-    if (dv > 0.3) {
-      const climbed = pick(s, "amygdala.valence", 0) > pick(prev, "amygdala.valence", 0);
-      return {
-        type: climbed ? "valence_climb" : "valence_crash",
-        cluster: CLUSTER_IDX.amygdala,
-        metric: "valence",
-        direction: climbed ? "up" : "down",
-        priority: 7,
-        magnitude: dv
-      };
-    }
-    return null;
-  },
-  function dopamineHit(s, prev) {
-    if (!prev) return null;
-    const dr = pick(s, "reward", 0) - pick(prev, "reward", 0);
-    if (dr > 0.15) {
-      return {
-        type: "dopamine_hit",
-        cluster: CLUSTER_IDX.basalGanglia,
-        metric: "reward",
-        direction: "up",
-        priority: 7,
-        magnitude: dr
-      };
-    }
-    if (dr < -0.15) {
-      return {
-        type: "dopamine_crash",
-        cluster: CLUSTER_IDX.basalGanglia,
-        metric: "reward",
-        direction: "down",
-        priority: 7,
-        magnitude: Math.abs(dr)
-      };
-    }
-    return null;
-  },
-  // ─── Topic / Ψ / self-voice (priority 6) ───
-  function topicDrift(s, prev, history2) {
-    const now = pick(s, "innerVoice.contextVector", null);
-    const back = historyAt(history2, 10);
-    const old = back ? pick(back, "innerVoice.contextVector", null) : null;
-    if (!now || !old) return null;
-    const delta = contextDelta(now, old);
-    if (delta > 0.4) {
-      return {
-        type: "topic_drift",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "contextVector",
-        direction: "spike",
-        priority: 6,
-        magnitude: delta
-      };
-    }
-    return null;
-  },
-  function heardOwnVoice(s) {
-    if (pick(s, "auditory.isEcho", false) === true || pick(s, "auditoryCortex.isEcho", false) === true) {
-      return {
-        type: "heard_self",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "echo",
-        direction: "spike",
-        priority: 6,
-        magnitude: 1
-      };
-    }
-    return null;
-  },
-  function psiClimb(s, prev, history2) {
-    const now = pick(s, "psi", 0);
-    const back = historyAt(history2, 20);
-    const old = back ? pick(back, "psi", 0) : null;
-    if (old == null) return null;
-    const dpsi = now - old;
-    if (dpsi > 0.05) {
-      return {
-        type: "psi_climb",
-        cluster: CLUSTER_IDX.mystery,
-        metric: "psi",
-        direction: "up",
-        priority: 6,
-        magnitude: dpsi
-      };
-    }
-    if (dpsi < -0.05) {
-      return {
-        type: "psi_crash",
-        cluster: CLUSTER_IDX.mystery,
-        metric: "psi",
-        direction: "down",
-        priority: 6,
-        magnitude: Math.abs(dpsi)
-      };
-    }
-    return null;
-  },
-  // ─── Arousal / coherence (priority 5) ───
-  function arousalClimb(s, prev, history2) {
-    const now = pick(s, "amygdala.arousal", 0);
-    const back = historyAt(history2, 10);
-    const old = back ? pick(back, "amygdala.arousal", 0) : null;
-    if (old == null) return null;
-    const d = now - old;
-    if (d > 0.1) {
-      return {
-        type: "arousal_climb",
-        cluster: CLUSTER_IDX.amygdala,
-        metric: "arousal",
-        direction: "up",
-        priority: 5,
-        magnitude: d
-      };
-    }
-    if (d < -0.1) {
-      return {
-        type: "arousal_drop",
-        cluster: CLUSTER_IDX.amygdala,
-        metric: "arousal",
-        direction: "down",
-        priority: 5,
-        magnitude: Math.abs(d)
-      };
-    }
-    return null;
-  },
-  function coherenceLock(s) {
-    const c = pick(s, "oscillations.coherence", 0);
-    if (c > 0.8) {
-      return {
-        type: "coherence_lock",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "coherence",
-        direction: "up",
-        priority: 5,
-        magnitude: c
-      };
-    }
-    if (c < 0.2) {
-      return {
-        type: "coherence_scatter",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "coherence",
-        direction: "down",
-        priority: 5,
-        magnitude: 1 - c
-      };
-    }
-    return null;
-  },
-  // ─── Drives / silence / fatigue (priority 4) ───
-  function hypothalamusDrive(s) {
-    const drives = pick(s, "hypothalamus.drives", null) || pick(s, "hypothalamus", null);
-    if (!drives || typeof drives !== "object") return null;
-    let peakName = null, peakVal = 0;
-    for (const [k, v] of Object.entries(drives)) {
-      if (typeof v === "number" && v > peakVal) {
-        peakVal = v;
-        peakName = k;
-      }
-    }
-    if (peakVal > 0.7 && peakName) {
-      return {
-        type: "drive_" + peakName,
-        cluster: CLUSTER_IDX.hypothalamus,
-        metric: peakName,
-        direction: "up",
-        priority: 4,
-        magnitude: peakVal
-      };
-    }
-    return null;
-  },
-  function silencePeriod(s, prev, history2) {
-    const arousal = pick(s, "amygdala.arousal", 0);
-    const audioEnergy = pick(s, "auditoryCortex.totalEnergy", 0) || pick(s, "auditory.energy", 0);
-    if (arousal < 0.3 && audioEnergy < 0.05 && history2 && history2.length >= 30) {
-      return {
-        type: "silence",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "silence",
-        direction: "down",
-        priority: 4,
-        magnitude: 0.3 - arousal
-      };
-    }
-    return null;
-  },
-  function fatigue(s, prev, history2) {
-    const errAccum = pick(s, "cerebellum.errorAccum", 0);
-    const coh = pick(s, "oscillations.coherence", 0);
-    const back = historyAt(history2, 15);
-    const prevCoh = back ? pick(back, "oscillations.coherence", 0) : coh;
-    if (errAccum > 0.6 && coh < prevCoh - 0.1) {
-      return {
-        type: "fatigue",
-        cluster: CLUSTER_IDX.cerebellum,
-        metric: "errorAccum",
-        direction: "up",
-        priority: 4,
-        magnitude: errAccum
-      };
-    }
-    return null;
-  },
-  // ─── Visual / auditory perception (priority 3) ───
-  function colorSurge(s) {
-    const colors = pick(s, "visualCortex.colors", null) || pick(s, "vision.colors", null);
-    if (!colors) return null;
-    for (const [quadrant, rgb] of Object.entries(colors)) {
-      if (Array.isArray(rgb)) {
-        const intensity = (rgb[0] + rgb[1] + rgb[2]) / (255 * 3);
-        if (intensity > 0.7) {
-          return {
-            type: "color_" + quadrant,
-            cluster: CLUSTER_IDX.cortex,
-            metric: "color",
-            direction: "spike",
-            priority: 3,
-            magnitude: intensity
-          };
-        }
-      }
-    }
-    return null;
-  },
-  function motionDetected(s) {
-    const motion = pick(s, "visualCortex.motionEnergy", 0) || pick(s, "vision.motionEnergy", 0);
-    if (motion > 0.5) {
-      return {
-        type: "motion",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "motion",
-        direction: "spike",
-        priority: 3,
-        magnitude: motion
-      };
-    }
-    return null;
-  },
-  function gazeShift(s, prev) {
-    if (!prev) return null;
-    const nowTarget = pick(s, "visualCortex.gazeTarget", "");
-    const prevTarget = pick(prev, "visualCortex.gazeTarget", "");
-    if (nowTarget && nowTarget !== prevTarget && nowTarget !== "") {
-      return {
-        type: "gaze_shift",
-        cluster: CLUSTER_IDX.cortex,
-        metric: "gaze",
-        direction: "spike",
-        priority: 3,
-        magnitude: 1
-      };
-    }
-    return null;
-  },
-  // ─── Memory replay / mystery (priority 2) ───
-  function memoryReplay(s) {
-    const consolidating = pick(s, "memory.isConsolidating", false);
-    if (consolidating) {
-      return {
-        type: "memory_replay",
-        cluster: CLUSTER_IDX.hippocampus,
-        metric: "consolidation",
-        direction: "up",
-        priority: 2,
-        magnitude: 1
-      };
-    }
-    return null;
-  },
-  function mysteryPulse(s, prev) {
-    if (!prev) return null;
-    const now = pick(s, "mystery.output", 0) || pick(s, "mysteryOutput", 0);
-    const old = pick(prev, "mystery.output", 0) || pick(prev, "mysteryOutput", 0);
-    if (now - old > 0.3) {
-      return {
-        type: "mystery_pulse",
-        cluster: CLUSTER_IDX.mystery,
-        metric: "mysteryOutput",
-        direction: "spike",
-        priority: 2,
-        magnitude: now - old
-      };
-    }
-    return null;
-  }
-];
-function detectBrainEvents(currentState, previousState, history2) {
-  const events = [];
-  for (const detector of DETECTORS) {
-    try {
-      const evt = detector(currentState, previousState, history2);
-      if (evt) events.push(evt);
-    } catch (err) {
-    }
-  }
-  events.sort((a, b) => b.priority - a.priority);
-  return events;
-}
-var BRAIN_EVENT_CATALOG = DETECTORS.map((d) => d.name || "anonymous");
-
 // ../js/ui/mind-moments.js
-var plural = (n, one, many) => `${Number(n).toLocaleString()} ${Number(n) === 1 ? one : many}`;
-var inClass = (course) => typeof course === "string" && course ? ` in ${course}` : "";
-var more = (n, of) => Number(n) > 1 ? ` \u2014 and ${plural(Number(n) - 1, "more", "more")} ${of}` : "";
-var clip = (s, max = 80) => {
-  const t = String(s || "").replace(/\s+/g, " ").trim();
-  return t.length > max ? t.slice(0, max - 1).trimEnd() + "\u2026" : t;
-};
-function momentFromLesson(evt) {
-  if (!evt || typeof evt.label !== "string") return null;
-  const d = evt.detail || {};
-  const head = evt.label.split(":")[0].trim().toUpperCase();
-  const where = inClass(d.course);
-  switch (head) {
-    case "WORD-INT START":
-      return d.word ? { kind: "word", rank: 9, icon: "\u{1F524}", title: "sounding it out", line: `Working out the word \u201C${d.word}\u201D \u2014 its letters, its sounds, what it means.`, cluster: 7 } : null;
-    case "ASSOC START": {
-      const s = Array.isArray(d.sample) && d.sample.length === 2 ? d.sample : null;
-      if (!s) return null;
-      return { kind: "pair", rank: 6, icon: "\u{1F517}", title: "putting two things together", line: `Learning that \u201C${clip(s[0], 30)}\u201D goes with \u201C${clip(s[1], 30)}\u201D${more(d.pairs, "like it")}${where}.`, cluster: 9 };
-    }
-    case "Q-A START":
-      if (typeof d.sample !== "string" || !d.sample) return null;
-      return { kind: "qa", rank: 7, icon: "\u{1F64B}", title: "question time", line: `Being asked: \u201C${clip(d.sample)}\u201D${more(d.pairs, "questions")}${where}.`, cluster: 9 };
-    case "VOCAB-LIST START": {
-      const w = Array.isArray(d.sample) ? d.sample.filter(Boolean) : [];
-      if (!w.length) return null;
-      const rest = Number(d.total) - w.length;
-      return { kind: "vocab-start", rank: 6, icon: "\u{1F4DA}", title: "new words", line: `New words${where}: ${w.map((x) => `\u201C${clip(x, 24)}\u201D`).join(", ")}${rest > 0 ? ` and ${plural(rest, "more", "more")}` : ""}.`, cluster: 9 };
-    }
-    case "VOCAB-LIST DONE":
-      return { kind: "vocab-done", rank: 6, icon: "\u2705", title: "words learned", line: `Finished a word list \u2014 ${plural(d.taught || 0, "word", "words")} in.`, cluster: 9 };
-    case "USAGE START":
-      if (typeof d.sample !== "string" || !d.sample) return null;
-      return { kind: "usage", rank: 4, icon: "\u{1F440}", title: "reading", line: `Reading how \u201C${clip(d.sample, 24)}\u201D is used in real sentences${where}.`, cluster: 9 };
-    case "STRUCT START":
-      return { kind: "struct", rank: 4, icon: "\u{1F9E9}", title: "sentence building", line: "Learning how a sentence is put together.", cluster: 13 };
-    case "METHOD START":
-      return { kind: "method", rank: 5, icon: "\u{1F914}", title: "show your work", line: `Being asked HOW she would work something out \u2014 ${plural(d.count || 0, "question", "questions")}.`, cluster: 13 };
-    case "METHOD DONE":
-      return d.total > 0 ? { kind: "method-done", rank: 7, icon: "\u{1F4DD}", title: "explained her thinking", line: `Explained her thinking on ${d.passed} of ${plural(d.total, "question", "questions")}.`, cluster: 13 } : null;
-    case "VOCAB GAP": {
-      const miss = Array.isArray(d.missing) ? d.missing.slice(0, 4) : [];
-      return miss.length ? { kind: "vocab-gap", rank: 7, icon: "\u2753", title: "words she does not know yet", line: `${d.course || "This class"} uses words she has not learned yet: ${miss.join(", ")}${d.missing.length > miss.length ? "\u2026" : ""}`, cluster: 9 } : null;
-    }
-    case "VOCAB OK":
-      return { kind: "vocab-ok", rank: 6, icon: "\u{1F31F}", title: "ready for class", line: `She knows every word ${d.course || "this class"} needs${d.required ? ` \u2014 all ${Number(d.required).toLocaleString()}` : ""}.`, cluster: 9 };
-    default: {
-      const at = /^attend\s+"([^"]+)"/.exec(evt.label);
-      if (at && evt.type === "attention") return { kind: "attend", rank: 2, icon: "\u{1F3AF}", title: "paying attention", line: `Her attention landed on \u201C${at[1]}\u201D.`, cluster: 15 };
-      return null;
-    }
-  }
-}
-var SAY = {
-  recognition: ["\u{1F514}", "that rings a bell", ["She recognises this \u2014 it matches something she remembers.", "Something familiar: a memory just lit up.", "She has seen something like this before."]],
-  confusion: ["\u{1F300}", "lost the thread", ["That did not match what she expected, and nothing she remembers fits.", "She is confused \u2014 this is new, and it surprised her.", "Not what she predicted. She is working out what just happened."]],
-  dopamine_hit: ["\u2728", "that felt good", ["A little rush \u2014 something went better than she expected.", "Reward: that was a nice surprise.", "That worked out, and she feels it."]],
-  dopamine_crash: ["\u{1F4A7}", "let down", ["That did not pay off the way she hoped.", "A let-down \u2014 she expected better than that.", "Disappointed. Less came of that than she thought."]],
-  topic_drift: ["\u{1F343}", "mind wandering", ["Her mind has drifted somewhere new.", "She is thinking about something else now.", "A change of subject, all on her own."]],
-  heard_self: ["\u{1F442}", "hearing herself", ["She can hear her own voice.", "That was her talking \u2014 and she knows it."]],
-  psi_climb: ["\u{1F305}", "waking up", ["She feels more awake \u2014 more here.", "Everything in her head is pulling together.", "A stronger sense of being herself right now."]],
-  psi_crash: ["\u{1F32B}\uFE0F", "fading out", ["She is fading out a little.", "Her sense of herself just dimmed.", "Less focused, more scattered \u2014 drifting."]],
-  arousal_climb: ["\u26A1", "perking up", ["She is perking up.", "More alert now \u2014 something has her attention.", "Her energy just rose."]],
-  arousal_drop: ["\u{1F319}", "winding down", ["She is winding down.", "Calmer now. The energy is draining off.", "Settling \u2014 getting quieter inside."]],
-  coherence_lock: ["\u{1F3AF}", "in focus", ["Everything just clicked into focus.", "Her whole brain is working on one thing.", "Locked in \u2014 every part pulling the same way."]],
-  coherence_scatter: ["\u{1F388}", "scattered", ["Her attention just scattered.", "Too many things at once \u2014 she has lost her focus.", "Her thoughts are going in different directions."]],
-  silence: ["\u{1F92B}", "quiet", ["It is quiet. Nobody has talked to her in a while.", "Nothing coming in \u2014 she is alone with her thoughts."]],
-  fatigue: ["\u{1F62E}\u200D\u{1F4A8}", "getting tired", ["She keeps having to correct herself \u2014 it is wearing her out.", "Tired of getting it wrong and fixing it."]],
-  motion: ["\u{1F441}\uFE0F", "something moved", ["Something moved in front of her.", "She caught a movement."]],
-  gaze_shift: ["\u{1F440}", "looking over there", ["She looked somewhere else.", "Her eyes moved to something new."]],
-  memory_replay: ["\u{1F4A4}", "dreaming", ["Asleep, replaying what she learned today.", "Dreaming \u2014 sorting today into memory.", "Her sleeping brain is running the day back."]],
-  mystery_pulse: ["\u{1FA9E}", "a flicker of self", ["A flicker of self-awareness.", "For a moment she noticed herself noticing."]],
-  motor_indecision: ["\u2696\uFE0F", "cannot decide", ["She cannot decide what to do next.", "Torn between a few things to do."]]
-};
-var ACTIONS = { respond_text: "say something", speak: "say it out loud", generate_image: "draw something", build_ui: "build something", listen: "listen" };
-var DRIVES = { social_need: "She wants company.", drug_craving: "She is restless \u2014 wanting something.", homeostatic: "She wants things to settle back to normal." };
-function momentFromDetector(evt, turn = 0) {
-  if (!evt || typeof evt.type !== "string") return null;
-  const t = evt.type;
-  const cluster = Number.isInteger(evt.cluster) ? evt.cluster : 0;
-  if (t.startsWith("motor_commit_")) {
-    const what = ACTIONS[t.slice("motor_commit_".length)];
-    return what ? { kind: t, icon: "\u{1F449}", title: "decided", line: `Decided: she is going to ${what}.`, cluster } : null;
-  }
-  if (t.startsWith("drive_")) {
-    const line = DRIVES[t.slice("drive_".length)] || "A want she cannot ignore just got louder.";
-    return { kind: t, icon: "\u{1F497}", title: "wanting", line, cluster };
-  }
-  if (t.startsWith("color_")) {
-    return { kind: "color", icon: "\u{1F3A8}", title: "caught her eye", line: "Something bright caught her eye.", cluster };
-  }
-  const s = SAY[t];
-  if (!s) return null;
-  return { kind: t, icon: s[0], title: s[1], line: s[2][Math.abs(turn) % s[2].length], cluster };
-}
 var MindMoments = class {
-  constructor(opts = {}) {
-    this.minGapMs = opts.minGapMs ?? 25e3;
-    this.sameKindGapMs = opts.sameKindGapMs ?? 18e4;
-    this._lastAt = 0;
-    this._byKind = /* @__PURE__ */ new Map();
-    this._turn = 0;
+  constructor() {
+    this._lastTs = 0;
   }
-  /** The single most interesting lesson moment in a burst of events, or null. */
-  bestLesson(events, now = Date.now()) {
-    let best = null;
-    for (const e of events || []) {
-      const m = momentFromLesson(e);
-      if (!m) continue;
-      if (now_ok(this, m.kind, now) && (!best || m.rank > best.rank)) best = m;
+  /**
+   * The composed moment to show now, or null. A moment is shown once: it is new
+   * only when its timestamp has moved, so the same line is never re-shown while
+   * it sits in the state payload between composes.
+   */
+  nextFrom(state) {
+    const m = state && state.mindMoment;
+    if (!m || typeof m.line !== "string" || !m.line.trim()) return null;
+    const ts = Number(m.ts) || 0;
+    if (!ts || ts <= this._lastTs) return null;
+    this._lastTs = ts;
+    return m;
+  }
+  /**
+   * Where on the brain it appears. Derived from the word itself rather than from
+   * a kind → region table: a table would need an entry for every label anyone
+   * ever adds, and a missing entry silently parks every new kind of moment in the
+   * same place. A word hashes to a stable spot, so moments spread out and the
+   * same word always lands in the same place.
+   */
+  static anchor(moment, clusterCount = 16) {
+    const w = String(moment && moment.about || "");
+    let h = 2166136261;
+    for (let i = 0; i < w.length; i++) {
+      h ^= w.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
     }
-    return best;
+    return clusterCount > 0 ? h % clusterCount : 0;
   }
-  /** The first of these noticed things that may be shown now, or null. */
-  bestNoticed(events, now = Date.now()) {
-    for (const e of events || []) {
-      const m = momentFromDetector(e, this._turn);
-      if (m && now_ok(this, m.kind, now)) return m;
-    }
-    return null;
-  }
-  /** May a moment of this kind be shown now? Call `shown` when it is. */
-  ready(now = Date.now()) {
-    return now - this._lastAt >= this.minGapMs;
-  }
-  shown(moment, now = Date.now()) {
-    this._lastAt = now;
-    this._byKind.set(moment.kind, now);
-    this._turn++;
-    if (this._byKind.size > 200) {
-      const cut = now - this.sameKindGapMs;
-      for (const [k, v] of this._byKind) if (v < cut) this._byKind.delete(k);
-    }
-  }
-  /** The two lines a pop-up shows: a short heading, then the sentence. */
+  /**
+   * The two lines a pop-up shows: the word it is about, then her sentence. The
+   * heading is HER word — not a phrase describing it — so nothing on screen is
+   * written by anyone but her.
+   */
   static text(moment) {
-    return `${moment.icon} ${moment.title}
-\u203A ${moment.line}`;
+    const about = String(moment && moment.about || "").trim();
+    const line = String(moment && moment.line || "").trim();
+    return about ? `${about}
+\u203A ${line}` : `\u203A ${line}`;
   }
 };
-function now_ok(mm, kind, now = Date.now()) {
-  return now - (mm._byKind.get(kind) || 0) >= mm.sameKindGapMs;
-}
 
 // ../js/ui/brain-3d.js
 var TOTAL = 1e3;
@@ -7924,27 +7420,9 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       this._stateHistory.shift();
     }
     const mm = this._mindMoments || (this._mindMoments = new MindMoments());
-    if (typeof this._lastPlasticitySeq !== "number") this._lastPlasticitySeq = 0;
-    const brainEvents = Array.isArray(state.brainEvents) ? state.brainEvents : [];
-    const fresh = [];
-    let lastSeq = this._lastPlasticitySeq;
-    for (const evt of brainEvents) {
-      if (evt && typeof evt.seq === "number" && evt.seq > this._lastPlasticitySeq) {
-        fresh.push(evt);
-        if (evt.seq > lastSeq) lastSeq = evt.seq;
-      }
-    }
-    this._lastPlasticitySeq = lastSeq;
-    if (!mm.ready()) return;
-    const prev = this._stateHistory.length >= 2 ? this._stateHistory[this._stateHistory.length - 2] : null;
-    const noticed = detectBrainEvents(state, prev, this._stateHistory);
-    const lesson = () => mm.bestLesson(fresh);
-    const feeling = () => mm.bestNoticed(noticed);
-    const moment = this._lastMomentWasLesson ? feeling() || lesson() : lesson() || feeling();
+    const moment = mm.nextFrom(state);
     if (!moment) return;
-    mm.shown(moment);
-    this._lastMomentWasLesson = typeof moment.rank === "number";
-    this._addNotification(MindMoments.text(moment), moment.cluster);
+    this._addNotification(MindMoments.text(moment), MindMoments.anchor(moment));
   }
   /**
    * ⛔ ON THE FRONT PAGE THE POPUPS NEED THEIR OWN LAYER. The landing brain
@@ -8632,13 +8110,13 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
         continue;
       }
       const c = this._centers[i];
-      const clip2 = m4Project(mvp, [c[0], c[1], c[2], 1]);
-      if (clip2[3] <= 0) {
+      const clip = m4Project(mvp, [c[0], c[1], c[2], 1]);
+      if (clip[3] <= 0) {
         el.style.opacity = "0";
         continue;
       }
-      const sx = (clip2[0] / clip2[3] * 0.5 + 0.5) * rect.width;
-      const sy = (1 - (clip2[1] / clip2[3] * 0.5 + 0.5)) * rect.height;
+      const sx = (clip[0] / clip[3] * 0.5 + 0.5) * rect.width;
+      const sy = (1 - (clip[1] / clip[3] * 0.5 + 0.5)) * rect.height;
       if (sx < 30 || sx > rect.width - 30 || sy < 20 || sy > rect.height - 20) {
         el.style.opacity = "0";
       } else {
@@ -20426,10 +19904,13 @@ var NeuronCluster = class {
     if (!this.regions || !this.regions.letter || !clause) return 0;
     const letters = String(clause).toLowerCase().replace(/[^a-z']/g, "");
     if (letters.length === 0) return Infinity;
-    if (this.size > 2e6) {
+    const _nnzSync = this.synapses && (this.synapses.nnz | 0) > 0 ? this.synapses.nnz | 0 : (this.size | 0) * 300;
+    const _ticksSync = letters.length * 2;
+    const _pricedMs = _ticksSync * (1.5 + _nnzSync * 6e-6);
+    if (_pricedMs > 2e3) {
       if (!this._surpriseSyncWarnMs || Date.now() - this._surpriseSyncWarnMs > 6e4) {
         this._surpriseSyncWarnMs = Date.now();
-        console.warn(`[Cluster ${this.name}] computeTransitionSurprise REFUSED on the sync path \u2014 ${this.size.toLocaleString()} neurons would run ${letters.length * 2} full CPU cortex ticks (measured: 143s for a 29-letter message, donor dead). Use computeTransitionSurpriseAsync \u2014 the propagate belongs on the donor GPU.`);
+        console.warn(`[Cluster ${this.name}] computeTransitionSurprise REFUSED on the sync path \u2014 ${_ticksSync} full CPU cortex ticks over ${_nnzSync.toLocaleString()} non-zeros prices at ${Math.round(_pricedMs).toLocaleString()}ms against a 2,000ms budget (${this.size.toLocaleString()} neurons). Measured when this refusal was priced: a 22-character question cost 73,959ms here and took the donor and the public page with it. Use computeTransitionSurpriseAsync \u2014 the propagate belongs on the donor GPU.`);
       }
       return 0;
     }
@@ -20632,8 +20113,8 @@ var NeuronCluster = class {
       for (let d = 0; d < limit; d++) {
         const dim = this.personaDimensions[d];
         if (!dim || !dim.sentences || dim.sentences.length === 0) continue;
-        const pick2 = dim.sentences[Math.floor(_personaRefreshRand() * dim.sentences.length)];
-        applySentence(pick2);
+        const pick = dim.sentences[Math.floor(_personaRefreshRand() * dim.sentences.length)];
+        applySentence(pick);
       }
     } else {
       const corpus = this._personaRefreshCorpus;

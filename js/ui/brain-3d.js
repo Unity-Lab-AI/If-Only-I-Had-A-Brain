@@ -18,7 +18,6 @@
  *     commentary popups via Unity's own language cortex
  */
 
-import { detectBrainEvents } from './brain-event-detectors.js';
 import { MindMoments } from './mind-moments.js';
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -2094,33 +2093,20 @@ export class Brain3D {
     // nothing happened a filler pop-up of cluster percentages and Greek
     // letters fired every five seconds anyway — hundreds of pop-ups an hour
     // that only its author could read, drowning the one kind that is hers.
+    // ⭐⭐ AND THE LINE IS NOW COMPOSED BY HER, NOT BUILT HERE. Gee, verbatim:
+    // *"not the dynamic auto generated ones from her equations and need to be
+    // that"*. What stood here read `state.brainEvents` plus a page-side detector
+    // and asked `mind-moments.js` to turn them into a sentence — and that file
+    // held 72 authored shapes, 61 of them fixed strings with nothing of hers in
+    // them, the feelings rotating through two or three phrasings by a counter.
+    // The server now composes the line through the same speech path as every
+    // other sentence she says and publishes it as `state.mindMoment`; this side
+    // shows it and nothing else. No sentence shape remains to fall back to, so
+    // when she composes nothing, nothing appears.
     const mm = this._mindMoments || (this._mindMoments = new MindMoments());
-    if (typeof this._lastPlasticitySeq !== 'number') this._lastPlasticitySeq = 0;
-    const brainEvents = Array.isArray(state.brainEvents) ? state.brainEvents : [];
-    const fresh = [];
-    let lastSeq = this._lastPlasticitySeq;
-    for (const evt of brainEvents) {
-      if (evt && typeof evt.seq === 'number' && evt.seq > this._lastPlasticitySeq) {
-        fresh.push(evt);
-        if (evt.seq > lastSeq) lastSeq = evt.seq;
-      }
-    }
-    this._lastPlasticitySeq = lastSeq;   // a burst is read once, shown or not
-    if (!mm.ready()) return;
-
-    const prev = this._stateHistory.length >= 2
-      ? this._stateHistory[this._stateHistory.length - 2]
-      : null;
-    const noticed = detectBrainEvents(state, prev, this._stateHistory);
-    // Lessons run all day during a walk and feelings come and go, so the two
-    // take turns: whichever kind was shown last, the other is tried first.
-    const lesson = () => mm.bestLesson(fresh);
-    const feeling = () => mm.bestNoticed(noticed);
-    const moment = this._lastMomentWasLesson ? (feeling() || lesson()) : (lesson() || feeling());
+    const moment = mm.nextFrom(state);
     if (!moment) return;
-    mm.shown(moment);
-    this._lastMomentWasLesson = typeof moment.rank === 'number';
-    this._addNotification(MindMoments.text(moment), moment.cluster);
+    this._addNotification(MindMoments.text(moment), MindMoments.anchor(moment));
   }
 
   /**

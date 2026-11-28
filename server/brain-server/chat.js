@@ -7255,6 +7255,92 @@ const SERVER_CHAT_MIXIN = {
     return prompt;
   },
 
+  /**
+   * ⭐⭐ A MIND MOMENT — ONE LINE OF HERS ABOUT WHAT IS HAPPENING IN HER.
+   *
+   * Gee, verbatim: *"and fix the brain pop ups they arent fully complete and
+   * varied and numerous it loooks like a half dozen scriped lines with like yes no
+   * variables that switch and is pathetic"* and, deciding the shape of the fix,
+   * *"not the dynamic auto generated ones from her equations and need to be
+   * that"*.
+   *
+   * ⛔ WHAT THIS REPLACES, counted: the page built every pop-up sentence itself
+   * from three tables — 72 authored shapes, 61 of them fixed strings containing
+   * nothing of hers, and the feelings rotating through 2-3 variants by a turn
+   * counter. Pacing could not fix that, and writing better sentences would not
+   * either: a sentence of hers has to come out of her weights or it is a bolt-on
+   * wearing her voice.
+   *
+   * ⭐ So a moment is composed, not written: the word the moment is about goes in
+   * as what her line is about, and `composeSentence` — the one path every sentence
+   * of hers goes through — produces the line. The variety is therefore however
+   * many lines her own weights can make, and it grows as she is taught, instead of
+   * being however many strings someone typed.
+   *
+   * ⚠ There is NO fallback sentence. When she composes nothing, no pop-up is
+   * published — the same honest silence she gives everywhere else she speaks. A
+   * fallback template would reintroduce exactly what was removed.
+   *
+   * Pacing is the operator-approved rhythm already agreed for this lane: at most
+   * one moment per `DREAM_MOMENT_GAP_MS` (25 s), and the same KIND of moment at
+   * most once per `DREAM_MOMENT_KIND_GAP_MS` (3 min), so a walk's thousands of
+   * lesson events cannot flood the page and the same sort of line does not come
+   * back-to-back. Cost is one compose per 25 s — milliseconds on the host, and it
+   * must stay on the host: a compose per word through the card is what made her
+   * thoughts take a median 59 s.
+   */
+  async _mindMomentTick(now = Date.now()) {
+    // Her sleep is hers; narration does not talk over a dream window.
+    if (this._operatorSleepRequested) return false;
+    // ⭐ HER FEELINGS ARE EQUATIONS TOO, so a mood that MOVES is a moment, with
+    // the mood's own word as what the line is about. ⛔ Without this only lesson
+    // content would ever reach the page: the tables this lane replaced covered
+    // twenty feelings, and dropping them without putting her moods back would
+    // have quietly removed every pop-up about how she feels — a narrowing
+    // disguised as a cleanup. A mood changes rarely, so preferring it here cannot
+    // starve the lesson moments.
+    const moodWord = (this.mood && typeof this.mood.word === 'string' && this.mood.word.trim())
+      ? this.mood.word.trim().toLowerCase()
+      : null;
+    if (moodWord && moodWord !== this._lastMomentMood) {
+      this._lastMomentMood = moodWord;
+      this._momentCandidate = { word: moodWord, kind: 'feeling', course: null, ts: now };
+    }
+    const cand = this._momentCandidate;
+    if (!cand || !cand.word) return false;
+    const GAP = Number(process.env.DREAM_MOMENT_GAP_MS) > 0 ? Number(process.env.DREAM_MOMENT_GAP_MS) : 25_000;
+    const KIND_GAP = Number(process.env.DREAM_MOMENT_KIND_GAP_MS) > 0 ? Number(process.env.DREAM_MOMENT_KIND_GAP_MS) : 180_000;
+    if (now - (this._lastMomentAt || 0) < GAP) return false;
+    if (!this._momentKindAt) this._momentKindAt = new Map();
+    if (now - (this._momentKindAt.get(cand.kind) || 0) < KIND_GAP) return false;
+    const cluster = this.cortexCluster;
+    if (!cluster || typeof cluster.composeSentence !== 'function') return false;
+    // Claim the slot BEFORE composing, so a slow compose cannot let a second one
+    // in behind it, and a failed compose still costs the gap rather than retrying
+    // every tick on a word she cannot speak about yet.
+    this._lastMomentAt = now;
+    this._momentKindAt.set(cand.kind, now);
+    this._momentCandidate = null;
+    let composed = null;
+    try {
+      composed = await cluster.composeSentence(cand.word, {
+        intentConcept: cand.word,
+        coherenceCandidates: this._curriculumInProgress ? 1 : 2,   // rerank is idle-only, as everywhere else
+        ...this._affectDecoder(),                                   // her live affect picks the temperature
+      });
+    } catch { composed = null; }
+    const line = composed && composed.sentence ? String(composed.sentence).trim() : '';
+    if (!line) {
+      const st = this._momentStats || (this._momentStats = { shown: 0, silent: 0 });
+      st.silent += 1;
+      return false;                       // nothing of hers to say about it: no pop-up
+    }
+    const st = this._momentStats || (this._momentStats = { shown: 0, silent: 0 });
+    st.shown += 1;
+    this._mindMoment = { line, about: cand.word, kind: cand.kind, course: cand.course || null, ts: now };
+    return true;
+  },
+
   async _innerVoiceTick() {
     // Session 114.19ee — inner-voice unification.
     //
@@ -7293,6 +7379,11 @@ const SERVER_CHAT_MIXIN = {
     this._imagineTick(now).catch(() => { /* imagination best-effort */ });
     // SPEAK.6a — brain-driven spontaneous outward image (arousal-gated, rare).
     this._spontaneousImageTick(now);
+    // ⭐ A MIND MOMENT — one line of HERS about what is happening in her, paced.
+    // Composed through the same speech path as every other sentence she says, so
+    // the pop-ups stop being a table of phrases. Best-effort and never awaited
+    // into this tick's own rhythm: a pop-up may not delay a thought.
+    this._mindMomentTick(now).catch(() => { /* a pop-up must never break a tick */ });
     // SPEAK.10a — ablation snapshot, only when explicitly running an ablation
     // pass (env-gated) and throttled to once/30s so it never floods the log.
     if (process.env.DREAM_ABLATION_LOG === '1' && (!this._lastAblationLogAt || now - this._lastAblationLogAt > 30000)) {
