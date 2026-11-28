@@ -833,13 +833,24 @@ impl ComputeEngine {
     /// lesson takes when its error is read at the word: the said-word's cells
     /// up, the wrongly winning word's cells down. Ok(false) = skipped.
     pub fn step_rows_bound(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32) -> Result<bool, String> {
+        self.step_rows(name, row_start, row_count, raise, eta, false)
+    }
+
+    /// The forced step. `own_pre` = the lit source cells are the ones last
+    /// written into the matrix's own input buffer (by `propagate` /
+    /// `propagate_bucket_means` / `hebbian`); otherwise the bound cluster's
+    /// resident spikes.
+    pub fn step_rows(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32, own_pre: bool) -> Result<bool, String> {
         let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
         if m.rows == 0 || m.nnz == 0 || row_count == 0 { return Ok(false); }
         if (row_start as u64) + (row_count as u64) > (m.rows as u64) { return Ok(false); }
-        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
-        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
-        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
-        let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta: 0.0, margin: 0.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: 0, row_start, row_count, force: if raise { 1 } else { 2 } };
+        let (pre_buf, src_offset): (&wgpu::Buffer, u32) = if own_pre { (&m.pre_spikes, 0) } else {
+            let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+            let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+            if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+            (&src.spikes, b.src_start)
+        };
+        let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta: 0.0, margin: 0.0, w_min: -2.0, w_max: 2.0, src_offset, dst_offset: 0, row_start, row_count, force: if raise { 1 } else { 2 } };
         let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("step-rows-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM });
         let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("step-rows-bg"),
@@ -849,7 +860,7 @@ impl ComputeEngine {
                 wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: pre_buf.as_entire_binding() },
                 // the forced step never reads the target pattern; the matrix's own buffer keeps the layout whole
                 wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
             ],
@@ -1679,6 +1690,39 @@ impl Backend {
             Backend::Cuda(e) => e.step_rows_bound(name, row_start, row_count, raise, eta),
         }
     }
+    fn step_rows(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32, own_pre: bool) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.step_rows(name, row_start, row_count, raise, eta, own_pre),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.step_rows(name, row_start, row_count, raise, eta, own_pre),
+        }
+    }
+    /// TEACH ONE SPOKEN WORD, the error read at the word. The lit state cells
+    /// (`pre`) are driven through the pathway and each word's own run of
+    /// `bucket_size` target cells is averaged. If the taught word (`target`)
+    /// does not lead every other word by `margin`, its cells' wires from the
+    /// lit state cells are raised by `eta` and the cells of the word that
+    /// wrongly led are lowered — then it is looked at again, up to `tries`
+    /// times. Nothing changes when she would already have said it.
+    /// Returns (the word she would have said BEFORE the lesson, or -1 for
+    /// silence; how many corrections were made).
+    #[allow(clippy::too_many_arguments)]
+    fn speech_teach(&mut self, name: &str, pre: &[u32], target: u32, bucket_size: u32, bucket_count: u32, margin: f32, tries: u32, eta: f32) -> Result<(i32, u32), String> {
+        let (mut said, mut fixes) = (-1i32, 0u32);
+        if bucket_size == 0 || target >= bucket_count { return Ok((said, fixes)); }
+        for t in 0..tries.max(1) {
+            let means = self.propagate_bucket_means(name, pre, bucket_size, bucket_count)?;
+            let tv = means.get(target as usize).copied().unwrap_or(0.0);
+            let (mut bi, mut bv) = (-1i32, f32::NEG_INFINITY);
+            for (i, &v) in means.iter().enumerate() { if i as u32 != target && v > bv { bv = v; bi = i as i32; } }
+            if t == 0 { said = if tv > 0.0 && tv >= bv { target as i32 } else if bv > 0.0 { bi } else { -1 }; }
+            if tv > 0.0 && tv - bv >= margin { break; }
+            self.step_rows(name, target * bucket_size, bucket_size, true, eta, true)?;
+            if bi >= 0 && bv > 0.0 { self.step_rows(name, (bi as u32) * bucket_size, bucket_size, false, eta, true)?; }
+            fixes += 1;
+        }
+        Ok((said, fixes))
+    }
     /// v0.3.26 — masked bound plasticity (resident pre, explicit sparse post mask).
     fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
         match self {
@@ -2203,6 +2247,13 @@ impl MultiEngine {
     pub fn step_rows_bound(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32) -> Result<bool, String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
         self.engines[g].step_rows_bound(name, row_start, row_count, raise, eta)
+    }
+
+    /// Teach one spoken word on the engine holding the pathway (see `Backend::speech_teach`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn speech_teach(&mut self, name: &str, pre: &[u32], target: u32, bucket_size: u32, bucket_count: u32, margin: f32, tries: u32, eta: f32) -> Result<(i32, u32), String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Err(format!("sparse '{name}' not uploaded")) };
+        self.engines[g].speech_teach(name, pre, target, bucket_size, bucket_count, margin, tries, eta)
     }
 
     /// v0.3.26 — masked bound plasticity for a type-13 frame. Routes to the engine
