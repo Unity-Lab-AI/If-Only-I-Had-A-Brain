@@ -563,15 +563,20 @@ export class SpeechReadout {
   }
 
   // ── Teach ─────────────────────────────────────────────────────────────────────
-  /** The moment's key: its units without how she feels. */
+  /**
+   * The moment's key: its units without how she feels. The same SET of units
+   * gives the same key in any order — a state read back from her cells lists
+   * its units in cell order, not the order the encoder made them in.
+   */
   _key(units) {
-    let a = 0x811C9DC5, b = 0x9E3779B9;
+    let a = 0, b = 0;
     for (let i = 0; i < units.length; i++) {
       const u = units[i]; if (u >= L.live) continue;
-      a = Math.imul(a ^ u, 16777619) >>> 0;
-      b = (Math.imul(b ^ (u + 0x7F4A7C15), 0x85EBCA6B) >>> 0); b ^= b >>> 13;
+      let x = Math.imul(u + 0x7F4A7C15, 0x9E3779B1) >>> 0; x ^= x >>> 15; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13;
+      let y = Math.imul(u ^ 0x811C9DC5, 0xC2B2AE35) >>> 0; y ^= y >>> 16; y = Math.imul(y, 0x27D4EB2F) >>> 0; y ^= y >>> 15;
+      a = (a + x) >>> 0; b = (b ^ y) >>> 0;
     }
-    return a * 2097152 + ((b >>> 0) >>> 11);
+    return a * 2097152 + (b >>> 11);
   }
   _rand() { let x = this._rng; x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; this._rng = x; return x / 4294967296; }
   /** Note that `target` was taught in this state; returns the words taught here (target included). */

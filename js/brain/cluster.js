@@ -1557,7 +1557,7 @@ export class NeuronCluster {
     // general lesson and wrap-up off it — and what she says is the word whose
     // cells it drives hardest. Zero it, or light no state cell, and she is silent.
     this.speechPathway = null;
-    if (this.regions && this.regions.speech && this.regions.word_motor) {
+    if (this.regions && this.regions.speech && this.regions.word_motor && !this._speechUnitCells) {
       const sp = this.regions.speech, wm = this.regions.word_motor;
       const sN = sp.end - sp.start, wN = wm.end - wm.start;
       const fan = Math.min(sN, Math.max(1, Math.floor(opts.speechFanout ?? 300)));
