@@ -3322,16 +3322,21 @@ const SERVER_STATE_MIXIN = {
       // which she has yet to ask about.
       newWords: (() => {
         const m = cortex && cortex._newWordsTakenIn;
-        let lookedUp = 0, asked = 0, last = null;
+        let lookedUp = 0, asked = 0, doubted = 0, last = null;
         if (m instanceof Map) for (const [w, v] of m) {
           if (v && v.how === 'asked') asked++; else lookedUp++;
+          if (v && v.doubted === true) doubted++;
           if (v && (!last || v.at > last.at)) last = { word: w, how: v.how, at: v.at };
         }
         const st = this._newWordStats || {};
         return {
           total: m instanceof Map ? m.size : 0, lookedUp, asked,
+          // of those asked: an answer that weighed like words picked at random,
+          // taken at a quarter and to be opened again when she meets the word
+          doubted,
           waitingToAsk: Array.isArray(this._wordsToAskAbout) ? this._wordsToAskAbout.length : 0,
-          noticed: st.queued || 0, last,
+          // since this start: words noticed in what was said to her · refused as not English
+          noticed: st.queued || 0, refused: st.refused || 0, last,
         };
       })(),
       // ⭐ THE ACTUAL NUMBER OF MEANINGS BOUND, cumulative, and deliberately

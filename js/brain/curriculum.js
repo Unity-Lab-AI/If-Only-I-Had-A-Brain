@@ -928,6 +928,13 @@ const GATE_PATH_MIN = _gateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
 // A word's cells (`Curriculum._wordCells`): how many embedding dimensions carry
 // its meaning, and the hash that places each identity cell independently.
 const WORD_MEANING_DIMS = 4;
+// A word no English dictionary holds is taken to be of another language when
+// fewer than this share of its 12 nearest words in her meaning space are
+// in the offline English dictionary. Measured (docs/THRESHOLD-DERIVATION.md
+// § Not English): 48 of 49 words of other languages fall under it (0–25 %, one
+// at 58 %); of 300 words from her own stories one does (a name, 25 %) — and
+// none of the 29 among them that the offline dictionary does not hold.
+const NOT_ENGLISH_NEAR = 0.30;
 const _NO_CELLS = new Int32Array(0);
 // "The vector knows its word": when a curriculum has the word-cell code on
 // (`setWordCellCode`), every writer that is handed a vector carrying `_word`
@@ -13127,6 +13134,9 @@ export class Curriculum {
       if (this._vocabTaughtSet instanceof Map) { for (const w of this._vocabTaughtSet.keys()) addTok(w); }
       else if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
       if (this._definitionTaughtWords instanceof Set) for (const w of this._definitionTaughtWords) addTok(w);
+      // words she took in herself (looked up or told), and words she holds so she can ask about them
+      if (cluster._newWordsTakenIn instanceof Map) for (const w of cluster._newWordsTakenIn.keys()) addTok(w);
+      if (cluster._newWordsHeld instanceof Set) for (const w of cluster._newWordsHeld) addTok(w);
       for (const k of Object.keys(cluster)) {
         if (k.startsWith('_emissionTaughtWords_') && cluster[k] instanceof Set) {
           for (const w of cluster[k]) addTok(w);
@@ -15731,25 +15741,44 @@ export class Curriculum {
     // She can know a WORD — have met it, read it, say it — without knowing what
     // it means. `meaningHeld`: she has been taught, looked up or been told it.
     const formHeld = this._holdsWord(w);
-    const meaningHeld = taken.has(w) || (cluster._definitionTaughtWords instanceof Set && cluster._definitionTaughtWords.has(w))
-      || (formHeld && !(cluster._wordsMeaningUnknown instanceof Set && cluster._wordsMeaningUnknown.has(w)));
-    if (meaningHeld) return { word: w, took: false, why: 'already hers' };
+    // A meaning she took in but DOUBTED is not settled: meeting the word again
+    // opens it again (looked up if it can be now, asked about again if not).
+    const rec = taken.get(w);
+    const meaningHeld = rec ? rec.doubted !== true
+      : ((cluster._definitionTaughtWords instanceof Set && cluster._definitionTaughtWords.has(w))
+        || (formHeld && !(cluster._wordsMeaningUnknown instanceof Set && cluster._wordsMeaningUnknown.has(w))));
+    if (meaningHeld) return { word: w, took: false, already: true, why: 'already hers' };
     if (beingTold && !told.length) return { word: w, took: false, ask: true, why: 'what she was told had no words in it she could take' };
     let defs = null;
     if (typeof cluster.lookupDefinitionFull === 'function') { try { defs = await cluster.lookupDefinitionFull(w); } catch { defs = null; } }
-    let found = Array.isArray(defs) && defs.length > 0;
-    // "Has an entry somewhere" is not "is a word": the lookup also answers from
-    // an encyclopedia and a slang site, and it answers for misspellings with
-    // the word they were meant to be. A misspelling is the word it was meant to
-    // be; a string only those two sources know is not a word she can look up.
-    if (found && typeof cluster.isRealWord === 'function' && !cluster.isRealWord(w)) {
-      const real = typeof cluster.lookupTypoOf === 'function' ? cluster.lookupTypoOf(w) : null;
-      if (real && real !== w && !opts._fromSpelling) {
-        const r = await this._meetNewWord(real, { ...opts, _fromSpelling: true });
-        return { ...r, spelledAs: w };
-      }
-      found = false;
+    const found = Array.isArray(defs) && defs.length > 0;
+    // A MISSPELLING is the word it was meant to be: she meets that word. First
+    // only when a dictionary itself says so ("Misspelling of receive.").
+    const _meant = (fn) => { const r = typeof cluster[fn] === 'function' ? cluster[fn](w) : null; return (r && r !== w && !opts._fromSpelling) ? r : null; };
+    const _asWord = async (real) => { const r = await this._meetNewWord(real, { ...opts, _fromSpelling: true }); return { ...r, spelledAs: w }; };
+    const sure = _meant('lookupMisspellingOf');
+    if (sure) return _asWord(sure);
+    // NOT ENGLISH — refused. A word no English dictionary holds, whose nearest
+    // words in her own meaning space are themselves not English words, is a
+    // word of another language (`_notEnglishWord`). She neither learns it nor
+    // asks about it. (A meaning that comes only from the slang dictionary or
+    // the encyclopedia is still a meaning, and is learned below — learning is
+    // not held to what a formal dictionary carries.)
+    if (typeof cluster.isRealWord === 'function' && !cluster.isRealWord(w) && await this._notEnglishWord(w)) {
+      const refused = cluster._wordsRefused instanceof Map ? cluster._wordsRefused : (cluster._wordsRefused = new Map());
+      refused.set(w, Date.now());
+      while (refused.size > 256) refused.delete(refused.keys().next().value);
+      return { word: w, took: false, refused: true, why: 'not an English word' };
     }
+    // The other way a misspelling is known — an English word one letter away —
+    // is asked only AFTER the check above: a word of another language is often
+    // one letter from an English word ("danke" → dance, "porque" → torque), and
+    // that guess would have had her learn the wrong word. (Measured: a
+    // misspelling her meaning space holds sits among other misspellings, so it
+    // is turned away above like any string that is not an English word; one it
+    // does not hold is met here as the word it was meant to be.)
+    const guess = _meant('lookupTypoOf');
+    if (guess) return _asWord(guess);
     if (!found && !beingTold) {
       const st = typeof cluster.lookupDefinitionStatus === 'function' ? cluster.lookupDefinitionStatus(w) : 'unknown';
       // a lookup that did not come back is not "no such word" — she neither learns it nor asks; she will meet it again
@@ -15765,13 +15794,12 @@ export class Curriculum {
     if (found) { await this._teachWordDefinition(w, { reps: opts.reps ?? 4, label: 'NEW-WORD', sideLane: true }); how = 'looked up'; }
     else {
       // WITH DISCERNMENT. What she is told is weighed against what the word
-      // already is to her, when it is anything: if no word of the answer is
-      // closer to this word than her own words usually are (closer than nine in
-      // ten of a sample of words she knows), the answer may not be about the
-      // word at all — it is taken in at a quarter of the dose and marked as
-      // doubted, to be settled when she meets the word again. A word that is
-      // nothing to her yet (no meaning of its own) gives her nothing to weigh
-      // an answer against, so the answer is taken as told.
+      // already is in her meaning space (`_toldAnswerIsDoubtful`). An answer
+      // that weighs like words picked at random may not be about the word at
+      // all: it is taken in at a quarter of the dose and marked DOUBTED, and a
+      // doubted word is opened again the next time she meets it (above). A
+      // word with no place in her meaning space yet gives her nothing to
+      // weigh an answer against, so its answer is taken as told.
       doubted = this._toldAnswerIsDoubtful(w, told);
       await this._teachAssociationPairs(told.slice(0, 8).map((t) => [w, t]), { reps: doubted ? 3 : 12, label: doubted ? 'NEW-WORD-TOLD-DOUBTED' : 'NEW-WORD-TOLD', relationTagId: 23, sideLane: true });
       how = 'asked';
@@ -15786,6 +15814,10 @@ export class Curriculum {
     const cluster = this.cluster;
     await this._teachWordIntegrated(w, { reps: opts.reps ?? 4, sideLane: true });
     (cluster._newWordsHeld instanceof Set ? cluster._newWordsHeld : (cluster._newWordsHeld = new Set())).add(w);
+    // ...and it is among the words her replies may use: the set that keeps
+    // untaught words out of what she says is rebuilt only at boot and on a
+    // grade change, so a word taken in between is added to it here.
+    if (cluster._emissionAllowedVocab instanceof Set && cluster._emissionAllowedVocab.size > 0) cluster._emissionAllowedVocab.add(w);
     // a word she holds is a word she can say: it joins her dictionary, which is where a place to say it comes from
     if (this.dictionary && typeof this.dictionary.learnWord === 'function' && !(this.dictionary._words && this.dictionary._words.has(w))) {
       try { this.dictionary.learnWord(w, null, 0.5, 0); } catch { /* a word the dictionary will not hold stays unsayable */ }
@@ -15804,26 +15836,62 @@ export class Curriculum {
   }
 
   /**
-   * Is an answer she was told likely NOT about the word? True when the word
-   * has a meaning of its own and no word of the answer is closer to it than
-   * the ninth-closest-in-ten of up to 64 words she knows (taken evenly from her
-   * word list). False when there is nothing to weigh against.
+   * Is an answer she was told likely NOT about the word?
+   *
+   * The answer's CLOSEST word to the word is compared with what the closest of
+   * that many words picked at random would be. With k answer words weighed and
+   * F the spread of single random words' closeness to the word (up to 256 of
+   * her own words, taken evenly from her list), the closest of k random words
+   * falls below the q-th point of F with chance q^k. So the bar is the point
+   *     q = 0.9^(1/k)
+   * of F: k words that have nothing to do with the word clear it one time in
+   * ten, whatever k is. (Comparing the closest of k with the nine-in-ten point
+   * of ONE word, as this first did, lets four unrelated words through one
+   * time in three and eight through more often than not.)
+   * False — nothing to weigh against — when the word has no vector of its own
+   * in the table, none of the answer's words has, or she knows too few words.
    */
   _toldAnswerIsDoubtful(w, told) {
     const cluster = this.cluster;
-    const emb = (x) => (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') ? sharedEmbeddings.getEmbedding(x) : null;
-    const a = emb(w);
+    const E = sharedEmbeddings;
+    if (!E || typeof E.getEmbedding !== 'function' || typeof E.knows !== 'function' || !E.knows(w)) return false;
+    const a = E.getEmbedding(w);
     const known = Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : [];
-    if (!a || !a.length || known.length < 20) return false;
+    if (!a || !a.length || known.length < 40) return false;
     const cos = (b) => { if (!b || b.length !== a.length) return null; let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return (na > 0 && nb > 0) ? d / Math.sqrt(na * nb) : null; };
-    let best = -Infinity, weighed = 0;
-    for (const t of told) { const c = cos(emb(t)); if (c === null) continue; weighed++; if (c > best) best = c; }
-    if (!weighed) return false;
-    const sample = []; const step = Math.max(1, Math.floor(known.length / 64));
-    for (let i = 0; i < known.length && sample.length < 64; i += step) { const k = known[i]; if (k === w || told.includes(k)) continue; const c = cos(emb(k)); if (c !== null) sample.push(c); }
-    if (sample.length < 10) return false;
+    let best = -Infinity, k = 0;
+    for (const t of told) { if (!E.knows(t)) continue; const c = cos(E.getEmbedding(t)); if (c === null) continue; k++; if (c > best) best = c; }
+    if (!k) return false;
+    const sample = []; const step = Math.max(1, Math.floor(known.length / 256));
+    for (let i = 0; i < known.length && sample.length < 256; i += step) { const x = known[i]; if (x === w || told.includes(x) || !E.knows(x)) continue; const c = cos(E.getEmbedding(x)); if (c !== null) sample.push(c); }
+    if (sample.length < 40) return false;
     sample.sort((x, y) => x - y);
-    return best < sample[Math.floor(sample.length * 0.9)];
+    const q = Math.pow(0.9, 1 / k);
+    return best < sample[Math.min(sample.length - 1, Math.floor(sample.length * q))];
+  }
+
+  /**
+   * Is this a word of another language? Asked only of a word no English
+   * dictionary holds. Her meaning space puts a word beside the words it is
+   * used with, so a word of another language sits among other words of that
+   * language: of its 12 nearest words, how many does the offline English
+   * dictionary hold? Under `NOT_ENGLISH_NEAR` (a share, measured — see
+   * docs/THRESHOLD-DERIVATION.md) it is not English. The neighbours are judged
+   * by the OFFLINE dictionary on purpose: its answer does not move as more
+   * words get looked up, and it does not count the words of other languages
+   * an online English dictionary lists. False when the table has no vector
+   * for the word (a word she has no place for yet cannot be judged this way,
+   * and is kept to be asked about) or no offline dictionary is attached.
+   */
+  async _notEnglishWord(w) {
+    const cluster = this.cluster;
+    const E = sharedEmbeddings;
+    if (!E || typeof E.knows !== 'function' || typeof E.nearestWords !== 'function' || !E.knows(w)) return false;
+    if (typeof cluster.inOfflineDictionary !== 'function') return false;
+    const near = await E.nearestWords(w, 12);
+    if (near.length < 6) return false;
+    let english = 0; for (const n of near) if (cluster.inOfflineDictionary(n)) english++;
+    return english / near.length < NOT_ENGLISH_NEAR;
   }
 
   /** How many earlier words she looks at after each new reading lesson (`DREAM_READ_LOOKS`; 0 = none). */
@@ -16287,7 +16355,9 @@ export class Curriculum {
             const r = await this._meetNewWord(job.word, job.opts || {});
             const st = brain._newWordStats || (brain._newWordStats = { met: 0, lookedUp: 0, asked: 0, toAsk: 0, noAnswer: 0, last: null });
             st.met++;
-            if (r && r.took) { if (r.how === 'asked') st.asked++; else st.lookedUp++; st.last = { word: r.word, how: r.how, at: Date.now() }; }
+            if (r && r.took) { if (r.how === 'asked') st.asked++; else st.lookedUp++; if (r.doubted) st.doubted = (st.doubted || 0) + 1; st.last = { word: r.word, how: r.how, at: Date.now() }; }
+            else if (r && r.already) st.alreadyHers = (st.alreadyHers || 0) + 1;      // a word she met again, or a misspelling of one she holds
+            else if (r && r.refused) st.refused = (st.refused || 0) + 1;             // not an English word
             else if (r && r.ask) {
               st.toAsk++;
               if (!Array.isArray(brain._wordsToAskAbout)) brain._wordsToAskAbout = [];
@@ -20446,7 +20516,10 @@ export class Curriculum {
     if (opts.unitsOnly) {
       if (!p.length && !h && !about) return false;
       cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p, about));
-      cluster._speechCtx = { heard: h, prefix: p, about };
+      // `opts.unsure` — this state is one of not knowing (a question being
+      // taught, or her wondering). It rides in the state's own record, so it
+      // is read with this state and no other.
+      cluster._speechCtx = { heard: h, prefix: p, about, unsure: opts.unsure === true };
       cluster._mindFeats = null;
       cluster._speechTargets = null;
       return true;
@@ -24671,11 +24744,8 @@ export class Curriculum {
           if (globalThis._brainShutdownRequested) break;
           this._speechLessonStart();
           for (const [_prefix, _next, _g, _about, _asks] of _items) {
-            cluster._unsureAbout = _asks === true;
-            const _wrote = this._writeSpeechState('', _prefix, { unitsOnly: true, about: _about });
-            if (!_wrote) { cluster._unsureAbout = false; continue; }
+            if (!this._writeSpeechState('', _prefix, { unitsOnly: true, about: _about, unsure: _asks === true })) continue;
             this._speechTeach(_next, _g);
-            cluster._unsureAbout = false;
             _spoken++;
             if (Date.now() - _sliceAt > 30) { await _microtask(); _sliceAt = Date.now(); if (globalThis._brainShutdownRequested) break; }
           }

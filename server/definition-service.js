@@ -122,12 +122,32 @@ async function _fetchJson(url, timeoutMs) {
   finally { clearTimeout(t); }
 }
 
-async function _fetchWikipediaSenses(phrase, timeoutMs) {
-  const j = await _fetchJson(WIKI_SUMMARY + encodeURIComponent(String(phrase).trim().replace(/\s+/g, '_')), timeoutMs);
-  if (!j || j.type !== 'standard' || typeof j.extract !== 'string' || !j.extract.trim()) return [];
+// What the encyclopedia has for a phrase:
+//   senses   — its opening two sentences, when it has an article on it
+//   titled   — it has a page TITLED this very phrase, of any kind (an article,
+//              or its list of the things that go by that name). That makes the
+//              phrase a NAME of something. A page it only redirects to under
+//              another title ("seperate" ⇒ Separate) does not count.
+//   answered — it answered at all (a page, or "no such page"); false when the
+//              request failed, so "no answer" is never read as "no page"
+async function _fetchWikipediaPage(phrase, timeoutMs) {
+  const asked = String(phrase).trim();
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), Math.max(2000, timeoutMs || 4000));
+  let j = null, answered = false;
+  try {
+    const res = await fetch(WIKI_SUMMARY + encodeURIComponent(asked.replace(/\s+/g, '_')), { signal: controller.signal, headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' } });
+    if (res.status === 404) answered = true;
+    else if (res.ok) { j = await res.json(); answered = true; }
+  } catch { /* no answer */ }
+  finally { clearTimeout(t); }
+  if (!j) return { senses: [], titled: false, answered };
+  const title = String(j.title || '').toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  const titled = title === asked.toLowerCase().replace(/\s+/g, ' ');
+  if (j.type !== 'standard' || typeof j.extract !== 'string' || !j.extract.trim()) return { senses: [], titled, answered };
   // the opening two sentences — what the thing IS, not its whole article
   const s = j.extract.replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
-  return s ? [{ partOfSpeech: 'noun', definition: s, example: '', synonyms: [], source: 'wikipedia' }] : [];
+  return { senses: s ? [{ partOfSpeech: 'noun', definition: s, example: '', synonyms: [], source: 'wikipedia' }] : [], titled, answered };
 }
 
 async function _fetchUrbanSenses(word, timeoutMs) {
@@ -215,6 +235,13 @@ function _typoOf(word) {
 // A typo found here is RECORDED (not defined) so the harvest can teach the real
 // word; see typoOf() below.
 const _typoMap = new Map();
+// Which of those are a DICTIONARY'S OWN verdict ("Misspelling of receive."), as
+// against the one-letter-away guess of `_typoOf`. The guess is right for a
+// typo in her reading; it is wrong for a word of another language that happens
+// to sit one letter from an English word ("danke" → dance, "porque" → torque),
+// so a caller that may be looking at any word a person typed asks for the
+// dictionary's verdict (`misspellingByDictionary`).
+const _typoByDictionary = new Set();
 
 // A dictionary's OWN verdict that a spelling is wrong: Wiktionary files "recieve"
 // with the single sense "Misspelling of receive." — that is not a definition to
@@ -241,11 +268,25 @@ function _misspellingOf(defs) {
 async function _fetchBeyondDictionaries(word, timeoutMs) {
   const phrases = _splitRunTogether(word);
   const asked = phrases.concat([word]);
+  let named = false, heard = true;
   for (const q of asked) {
-    const wiki = await _fetchWikipediaSenses(q, timeoutMs);
-    if (wiki.length) return wiki;
+    const page = await _fetchWikipediaPage(q, timeoutMs);
+    if (page.senses.length) return page.senses;
+    if (q === word) { named = page.titled; heard = page.answered; }
   }
-  if (!phrases.length) {
+  // ⛔ A NAME IS NOT A MISSPELLING. The one-letter-away guess below was built
+  // for typos in her reading, and her reading is published text: measured on
+  // the 340 strings it had marked, nearly every one was a NAME that sits one
+  // letter from some word — alice → slice, julia → julian, claude → clause,
+  // gordon → cordon — and she was taught the other word in its place. How
+  // common the string is does not tell the two apart (names at every level).
+  // What does: the encyclopedia has a page TITLED the string itself (its list
+  // of the things called "Alice" is such a page). A real misspelling has no
+  // page of its own — it has nothing, or it redirects to the right spelling
+  // (measured: 32 of 37 known misspellings; the other 5 — "teh", "adn" — are
+  // also names of things). So the guess is made only when the encyclopedia
+  // ANSWERED and has no page titled the string. No answer is not "no page".
+  if (!phrases.length && heard && !named) {
     const meant = _typoOf(word);
     if (meant) { _typoMap.set(String(word).toLowerCase(), meant); return []; }   // a misspelling: no definition
   }
@@ -257,8 +298,11 @@ async function _fetchBeyondDictionaries(word, timeoutMs) {
 }
 
 // A `noDef` decided before these sources existed gets ONE more look through
-// them; one decided after is final. Bumped whenever a source is added.
-const NODEF_GEN = 2;
+// them; one decided after is final. Bumped whenever a source is added — and
+// when the rule that decides a miss changes: 3 = a name is no longer marked a
+// misspelling, so every earlier miss (914 in her saved dictionary, 340 of them
+// carrying such a mark) is looked at once more.
+const NODEF_GEN = 3;
 
 // LRU cache. Insertion order = recency in Map. On hit,
 // delete + re-set so the entry moves to the "newest" end. On overflow,
@@ -385,8 +429,8 @@ function _cacheGet(key) {
   if (!entry.error && Array.isArray(entry.definitions)) {
     const m = _misspellingOf(entry.definitions);
     if (m) {
-      _typoMap.set(key, m);
-      entry = { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: m };
+      _typoMap.set(key, m); _typoByDictionary.add(key);
+      entry = { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: m, typoBy: 'dictionary' };
       _cachePut(key, entry);
       return entry;
     }
@@ -556,8 +600,8 @@ async function getDefinition(word, opts = {}) {
           }
           const _miss = _misspellingOf(union);
           if (_miss) {
-            _typoMap.set(key, _miss);
-            _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss });
+            _typoMap.set(key, _miss); _typoByDictionary.add(key);
+            _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss, typoBy: 'dictionary' });
             return null;
           }
           if (union.length > 0) {
@@ -680,8 +724,8 @@ async function getDefinition(word, opts = {}) {
       }
       const _miss2 = _misspellingOf(definitions);
       if (_miss2) {
-        _typoMap.set(key, _miss2);
-        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss2 });
+        _typoMap.set(key, _miss2); _typoByDictionary.add(key);
+        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss2, typoBy: 'dictionary' });
         return null;
       }
       const first = definitions[0].definition;
@@ -1029,8 +1073,32 @@ function lookupStatus(word) {
 function typoOf(word) {
   const key = _normalize(word);
   if (!key) return null;
+  // A mark on a miss that is due its one more look (decided under an earlier
+  // rule) is not served: it may be a name, and it is re-decided on that look.
   const e = cache.get(key);
-  return (e && e.typoOf) || _typoMap.get(key) || null;
+  if (e && e.typoOf && !_errorEntryExpired(e)) return e.typoOf;
+  return _typoMap.get(key) || null;
+}
+
+// Does the OFFLINE English dictionary (WordNet) hold this word? Unlike
+// `isRealWord` the answer does not depend on what has been looked up so far,
+// and it does not count a word of another language that an online English
+// dictionary happens to list. Used to judge a word's neighbours, where a
+// steady answer matters more than a complete one.
+function inOfflineDictionary(word) {
+  const key = _normalize(word);
+  if (!key) return false;
+  try { const off = offlineDict.lookup(key); return !!(off && off.length); } catch { return false; }
+}
+
+// The real word a DICTIONARY says this spelling is a misspelling of, or null —
+// never the one-letter-away guess (see `_typoByDictionary`). Cache-only.
+function misspellingByDictionary(word) {
+  const key = _normalize(word);
+  if (!key) return null;
+  const e = cache.get(key);
+  if (e && e.typoOf && e.typoBy === 'dictionary') return e.typoOf;
+  return _typoByDictionary.has(key) ? (_typoMap.get(key) || null) : null;
 }
 
 // ⭐ IS THIS A REAL WORD — answered by a DICTIONARY, never an encyclopedia.
@@ -1053,6 +1121,8 @@ function isRealWord(word) {
 module.exports = {
   isRealWord,
   typoOf,
+  misspellingByDictionary,
+  inOfflineDictionary,
   getDefinition,
   getDefinitionSync,
   getDefinitionsSync,

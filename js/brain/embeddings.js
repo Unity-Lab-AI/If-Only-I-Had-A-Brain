@@ -703,6 +703,39 @@ export class SemanticEmbeddings {
     return dot / (Math.sqrt(normA * normB) || 1);
   }
 
+  /** Does the table itself hold a vector for this word (not one put together from its letters)? */
+  knows(word) {
+    return this._embeddings.has(String(word || '').toLowerCase().trim());
+  }
+
+  /**
+   * The k words of the table nearest in meaning to `word` (the word itself left
+   * out), nearest first. One pass that keeps only the k best — no list of the
+   * whole table, no sort — and it hands the loop back every 40,000 words, so a
+   * table of 400,000 does not hold everything else up. Empty when the table
+   * has no vector for the word.
+   */
+  async nearestWords(word, k = 12) {
+    const w = String(word || '').toLowerCase().trim();
+    const a = this._embeddings.get(w);
+    if (!a || !(k > 0)) return [];
+    let na = 0; for (let i = 0; i < a.length; i++) na += a[i] * a[i];
+    if (!(na > 0)) return [];
+    const words = new Array(k).fill(null); const sims = new Float64Array(k).fill(-Infinity);
+    let seen = 0;
+    for (const [other, v] of this._embeddings) {
+      if ((++seen % 40000) === 0) await new Promise((r) => setTimeout(r, 0));
+      if (other === w || !v || v.length !== a.length) continue;
+      let d = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * v[i]; nb += v[i] * v[i]; }
+      if (!(nb > 0)) continue;
+      const s = d / Math.sqrt(na * nb);
+      if (!(s > sims[k - 1])) continue;
+      let j = k - 1; while (j > 0 && s > sims[j - 1]) { sims[j] = sims[j - 1]; words[j] = words[j - 1]; j--; }
+      sims[j] = s; words[j] = other;
+    }
+    return words.filter(Boolean);
+  }
+
   /**
    * Find the k most similar words to a given embedding.
    * @param {Float32Array} embedding

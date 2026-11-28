@@ -399,6 +399,19 @@ Pollinations       → GONE (2026-10-18); her images render locally via image-en
 - **A silent ask was the floor, not a break.** 8 of 20 asks said nothing: first-word mean 0.016–0.040 against the 0.04 floor. Left alone — moving a derived threshold needs a derivation.
 - **`_awaitComputeSubstrate` drains the chat lanes only with a card attached**, one job a call. An instrument that calls it without one measures nothing.
 
+**`NEWWORDS.5–.10` — a review of that merged work the same night (branch `feature/new-words-hardening`).** Gee: *"use ask me question then finish all things needed (remembr if there is something needed added fixed, we do it before a start fresh walk and and proof the brains equations"*. His three answers: **"Everyone, everything"** may teach her a word · **"option two but only with meanings, and she should decern if non english and refuse non english"** · **"Keep the quarter dose"**.
+
+⛔ **What the review found that the instruments had not, each worth keeping:**
+- **A "fix" that reverses a standing directive is a regression, however clean its test.** Telling a made-up word from a real one by `isRealWord` also threw away every meaning from the slang dictionary and the encyclopedia — which he had ordered she learn. The two made-up test words were not misspellings at all; the slang dictionary had them. **Before narrowing what a lookup accepts, read the comments above the lookup.**
+- **The best of k is not one draw.** "With discernment" compared the answer's closest word with the nine-in-ten mark of a single word; four unrelated words pass that one time in three by arithmetic. The bar is now the `0.9^(1/k)` point. **A threshold on a maximum needs the maximum's distribution.**
+- **A flag set across an `await` is shared with whatever else runs.** Not-knowing was a switch on the cluster held on while her wondering waited on the card; the walk's lessons read it and the sentence lesson cleared it. It now rides in the state's own record.
+- **Half the new state was never saved**, and a word kept without a meaning came back from a restart looking known. **When a feature adds state, list every field and where each is saved.**
+- **A flag nothing reads is a claim, not a behaviour.** "Doubted — to be settled when she meets the word again" was settled by nothing.
+- **New units packed into a full stripe collide.** Said / not-said shared one unit of four. The salts are now checked when the module loads.
+- **A word she takes in was blocked from her own replies** by the reply vocabulary set, which is rebuilt only at boot and on a grade change.
+- **A fix at one caller leaves the bug live at the others.** I stopped the one-letter-away misspelling guess from turning "danke" into *dance* at the chat door — and the same guess was still swapping NAMES in her lessons (`NEWWORDS.11`: 340 marked strings, alice → slice, claude → clause). It took his question to find it. **When a shared answer is wrong, fix where the answer is made** (`definition-service.js`), not where I happened to meet it. The rule: no guess when the encyclopedia has a page titled the string itself.
+- ⚠ **Still unproven until she is started:** the new-word lessons on the card, and the dashboard row in a browser. Both are on the first-start list in `docs/RESUME.md`.
+
 ### The governing facts to check before believing any dashboard field
 
 | Fact | Consequence |

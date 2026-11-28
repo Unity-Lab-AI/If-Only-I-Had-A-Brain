@@ -433,9 +433,11 @@ Before every word she is in a **state**: a small set `A` of active units (about 
 |---|---|
 | **She meets it** | a word in something said to her that she does not hold is noticed and queued (a few a line), and taken in between lessons |
 | **She looks it up** | her whole word lesson (read it, a place to say it, name it) and then its definition — the word is hers the way a taught word is |
-| **A misspelling** | is met as the word it was meant to be |
-| **Nothing to look up** | she keeps the word itself, marks its meaning unknown, and asks about it — in the not-knowing feeling, about *that* word |
-| **She is told** | the answer is bound as its meaning. **With discernment:** if no word of the answer is closer to the word than nine in ten of her own words are, the answer is taken at a quarter of the dose and marked doubted |
+| **A misspelling** | when a dictionary itself names it one ("recieve"), she meets the word it was meant to be |
+| **Slang, a name, a place** | a meaning that comes only from the slang dictionary or the encyclopedia is still a meaning, and is learned |
+| **Another language** | refused. A word no English dictionary holds, whose 12 nearest words in her own meaning space are mostly not English words either (fewer than 30 % are), is a word of another language: she neither learns it nor asks. Measured: 48 of 49 words of other languages refused, 1 of 300 of her own. A word written with letters outside a–z is left out whole. (A word of another language that an English dictionary lists — "bonjour" — is learned as that dictionary gives it) |
+| **Nothing to look up** | she keeps the word itself, marks its meaning unknown, and asks about it — in the not-knowing feeling, about *that* word. Her question waits five minutes for an answer, then the word goes back to waiting |
+| **She is told** | the answer is bound as its meaning. **With discernment:** `doubted ⇔ closest(answer) < F⁻¹(0.9^(1/k))` — the answer's closest word to the word must beat what the closest of `k` words picked at random would be, nine times in ten (`F` = how close her own words sit to it, `k` = words in the answer). A doubted answer is taken at a quarter of the dose, and the word is opened again the next time she meets it |
 
 ⭐ **Measured** (1,645 of her own sentences taught, 660 of them questions; 60 words she was taught no line about): a line about the word **has the word in it 100 %** of the time (2 % before she could "say the thing") · it is a **question 70 %** of the time when she does not know, **15 %** when she is sure · the next word of a sentence she was never taught, said as a line of her own about its subject: right **18.9 % → 26.8 %** (2,400 sentences taught), while taught sentences went 88.2 % → 92.3 %.
 

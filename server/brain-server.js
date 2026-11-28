@@ -4654,6 +4654,12 @@ class ServerBrain {
       // the real word a misspelling stands for (never a definition of the typo)
       this.cortexCluster.lookupTypoOf = (word) =>
         (typeof definitionService.typoOf === 'function' ? definitionService.typoOf(word) : null);
+      // ...and that word only when a DICTIONARY said so, not the one-letter-away
+      // guess — what the door for a word a person typed asks first
+      this.cortexCluster.lookupMisspellingOf = (word) => definitionService.misspellingByDictionary(word);
+      // the offline English dictionary holds this word — a steady answer, used
+      // to judge whether a word's neighbours in her meaning space are English
+      this.cortexCluster.inOfflineDictionary = (word) => definitionService.inOfflineDictionary(word);
       this.cortexCluster.prefetchDefinitions = (words, opts) =>
         definitionService.prefetch(words, opts);
       this.cortexCluster.getDefinitionCacheStats = () =>
@@ -9471,8 +9477,8 @@ class ServerBrain {
               ? Array.from(cortex._readTaughtWords) : [],
             // Words she took in herself — met, looked up, or asked about — kept
             // apart from the words a lesson handed her: [word, how, when].
-            newWordsTakenIn: cortex._newWordsTakenIn instanceof Map
-              ? Array.from(cortex._newWordsTakenIn, ([w, v]) => [w, v && v.how, v && v.at]) : [],
+            // (and what she is still holding about them — `_newWordStateForSave`)
+            ...this._newWordStateForSave(),
             // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
             // (so contributions survive restart/resume) and is WIPED on a fresh
             // walk (force-fresh clears brain-weights). Keyed by persistent donorId
@@ -11033,13 +11039,7 @@ class ServerBrain {
           }
           cortex._readTaughtWords = m;
         }
-        if (Array.isArray(pending.newWordsTakenIn)) {
-          const m = new Map();
-          for (const e of pending.newWordsTakenIn) {
-            if (Array.isArray(e) && typeof e[0] === 'string') m.set(e[0], { how: typeof e[1] === 'string' ? e[1] : 'looked up', at: Number(e[2]) || Date.now() });
-          }
-          cortex._newWordsTakenIn = m;
-        }
+        this._newWordStateRestore(pending);
         // Restore the donor neuron-compute leaderboard (persists across restart/
         // resume; a fresh walk via force-fresh wipes brain-weights so it starts
         // empty). Re-seed the internal _lastTs so the first telemetry after
