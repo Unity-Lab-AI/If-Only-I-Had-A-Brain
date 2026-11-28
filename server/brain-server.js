@@ -6640,6 +6640,35 @@ class ServerBrain {
   // measured readback: ~2.9 GB of matrices at the card's local read rate is
   // seconds of worker time, so 10 min costs the walk well under 2% while
   // bounding a crash's loss to one interval instead of the 30-min readback gap.
+  /**
+   * Tell a card which of her matrices learn only-when-wrong. A cross-projection
+   * that carries `errorDriven` on the host gets the same mode on the card, so the
+   * two sides teach by one rule. Sent after the cortex upload lands (the card
+   * keeps the mode by matrix name, so it also survives a later re-upload) and
+   * answered by `plasticity_mode_ack`. Returns how many matrices were named.
+   */
+  _sendPlasticityModes(ws) {
+    const cortex = this.cortexCluster;
+    if (!ws || ws.readyState !== 1 || !cortex || !cortex.crossProjections) return 0;
+    const byMode = new Map();   // "eta|theta|margin" → { mode, names }
+    for (const [pn, proj] of Object.entries(cortex.crossProjections)) {
+      const m = proj && proj.errorDriven;
+      if (!m) continue;
+      const key = `${m.eta}|${m.theta}|${m.margin}`;
+      let g = byMode.get(key);
+      if (!g) { g = { mode: { eta: m.eta, theta: m.theta, margin: m.margin }, names: [] }; byMode.set(key, g); }
+      g.names.push(`${cortex.name}_${pn}`);
+    }
+    let n = 0;
+    for (const g of byMode.values()) {
+      ws.send(JSON.stringify({ type: 'plasticity_mode', names: g.names, mode: g.mode }));
+      n += g.names.length;
+    }
+    this._plasticityModesSent = { at: Date.now(), matrices: n, acked: 0, heldOnCard: 0 };
+    if (n > 0) console.log(`[Brain] told the card that ${n} of her pathways learn only when wrong; waiting for it to confirm.`);
+    return n;
+  }
+
   _sendDonorCheckpointConfig(ws, restore) {
     if (!ws || ws.readyState !== 1) return false;
     const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
@@ -8254,6 +8283,9 @@ class ServerBrain {
                 // so the pull never fills the link (see refreshCheckpointFromDonor).
                 const _adopted = (this._adoptedMatrices instanceof Set) ? this._adoptedMatrices.size : 0;
                 try { this._sendDonorCheckpointConfig(this._gpuClient, _adopted === 0); } catch { /* the donor simply does not checkpoint this session */ }
+                // Which pathways learn only-when-wrong — after the upload, so the
+                // card answers with how many of them it actually holds.
+                try { this._sendPlasticityModes(this._gpuClient); } catch (e) { console.warn(`[Brain] could not send the pathways' learning mode to the card: ${e.message}`); }
                 // ⛔ NO READBACK AFTER ADOPT. This pulled the whole cortex back off
                 // the card 60 s after it reattached. Measured live 2026-11-25: the
                 // pull got 0 chunks, the card went silent ~120 s and its socket died
@@ -15959,6 +15991,16 @@ wss.on('connection', (ws, req) => {
           const _fc = Array.isArray(msg.freedClusters) ? msg.freedClusters : null;
           const _hc = Array.isArray(msg.heldClusters) ? msg.heldClusters : null;
           console.log(`[Pool] FREE ACK from ${(client && (client.gpuName || client.id)) || id} — freed ${_fr.length} matrix(es)${_fr.length ? ': ' + _fr.slice(0, 8).join(', ') + (_fr.length > 8 ? ' …' : '') : ' (it held none of them)'}${_fc ? ` · freed ${_fc.length} cluster state(s)${_fc.length ? ': ' + _fc.join(', ') : ''} · still holds ${_hc ? (_hc.length ? _hc.join(', ') : 'no cluster state') : '?'}` : ' · (donor older than 0.3.56: neuron state not freed)'}.`);
+          break;
+        }
+        case 'plasticity_mode_ack': {
+          const _names = Array.isArray(msg.names) ? msg.names.length : 0;
+          const _held = Number(msg.held) || 0;
+          const _st = brain._plasticityModesSent;
+          if (_st) { _st.acked += _names; _st.heldOnCard += _held; _st.ackedAt = Date.now(); }
+          // Named ≠ held: a matrix the card does not hold cannot learn by the rule
+          // there, so the two counts are printed side by side.
+          console.log(`[Brain] the card confirmed: ${_names} pathway(s) set to ${msg.errorDriven ? 'learn only when wrong' : 'the default rule'}, ${_held} of them resident on ${(client && (client.gpuName || client.id)) || id}.${_held < _names ? ' ⚠ the rest are not on this card.' : ''}`);
           break;
         }
         case 'image_result': {
