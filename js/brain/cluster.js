@@ -650,7 +650,14 @@ export class NeuronCluster {
         size - 1,
       );
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (small-world topology) ${size.toLocaleString()}×${size.toLocaleString()} fanout=${fanout} radiusLocal=${this.smallWorldRadiusLocal} radiusMed=${this.smallWorldRadiusMed} (~${(size * fanout).toLocaleString()} nnz)...`);
-      this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1.0, {
+      // Starting size of an inside wire. Wiring that learns only-when-wrong is
+      // given its strength by lessons, and on the card every cell feels the
+      // summed weight of the cells that just fired — so untaught wires start
+      // near nothing (0.003–0.015). Measured on the card: at the old starting
+      // size a single lit pattern set 85 % of the cluster firing; at this size
+      // only the taught cells fire (1.35 % peak) at every gain tried.
+      const _startStrength = opts.errorDrivenIntra ? 0.03 : 1.0;
+      this.synapses.initSmallWorld(fanout, this.excitatoryRatio, _startStrength, {
         radiusLocal: this.smallWorldRadiusLocal,
         radiusMed: this.smallWorldRadiusMed,
         // the speaking-state cells at the end of the cortex take no inside wires

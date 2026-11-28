@@ -15602,7 +15602,73 @@ export class Curriculum {
     this._clearSpikes(['letter', 'sem']);
     const st = this._readingLesson || (this._readingLesson = { taught: 0 });
     st.taught++;
+    // GOING BACK OVER EARLIER WORDS. A new word's spelling shares letters with
+    // words she already reads, and its lesson lowers their cells for those
+    // letters. So after each new word she LOOKS at earlier words — a look is a
+    // few hundred weights summed on the word's own cells, no lesson — and only
+    // a word the look finds broken (one of its own cells no longer reaches its
+    // firing threshold from its own spelling) is taught again. Looks go round
+    // the words she has been taught to read, in turn; the list lives on the
+    // cluster so it is saved with her.
+    const known = cluster._readTaughtWords instanceof Map ? cluster._readTaughtWords : (cluster._readTaughtWords = new Map());
+    if (!known.has(w)) known.set(w, Date.now());
+    const looks = opts.looks ?? this._readLooksPerWord();
+    if (looks > 0 && known.size > 1) {
+      if (!st.order || st.orderSize !== known.size) { st.order = Array.from(known.keys()); st.orderSize = known.size; }
+      const order = st.order;
+      const n = Math.min(looks, order.length - 1);
+      for (let k = 0; k < n; k++) {
+        st.cursor = ((st.cursor ?? -1) + 1) % order.length;
+        const old = order[st.cursor];
+        if (old === w) continue;
+        st.looked = (st.looked || 0) + 1;
+        if (this._ownCellsFire(old)) continue;
+        if (!this._writeSpelling(R.letter, old) || !this._writeWordPattern(R.sem, old)) { this._clearSpikes(['letter', 'sem']); continue; }
+        await this._teachHebbian(cluster.learningRate, { projectionsWhitelist: wl, skipIntraSynapses: true });
+        this._clearSpikes(['letter', 'sem']);
+        st.rehearsed = (st.rehearsed || 0) + 1;
+      }
+    }
     return true;
+  }
+
+  /**
+   * A LOOK — does this word's spelling still bring every one of its own meaning
+   * cells to the pathway's firing threshold? Summed straight from the pathway's
+   * weights on the word's own cells only (its cells × their wires), so it costs
+   * almost nothing beside a lesson, which sweeps the whole region.
+   */
+  _ownCellsFire(word) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections && cluster.crossProjections.letter_to_sem;
+    if (!R || !R.letter || !R.sem || !proj || !proj.rowPtr) return true;   // nothing to look through
+    const own = this._wordCells(word, R.sem), lit = this._spellingCells(word, R.letter);
+    if (!own.length || !lit.length) return true;
+    const mark = this._lookMark && this._lookMark.length === proj.cols ? this._lookMark : (this._lookMark = new Uint8Array(proj.cols));
+    for (let i = 0; i < lit.length; i++) mark[lit[i]] = 1;
+    const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
+    // The same bar the read itself uses (`_readsWord`): at least half of the
+    // word's own cells at threshold. Asking for every cell would re-teach a
+    // word forever over a cell that has no wire from its spelling at all.
+    let fired = 0;
+    for (let i = 0; i < own.length; i++) {
+      let s = 0;
+      for (let k = proj.rowPtr[own[i]], e = proj.rowPtr[own[i] + 1]; k < e; k++) if (mark[proj.colIdx[k]]) s += proj.values[k];
+      if (s >= theta) fired++;
+    }
+    for (let i = 0; i < lit.length; i++) mark[lit[i]] = 0;
+    return fired * 2 >= own.length;
+  }
+
+  /** How many earlier words she looks at after each new reading lesson (`DREAM_READ_LOOKS`; 0 = none). */
+  _readLooksPerWord() {
+    if (this._readLooksN === undefined) {
+      const raw = (typeof process !== 'undefined' && process.env) ? process.env.DREAM_READ_LOOKS : undefined;
+      const v = (raw === undefined || raw === '') ? 64 : Number(raw);
+      this._readLooksN = Number.isFinite(v) && v >= 0 ? Math.floor(v) : 64;
+    }
+    return this._readLooksN;
   }
 
   /**
@@ -15692,6 +15758,71 @@ export class Curriculum {
     const floor = typeof cluster.speechFloor === 'function' ? cluster.speechFloor() : 0.04;
     const said = (bi >= 0 && best >= floor && !(m.end > 0 && m.end >= best)) ? list[bi] : null;
     return { got: said === ans, said };
+  }
+
+  /**
+   * NOT YET TAUGHT — the same questions a gate asks, put to a lesson's own
+   * items BEFORE the lesson teaches them, so a gate can print what she reaches
+   * on her own beside what she recalls. The items are the lesson's, taken in
+   * the order the lesson has them (up to ten). Asked once per list — a second
+   * round of the same lesson is no longer "before". It never gates.
+   *   'vocab'    → READ (`_readsWord`) and TALK (`_talkNames`) on words she has
+   *                not been taught to read yet
+   *   'sentence' → COMPREHEND (`_fillsTheGap`, the middle word left out) and
+   *                TALK (`_talkContinues`) on the lesson's sentences
+   */
+  async _askBeforeTaught(kind, items) {
+    if (!Array.isArray(items) || !items.length) return null;
+    const store = this._beforeTaught || (this._beforeTaught = new Map());
+    const key = this._beforeTaughtKey(kind, items);
+    if (store.has(key)) return store.get(key);
+    const cluster = this.cluster;
+    let fig = null;
+    try {
+      if (kind === 'vocab') {
+        const known = cluster && cluster._readTaughtWords instanceof Map ? cluster._readTaughtWords : null;
+        const ask = [];
+        for (const it of items) {
+          const w = typeof it === 'string' ? it.toLowerCase().replace(/[^a-z']/g, '') : '';
+          if (!w || (known && known.has(w))) continue;
+          ask.push(w);
+          if (ask.length >= 10) break;
+        }
+        let read = 0, talk = 0;
+        for (const w of ask) { if ((await this._readsWord(w)).read) read++; if (this._talkNames(w)) talk++; }
+        fig = { kind, asked: ask.length, read, talk };
+      } else if (kind === 'sentence') {
+        let asked = 0, comprehend = 0, right = 0, steps = 0;
+        for (const it of items) {
+          const words = String(it || '').toLowerCase().split(/\s+/).map((w) => w.replace(/[^a-z']/g, '')).filter(Boolean);
+          if (words.length < 3) continue;
+          const mid = Math.floor(words.length / 2);
+          if (this._fillsTheGap(words.filter((_, j) => j !== mid), words[mid]).got) comprehend++;
+          const t = this._talkContinues(words.join(' '));
+          if (t && t.total > 0) { right += t.right; steps += t.total; }
+          if (++asked >= 10) break;
+        }
+        fig = { kind, asked, comprehend, talkRight: right, talkSteps: steps };
+      }
+    } catch (e) { fig = { kind, asked: 0, error: e && e.message ? e.message : String(e) }; }
+    store.set(key, fig);
+    if (store.size > 512) store.delete(store.keys().next().value);
+    return fig;
+  }
+
+  _beforeTaughtKey(kind, items) {
+    return `${kind}|${items.length}|${String(items[0]).slice(0, 48)}|${String(items[items.length - 1]).slice(0, 48)}`;
+  }
+
+  /** The words a gate prints for a list's not-yet-taught figure ('' when it was never asked). */
+  _beforeTaughtNote(kind, items) {
+    const f = this._beforeTaught && Array.isArray(items) && items.length ? this._beforeTaught.get(this._beforeTaughtKey(kind, items)) : null;
+    if (!f) return '';
+    if (f.error) return ` · before the lesson: could not be asked (${f.error})`;
+    if (!f.asked) return ' · before the lesson: nothing here was new to her';
+    return kind === 'vocab'
+      ? ` · before the lesson (not yet taught): READ ${f.read}/${f.asked}, TALK ${f.talk}/${f.asked}`
+      : ` · before the lesson (not yet taught): COMPREHEND ${f.comprehend}/${f.asked}, TALK ${f.talkRight}/${f.talkSteps} next words`;
   }
 
   /** READ, for a line: does she read every word of it? (False for an empty line.) */
@@ -29006,6 +29137,7 @@ export class Curriculum {
   async _teachVocabList(vocab, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: 'no cluster wired' };
+    await this._askBeforeTaught('vocab', vocab);   // what she reaches before this lesson — printed by the gate, never a pass condition
 
     // Delegates every word to `_teachWordIntegrated` — the unified
     // 5-layer word-learning primitive. Each word gets: full-spelling
@@ -29395,8 +29527,8 @@ export class Curriculum {
 
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
-      metrics: { readRate, talkRate, talkFails },
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}${this._beforeTaughtNote('vocab', vocab)}`,
+      metrics: { readRate, talkRate, talkFails, beforeTaught: this._beforeTaught ? (this._beforeTaught.get(this._beforeTaughtKey('vocab', vocab)) || null) : null },
     };
   }
 
@@ -29909,6 +30041,7 @@ export class Curriculum {
   async _teachSentenceList(sentences, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: 'no cluster wired' };
+    await this._askBeforeTaught('sentence', sentences);   // what she reaches before this lesson — printed by the gate, never a pass condition
 
     // DIRECT PATTERN HEBBIAN — same approach as the ELA-K direct-
     // pattern path. For each sentence, for each word: build word
@@ -30510,7 +30643,7 @@ export class Curriculum {
 
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${talkSteps} next words (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK first miss: ' + talkFails.slice(0, 10).join(', ') + ']' : ''}`,
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${talkSteps} next words (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK first miss: ' + talkFails.slice(0, 10).join(', ') + ']' : ''}${this._beforeTaughtNote('sentence', sentences)}`,
       metrics: { readRate, talkRate, talkFails },
     };
   }

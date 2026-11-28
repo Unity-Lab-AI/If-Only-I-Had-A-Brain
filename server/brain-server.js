@@ -1542,11 +1542,13 @@ const CURRENT_DONOR_VERSION = (() => {
 
 // How her cortex cells feel their wiring on the card. Measured in the donor's
 // self-test with the step terms she runs on (tunnelling, twin noise,
-// refractoriness, noise 8), 20 taught pattern pairs, zero drive: with cells
-// resting 1 below the map's default they are silent on their own, and at gain
-// 4, 53.9 of 54 taught target cells fire one step after their source pattern is
-// lit against 4.9 of the other 1,946. Gain 3 loses 5 of the 54.
-const CORTEX_DELIVERY = Object.freeze({ gain: 4, restShift: 1 });
+// refractoriness, noise 8), 20 taught pattern pairs. With cells resting 1.75
+// below the map's default they are silent on their own at her nominal cortex
+// drive (18): delivery off, 0.0 taught and 0.1 other cells fire. At gain 5,
+// 53.9 of 54 taught target cells fire one step after their source pattern is
+// lit against 4.5 of the other 1,946 (at zero drive 54.0 against 0.7). Gain 3
+// fires 2.5 of the 54; rest 1 at drive 18 lets 15–18 other cells through.
+const CORTEX_DELIVERY = Object.freeze({ gain: 5, restShift: 1.75 });
 
 const WEIGHTS_FORMAT_VERSION = 8;  // whole-brain wiring (2026-11-27): the language cortex is wired at 100 inside / 100 between regions (was 30 / 10) with its cell count derived at that wiring, every matrix learns only-when-wrong, a word lights its own cells, and a `speech` region holds a cell for every unit of the speaking state — earlier saves hold a different geometry, different wiring and patterns in a different code, so they auto-refuse → fresh walk. (v7 was speech readout (2026-11-27):the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 // ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
@@ -6360,6 +6362,18 @@ class ServerBrain {
     return (this._fireCtl && this._firingTargetPct() > 0) ? this._fireCtl.scale : 1.0;
   }
 
+  /**
+   * The controller's scale for one cluster's drive. Her cortex cells rest
+   * silent and fire from their wiring, so how many fire is an outcome of what
+   * she is doing, not a share to be held: the controller does not push her
+   * cortex drive, which stays at its nominal value (the drive the delivery
+   * setting was measured at). Every other cluster is scaled as before.
+   */
+  _firingDriveScaleFor(name) {
+    if (name === 'cortex' && CORTEX_DELIVERY.restShift > 0) return 1.0;
+    return this._firingDriveScale();
+  }
+
   // ⚠ MEASURED 2026-11-23 (freshstart): her live firing is BISTABLE WITH
   // HYSTERESIS in drive — it flips to busy (14–21%) only when drive climbs to
   // ~0.4, and once busy stays busy until drive falls to ~0.06, then drops to
@@ -8701,12 +8715,12 @@ class ServerBrain {
                 // FIREKNOB (2026-08-28) — × the self-calibrating firing-rate
                 // scale (see _firingControllerSample): the controller aims the
                 // measured fired-fraction at DREAM_FIRING_TARGET_PCT.
-                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale() * _hemiDrive.L, 0),
+                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScaleFor(name) * _hemiDrive.L, 0),
                 // Seed Crystal — the right half's drive, when the contest has
                 // moved it. A donor that counts halves reads it; older donors
                 // ignore the unknown fields and step both halves on tonicDrive.
                 ...((_hemiDrive.R !== _hemiDrive.L) ? {
-                  tonicDriveR: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale() * _hemiDrive.R, 0),
+                  tonicDriveR: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScaleFor(name) * _hemiDrive.R, 0),
                   half: Math.floor((CLUSTER_SIZES[name] || 0) / 2),
                 } : {}),
                 noiseAmp: _fin(this.noiseAmplitudes[name], 0),
@@ -9443,6 +9457,10 @@ class ServerBrain {
             // exam words (hours per press). Persisted like definitions.
             vocabTaughtWords: cortex._vocabTaughtWordsPersist
               ? Array.from(cortex._vocabTaughtWordsPersist) : [],
+            // The words she has been taught to read, in the order she met them —
+            // each new reading lesson goes back over a few of these.
+            readTaughtWords: cortex._readTaughtWords instanceof Map
+              ? Array.from(cortex._readTaughtWords) : [],
             // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
             // (so contributions survive restart/resume) and is WIPED on a fresh
             // walk (force-fresh clears brain-weights). Keyed by persistent donorId
@@ -10995,6 +11013,13 @@ class ServerBrain {
             else if (typeof e === 'string') m.set(e, Date.now());
           }
           cortex._vocabTaughtWordsPersist = m;
+        }
+        if (Array.isArray(pending.readTaughtWords)) {
+          const m = new Map();
+          for (const e of pending.readTaughtWords) {
+            if (Array.isArray(e) && e.length >= 2 && typeof e[0] === 'string') m.set(e[0], Number(e[1]) || Date.now());
+          }
+          cortex._readTaughtWords = m;
         }
         // Restore the donor neuron-compute leaderboard (persists across restart/
         // resume; a fresh walk via force-fresh wipes brain-weights so it starts

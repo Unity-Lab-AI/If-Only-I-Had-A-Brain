@@ -2741,16 +2741,17 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             let mut seed: u32 = 1;
             // rest shift 0 = the map's default rest point (cells burst on their own);
             // 1 = an undriven cell sits below the firing point and is silent.
-            for &shift in &[0.0f32, 1.0] {
+            for &shift in &[0.0f32, 1.0, 1.5, 1.75] {
             $eng.free_sparse("dlvin");
             $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
             $eng.set_rest_shift("dlv", shift);
             $eng.set_delivery("dlv", 0.0);
             for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
             println!("  {} · rest shift {shift} — one step after the source pattern is lit (taught cells fired of {}, other cells fired of {}), mean over {} pairs:", $label, lit_n, half_n as usize - lit_n, pairs);
-            for &ed in &[0.0f32, 10.0, 20.0] {
+            // drive 18 = her cortex's nominal tonic drive with the controller at 1
+            for &ed in &[0.0f32, 18.0] {
                 let mut line = format!("    drive {ed:>4}:");
-                for &g in &[0.0f32, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0] {
+                for &g in &[0.0f32, 3.0, 4.0, 5.0, 6.0, 8.0] {
                     let (mut hit, mut stray) = (0usize, 0usize);
                     for (s, d) in &lessons {
                         $eng.set_delivery("dlv", 0.0);

@@ -61849,4 +61849,45 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** `332eb0ff` … `ab895b78` (rule, word code, first wiring), `65348762`, `44438714`, `5b455632`, `165f2ee0`, `3a95bcb0`, `15c4b318`, `b35ecc8c`, `ec3fbc75`, `2b69adea`, `00ad3593`, `2ac9a653`, `6430794d`, `41a5febe`.
 - **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — cortex-cluster + log (local) · owed under WHOLEBRAIN.8 as listed above.
 
+---
+
+## 2026-11-27 (night, fifth entry) — WHOLEBRAIN.14 and WHOLEBRAIN.6 closed; WHOLEBRAIN.10 dropped
+
+**Gee's words that govern this entry (verbatim):** "we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit" · "no we arent booting her up till everything is done and complete and finished" · "you are suppose to be completeing the items so its all done and Unity brain is done and complete for all she needs, not endlessly addding more and more shit to do , only do that if its required for what Unity needs to speak and be her self and train right and work right". His two decisions, each asked as a question with options: "Silent at rest (Recommended)" and, for row .10, "Drop it (Recommended)". On the word-vector table he chose "Keep it".
+
+**WHOLEBRAIN.14 — on the card, her cells do not fire from her wiring. CLOSED.** Row text as filed stays on the board.
+- What was wrong: the card's step read a cell's drive, noise and lesson-injected current and nothing else. No pathway and no inside wiring reached a cell while she ran.
+- What was built: per cluster, a buffer that holds each cell's input from its wiring; each step, every matrix bound into the cluster adds the weights from cells that fired the step before; the step adds gain × that input to the cell's fast variable. A rest setting lowers the point an undriven cell sits at. Both engines, the same arithmetic. A `delivery` message sets both per cluster and is answered; the card keeps the setting by cluster name. The server sends gain 5 / rest 1.75 for her cortex and stops scaling her cortex's drive with the firing controller.
+- Measured (donor self-test, her real step terms, 20 taught pairs of 54 cells):
+
+| rest | drive | gain | taught cells firing (of 54) | other cells firing (of 1,946) |
+|---|---|---|---|---|
+| 0 | 0 | 0 | 1.6 | 64.8 |
+| 0 | 0 | 4 | 53.6 | 24.6 |
+| 1 | 0 | 4 | 53.9 | 4.9 |
+| 1.75 | 0 | 0 | 0.0 | 0.2 |
+| 1.75 | 0 | 5 | 54.0 | 0.7 |
+| 1.75 | 18 | 5 | 53.9 | 4.5 |
+| 1.75 | 18 | 3 | 2.5 | 0.6 |
+
+- Three wrong readings on the way, each caught by a measurement: a bench on the bare map said 7–16 % of her cells fire on their own (her real step: 3.5 %); the wgpu per-cell readback had always returned zeros (its buffer could not be copied out); a table of inside-weight variants run back to back measured the previous variant's hangover and was thrown out.
+- Not yet true for her: the released card build is 0.3.57 and ignores the message. Releasing the build is in the wrap-up.
+
+**WHOLEBRAIN.6 — her neurons must stay in range when they run together. CLOSED,** its premise changed by "Silent at rest". Row text as filed stays on the board.
+- Measured (same self-test, 400 steps, pathway and inside wiring both delivering, a taught pattern lit every 50th step; share of all cells firing a step, min / mean / max %):
+
+| inside wiring starts at | gain 3 | gain 4 | gain 6 |
+|---|---|---|---|
+| the old size | 0.00 / 1.80 / 85.08 | 0.00 / 5.36 / 87.33 | 0.00 / 28.47 / 86.72 |
+| half positive, half negative | 0.00 / 10.19 / 36.65 | 0.00 / 0.03 / 0.33 | 1.48 / 15.86 / 47.20 |
+| a tenth the size (what she builds now) | 0.00 / 0.06 / 1.35 | 0.00 / 0.06 / 1.35 | 0.00 / 0.07 / 1.38 |
+
+- Production build (1,328,482 cells), inside learning from that start: taught cells past threshold 99.9 % in sem, motor and letter (it was 97.9–98.1 % from the old start); other cells 0.004–0.008 %.
+
+**WHOLEBRAIN.10 — her speech wiring on the card. TOMBSTONE, not built,** on Gee's word. She speaks from her own lit speech cells through wiring held on the server; the card pathway tried earlier answered reworded questions worse (39–43 of 60 against 50 of 60).
+
+- **Files:** `donor-app/src/compute.rs`, `cuda.rs`, `donor.rs`, `cuda_kernels.cu`, `kernels.ptx`, `shaders/lif.wgsl` · `server/brain-server.js` · `js/brain/cluster.js`.
+- **Commits:** `71db68bf`, `7d9d9e52`, `95625930`, `8fb4ee54`, and the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — ten pages + log (local). NOW, ARCHITECTURE, EQUATIONS, WHOLE-BRAIN-DESIGN, RESUME, README, `html/`, `deploy/` are NOT updated here and are owed under WHOLEBRAIN.8.
+
 
