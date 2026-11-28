@@ -6650,6 +6650,14 @@ class ServerBrain {
   _sendPlasticityModes(ws) {
     const cortex = this.cortexCluster;
     if (!ws || ws.readyState !== 1 || !cortex || !cortex.crossProjections) return 0;
+    // This card now holds her cortex, so directed lessons ship as many index runs
+    // as THIS build accepts: 4,096 from 0.3.58, 16 before it.
+    if (typeof cortex.setRangeMaxRuns === 'function') {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().match(/^(\d+)\.(\d+)\.(\d+)/);
+      const ver = v ? (+v[1]) * 1e6 + (+v[2]) * 1e3 + (+v[3]) : 0;
+      this._rangeMaxRuns = cortex.setRangeMaxRuns(ver >= 3058 ? 4096 : 16);
+    }
     const byMode = new Map();   // "eta|theta|margin" → { mode, names }
     for (const [pn, proj] of Object.entries(cortex.crossProjections)) {
       const m = proj && proj.errorDriven;

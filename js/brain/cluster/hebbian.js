@@ -129,7 +129,17 @@
 //   file). The bucket counter added below is what answers it on the next press;
 //   until then no claim is made about how much was lost. Correctness first: we
 //   do not trade her training for wall clock while the number is unknown.
-const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 16);
+// The cap follows the card that holds her cortex: `setRangeMaxRuns` is called
+// with that donor's own limit when it takes the cortex (16 before the build
+// that raised it), so this side never ships a frame the peer would discard.
+const _RANGE_RUNS_ENV = (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 0;
+let RANGE_MAX_RUNS = Math.max(1, _RANGE_RUNS_ENV || 16);
+function setRangeMaxRuns(n) {
+  if (_RANGE_RUNS_ENV) return RANGE_MAX_RUNS;          // an explicit setting wins
+  const v = Math.floor(Number(n));
+  if (v >= 1) RANGE_MAX_RUNS = v;
+  return RANGE_MAX_RUNS;
+}
 const RANGE_MAX_TOTAL = 2_000_000;
 // Why the LAST range-compression refusal happened. Module-scoped because the
 // caller reads it on the very next line — the helpers return null either way and
@@ -225,7 +235,7 @@ function indexRanges(sortedIdx) {
   rangeFail.runs = out.length;
   return out;
 }
-export { denseActiveRanges, indexRanges, rangeFail, RANGE_MAX_RUNS, RANGE_MAX_TOTAL };
+export { denseActiveRanges, indexRanges, rangeFail, RANGE_MAX_RUNS, RANGE_MAX_TOTAL, setRangeMaxRuns };
 
 export const CLUSTER_HEBBIAN_MIXIN = {
   /**
@@ -1199,6 +1209,9 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    * where a cell is wrong. Rows are visited only in the regions the taught
    * pattern lies in (overlapping sub-bands merged), sliced by time.
    */
+  /** Set how many index runs a directed inside-wiring lesson may ship (the holding card's limit). */
+  setRangeMaxRuns(n) { return setRangeMaxRuns(n); },
+
   async _intraErrorUpdate(pre, post) {
     const mode = this.synapses.errorDriven;
     const act = [];

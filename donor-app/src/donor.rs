@@ -27,6 +27,9 @@ use crate::protocol::{
 /// Outbound keepalive cadence. We ping the brain on this interval so a quiet teach window never
 /// lets the WS sit idle long enough for Starlink CGNAT / a reverse proxy to reap it — the flap
 /// that surfaces as `Connection reset by peer` every few minutes. Well under any common idle-reap.
+/// Most index runs a `hebbian_ranges` frame may carry on one side. The brain reads
+/// the limit from this build's version and never sends more.
+const HEBBIAN_RANGES_MAX_RUNS: usize = 4096;
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(15);
 /// If NO frame (incl. the brain's pong) arrives within this window while we're keepalive-pinging,
 /// the link is half-open (satellite handover / proxy drop) — reconnect instead of waiting
@@ -1951,7 +1954,10 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::HebbianRanges(h)) => {
                                 // Defensive caps: a malformed frame must never expand into
                                 // gigabytes of indices or a runaway rep loop.
-                                if h.reps <= 1000 && h.pre_ranges.len() <= 16 && h.post_ranges.len() <= 16 {
+                                // 4,096 runs a side: a word's own cells are scattered by design
+                                // (about a hundred runs), and a frame of 4,096 runs is ~64 KB. The
+                                // expander below still bounds the total index count.
+                                if h.reps <= 1000 && h.pre_ranges.len() <= HEBBIAN_RANGES_MAX_RUNS && h.post_ranges.len() <= HEBBIAN_RANGES_MAX_RUNS {
                                     pending.fetch_add(1, Ordering::Relaxed);
                                     workq.push(Work::HebbianRanges { name: h.name, lr: h.lr, reps: h.reps.max(1), pre_ranges: h.pre_ranges, post_ranges: h.post_ranges });
                                 }
