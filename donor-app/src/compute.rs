@@ -2741,7 +2741,10 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             let mut seed: u32 = 1;
             // rest shift 0 = the map's default rest point (cells burst on their own);
             // 1 = an undriven cell sits below the firing point and is silent.
-            for &shift in &[0.0f32, 1.0, 1.5, 1.75] {
+            // (The wider sweep that chose these — rest 0 / 1 / 1.5 / 1.75, gains 0–8,
+            // four starting sizes — is recorded in the release notes; a donor's
+            // self-test checks the setting the brain sends and its two neighbours.)
+            for &shift in &[0.0f32, 1.75] {
             $eng.free_sparse("dlvin");
             $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
             $eng.set_rest_shift("dlv", shift);
@@ -2751,7 +2754,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             // drive 18 = her cortex's nominal tonic drive with the controller at 1
             for &ed in &[0.0f32, 18.0] {
                 let mut line = format!("    drive {ed:>4}:");
-                for &g in &[0.0f32, 3.0, 4.0, 5.0, 6.0, 8.0] {
+                for &g in &[0.0f32, 3.0, 5.0] {
                     let (mut hit, mut stray) = (0usize, 0usize);
                     for (s, d) in &lessons {
                         $eng.set_delivery("dlv", 0.0);
@@ -2791,7 +2794,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             // Inside starting weights tried: as the brain builds them today (80 %
             // positive), balanced (50 % positive), a tenth the size, and zero.
             println!("  {} · rest shift {shift} — 400 steps with pathway + inside wiring delivering, a taught source pattern lit every 50th step, zero drive, share of cells firing a step (min / mean / max %):", $label);
-            for &(what, pos_pct, scale) in &[("as built (80 % positive)", 80u32, 1.0f32), ("balanced (50 % positive)", 50, 1.0), ("a tenth the size", 80, 0.1), ("zero", 80, 0.0)] {
+            for &(what, pos_pct, scale) in &[("the old starting size", 80u32, 1.0f32), ("near nothing (as built)", 80, 0.1)] {
                 $eng.free_sparse("dlvin");
                 // Fresh cell state for every variant: a cluster that has just been
                 // through an avalanche carries it in its slow variable for thousands
@@ -2805,7 +2808,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 $eng.upload_sparse("dlvin", n, n, &rp2, &vals2, &ci2, Some(inside));
                 let ed = 0.0f32;
                 let mut line = format!("    inside {what:>26}:");
-                for &g in &[0.0f32, 3.0, 4.0, 6.0] {
+                for &g in &[0.0f32, 5.0] {
                     $eng.set_delivery("dlv", g);
                     let (mut lo, mut hi, mut sum) = (u32::MAX, 0u32, 0u64);
                     for t in 0..400usize {
