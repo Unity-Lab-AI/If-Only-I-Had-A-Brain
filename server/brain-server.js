@@ -10307,7 +10307,14 @@ class ServerBrain {
       }
     };
     try {
-      fd = fs.openSync(TMP_FILE, 'w');
+      // ⛔ OPENED OFF THE LOOP. `fs.openSync(TMP_FILE, 'w')` truncates the last
+      // save's 5.4 GB temp file, and on this machine that one call held the
+      // main loop 119 s (walk of 2026-11-28: `BLOCKED 119168ms …
+      // saveStage=collect(+119.5s)` — the only synchronous work between the
+      // `collect` stamp and the first write is this open; collect only gathers
+      // references). The server, the site and the donor stop while the loop
+      // does — the donor dropped. On the threadpool it stalls a pool thread.
+      fd = await new Promise((resolve, reject) => fs.open(TMP_FILE, 'w', (err, f) => (err ? reject(err) : resolve(f))));
       const hdr = Buffer.alloc(16);
       hdr.write('UBWT', 0, 4, 'ascii');
       hdr.writeUInt32LE(BIN_FORMAT_VERSION, 4);
