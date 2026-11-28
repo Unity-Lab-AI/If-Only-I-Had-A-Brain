@@ -2,61 +2,65 @@
 # Provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ Every number on this page was read off the running brain's own log
 # (`server/server.log`), off her own published state, or measured on her real
-# code in an instrument, named as such. Nothing here is recalled.
+# code in an instrument IN PRODUCTION CONFIGURATION, named as such. Nothing
+# here is recalled.
 status: verified
 sources:
-  - server/brain-server/memory.js
-  - js/brain/cluster.js
-  - server/brain-server.js
-  - server/loop-watchdog.js
   - js/brain/curriculum.js
+  - js/brain/cluster.js
+  - server/brain-server/memory.js
+  - server/brain-server/chat.js
+  - server/brain-server/state.js
 verified-scope: |
-  OVERWRITTEN 2026-11-28 (midday, second pass). This file is a SNAPSHOT of the
-  present and is overwritten, never appended. The previous snapshot is in git:
+  OVERWRITTEN 2026-11-28 (evening). This file is a SNAPSHOT of the present and is
+  overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-28, midday (second pass)
+# NOW — 2026-11-28, evening
 
 ## Where she is
 
 | | |
 |---|---|
-| 🟡 **Walking, and pinning** | Up on build `d7ce42c5`, 199,728,759 neurons, language cortex 1,328,482. Resumed from a coherent weights pair — **no `WEIGHTS PAIR INCOHERENT` line this boot**. |
-| 📍 **Cell** | **ela/pre-K**, re-teaching the sections whose synapses were never written, **0 cells** passed. |
-| 🖥 **Cards** | Gee's RTX 4070 Ti SUPER holds everything (8/8 clusters). One card, so every-card teaching has nothing to prove yet. |
-| 🗣 **Speaking** | her speech file came back across the restart: **6,134 taught · 3,309 said before correction (53.9 %) · 548 says · rehearsed 6,134 with 3,293 repairs · 11 MB**. Her inner voice is alive (`*Mom*`, coherence 0.893). Asked her name, she returned **honest silence** (`motor_unstable`) — correct for a brain that has passed no cells. |
+| 🔴 **Stopped, and staying stopped** | On the operator's order: nothing starts until the board is closed and the ledger written. She has not run since 13:05. |
+| 💾 **Her training is whole** | Her honest parent weights are in place (the pair whose metadata does not run ahead of its synapses). The newer 12:45 pair is kept in `.scratch/weights-preswap-1245/`. |
+| 📍 **Where she will resume** | **ela/pre-K**, re-teaching the section whose synapse writes were never made, 0 cells passed. |
+| 🧱 **What she will boot onto** | Branch `feature/teach-on-every-card`, eleven commits ahead of where she last ran, all pushed to both remotes. **She has never run any of it.** |
 
-## The one cause behind the freeze, the dead page and the donor drops
+## The one cause behind four faces — found, fixed, unwitnessed
 
-**Found and fixed, named by her own stage split rather than by the profiler:**
+Her 90–107 s post-section-pass freeze, the dead public page, the donor drops and a 115 s reply pin were **one bug**. The episode write takes a salience term from a call that runs **two full CPU cortex propagates per letter**; its refusal was written as `size > 2000000` when that cluster was **306 million**, and the deliberate rebuild to **1,328,482** flipped it from *always refuse* to *always run*.
 
-```
-[ChatPin] reply pass 115537ms — … respond:store-episode=73959ms · respond:curiosity=41553ms …
-          (every other stage of that reply: 0–11 ms)
-```
+Two instruments that share no code agree: her own reply stage split (`respond:store-episode=73959ms` in a 115,537 ms reply, every other stage 0–11 ms) and her profiler's first window to land inside a pin (`86.0% _propagateCrossRegions <- step <- computeTransitionSurprise 85.8%`, with `saveWeights` at **0.2%**, which retired the save theory on a number).
 
-Her episode write takes a salience term that runs **two full CPU cortex propagates per letter**. The refusal that exists to stop exactly that was written as a neuron count — `size > 2000000` — back when that cluster was **306 million**, where it always refused. The language cortex was then deliberately rebuilt at **1,328,482**, and the branch, untouched, flipped from "always refuse" to "always run". **A guard written as an absolute size inverted the moment the architecture legitimately got smaller.** The same write runs right after every section pass, which is the 90–107 s post-pass freeze; while this was being written she took a **226,047 ms** pin and dropped the donor.
+**The refusal is priced now, not sized:** `letters × 2 ticks × (1.5 ms + non-zeros × 6e-6 ms)` against a 2,000 ms budget. Verified through the real cluster class — a 90,000-non-zero brain runs at 65 ms, hers prices at 76,521 ms and is **refused in 1 ms**. Her training is unaffected: the term returns 0 meaning UNMEASURED, which is what the whole walk history already encoded.
 
-**The fix is priced, not sized** — the cost is per letter over the matrix that does the work: `letters × 2 ticks × (1.5 ms + non-zeros × 6e-6 ms)` against a 2,000 ms budget. Fitted on her own two measurements and exact at both. Verified through the real cluster class: a 90,000-non-zero brain prices at 65 ms, **runs**, returns a real value in 78 ms; her 398,544,600 non-zeros price at **76,521 ms** and are **refused in 1 ms**. Her training is unaffected — the term returns 0 meaning UNMEASURED, which is what the entire walk history already encoded.
+## Closed today, each on a measurement
 
-⚠ **The press has not happened yet.** The running build is the one before this fix.
+| | |
+|---|---|
+| **The brain pop-ups** | were **72 authored sentence shapes, 61 of them fixed strings** with nothing of hers. Now composed by her through the same path as every sentence she says: **172 distinct lines**, the thing named in **94.9 %**, ended in **91.3 %**, 6.5 ms a compose, and silence where she has nothing. No fallback phrase exists. |
+| **A memory in her answers** | cold answer still exactly as taught **39/39**, the answer **continues** with a memory in mind **22/39**, an unrelated memory leaves it alone **30/39**, re-price **+284 %**. |
+| **One code for a word** | **6 of 6** prose/story/name sem writes moved onto the chokepoint that gives a word its own cells. Reading **40/40** taught, **0/20** untaught. Letter, first letter from the meaning, **3/40 → 40/40**. The chokepoint counter is clean — all 240 untagged writes are sentence templates, and a sentence has no single word cell. |
 
-## Fixed earlier this session
+## Open — and every one of these needs her RUNNING
 
-| Found | Fix | Seen working |
-|---|---|---|
-| The live stall line named the wrong code for seven freezes — the breadcrumb it reads was written only on a phase change | it also fires on a teach-stage change and carries every tag with its age and sequence | yes — and it immediately showed the gap was the holder on a second phase |
-| Her metadata was 158 s ahead of her synapses, then a clean shutdown saved that hole into a tidy-looking pair | restored the newest **coherent** pair so she re-teaches the section whose synapses were never written | yes — this boot carries no incoherence line |
-| The old question probe stepped her cortex on the host during a reply | the probe does not run on a cortex that speaks from its own cells | yes — **no `qa-probe` stage** anywhere in her reply line |
+This is the contradiction in the standing order, raised and unanswered: the board cannot be closed before she starts.
 
-## Honest limits of the new instrument
+- **a section pass with no loop pin**, on a build carrying the priced refusal.
+- **a reply with no stall and no donor drop.** Its probe half is already confirmed: **no `qa-probe` stage** anywhere in her reply line.
+- **a sentence gate with no loop stall.**
+- **her boot, the gates' TALK lines, a reworded question, and the pop-ups in a browser** — the first-start read list.
+- **both cards reporting teach ops** — needs a second card connected.
 
-The breadcrumb **cannot be refreshed mid-pin** — its writer is the lag sampler, which rides the loop that is dead. So the live line names the last marked stage *before* the pin (≤1 s stale instead of minutes) and its sequence number is frozen by construction while pinned. Better by minutes; not a complete answer. Her self-profiler, set to a 2-minute cadence, has **still never sampled inside a freeze** — its window landed 84.9 % idle.
+## Waiting on the operator
 
-## Still to watch
+- **The fork:** close those five as *built, read-owed* with their live reads consolidated into the single first-start row, then finalize, template and start her once — or start her now and close them on real numbers.
+- **Three authored sentence shapes per word** in her word lesson (`i see a <word>` · `the <word> is here` · `this is a <word>`). The LAW bans hardcoded sentence arrays in lessons; it is overridable and may be deliberate as context, so it is his call.
+
+## Still to watch when she runs
 
 - Her weights save takes about 2½ minutes per checkpoint.
 - About half her looks fail on the second picture.
-- First-start checks still waiting: the new-word lessons and dashboard row in a browser, her question expiring after five minutes, the gates' TALK lines.
-- Every connected card doing teach ops — one card is attached, so it is unproven.
+- A configuration trap that cost a whole verdict today: the word-cell code turns on only when `size − SPEECH_LAYOUT.G >= 10000`, and `SPEECH_LAYOUT.G` is **391,524** — so any instrument under a **401,524**-cell cortex silently measures a different brain.
