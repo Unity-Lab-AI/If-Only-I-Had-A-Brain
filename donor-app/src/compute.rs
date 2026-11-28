@@ -228,6 +228,10 @@ pub struct ComputeEngine {
     volt_staging: wgpu::Buffer,
     clusters: HashMap<String, Cluster>,
     sparse: HashMap<String, SparseMatrix>,
+    /// Matrices that learn by the error-driven rule: name → (eta, theta, margin).
+    /// Every plasticity verb on such a matrix runs `plasticity_error` instead of
+    /// Oja (lr > 0), and skips anti-Hebbian (lr < 0) — set once, all lanes follow.
+    err_mode: HashMap<String, (f32, f32, f32)>,
 }
 
 fn dispatch_dims(n: u32) -> (u32, u32, u32) {
@@ -313,6 +317,7 @@ impl ComputeEngine {
             volt_staging,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
+            err_mode: HashMap::new(),
         })
     }
 
@@ -744,31 +749,58 @@ impl ComputeEngine {
         // buffers or the dispatch would read out of bounds.
         if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
         if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-bound-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: dst.spikes.as_entire_binding() },
-            ],
-        });
+        let (bg, pipe) = match self.plasticity_bind(name, m, lr, b.src_start, b.dst_start, &src.spikes, &dst.spikes) { Some(x) => x, None => return Ok(true) };
         let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound") });
         {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-bound"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_pipeline(pipe);
             cp.set_bind_group(0, &bg, &[]);
             cp.dispatch_workgroups(wg, 1, 1);
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // No blocking readback — same fire-and-forget contract as standalone hebbian.
         Ok(true)
+    }
+
+    /// Put a matrix into (Some) or out of (None) error-driven learning. Returns
+    /// whether the matrix is resident here.
+    pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
+        match mode { Some(m) => { self.err_mode.insert(name.to_string(), m); } None => { self.err_mode.remove(name); } }
+        self.sparse.contains_key(name)
+    }
+
+    /// The bind group + pipeline a plasticity verb should dispatch for this
+    /// matrix: Oja / anti-Hebbian by default; the error-driven kernel when the
+    /// matrix is in that mode and lr > 0; `None` (nothing to run) for an
+    /// anti-Hebbian call on an error-driven matrix — that rule already lowers a
+    /// cell that fires when it should not. One place, so every verb agrees.
+    #[allow(clippy::too_many_arguments)]
+    fn plasticity_bind<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer) -> Option<(wgpu::BindGroup, &'a wgpu::ComputePipeline)> {
+        let (ub, pipe) = match self.err_mode.get(name) {
+            Some(&(eta, theta, margin)) => {
+                if lr <= 0.0 { return None; }
+                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, pad0: 0, pad1: 0, pad2: 0 };
+                (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-err-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_error_pipeline)
+            }
+            None => {
+                let p = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset, dst_offset };
+                (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_pipeline)
+            }
+        };
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("plasticity-bg"),
+            layout: &pipe.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: pre.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: post.as_entire_binding() },
+            ],
+        });
+        Some((bg, pipe))
     }
 
     /// Error-driven bound plasticity: like `hebbian_bound` (resident spike buffers
@@ -989,20 +1021,7 @@ impl ComputeEngine {
             ],
         });
 
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: 0 };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-masked-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-masked-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
-            ],
-        });
+        let (bg, pipe) = match self.plasticity_bind(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes) { Some(x) => x, None => return Ok(true) };
         let scatter_wg = ((post_idx.len() as u32).div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound-masked") });
@@ -1018,7 +1037,7 @@ impl ComputeEngine {
         }
         for _ in 0..reps.max(1) {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-masked"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_pipeline(pipe);
             cp.set_bind_group(0, &bg, &[]);
             cp.dispatch_workgroups(wg, 1, 1);
         }
@@ -1330,25 +1349,12 @@ impl ComputeEngine {
         }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
-            ],
-        });
+        let (bg, pipe) = match self.plasticity_bind(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes) { Some(x) => x, None => return Ok(()) };
         let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian") });
         {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_pipeline(pipe);
             cp.set_bind_group(0, &bg, &[]);
             cp.dispatch_workgroups(wg, 1, 1);
         }
@@ -1374,25 +1380,12 @@ impl ComputeEngine {
         }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-reps-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-reps-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
-            ],
-        });
+        let (bg, pipe) = match self.plasticity_bind(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes) { Some(x) => x, None => return Ok(()) };
         let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-reps") });
         for _ in 0..reps.max(1) {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-rep"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_pipeline(pipe);
             cp.set_bind_group(0, &bg, &[]);
             cp.dispatch_workgroups(wg, 1, 1);
         }
