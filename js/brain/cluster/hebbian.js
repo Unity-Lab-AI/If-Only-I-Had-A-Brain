@@ -588,9 +588,16 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // only where a target cell is wrong (`SparseMatrix.errorUpdate`). Every
       // row is visited, so it is sliced by time like the Oja path. This is the
       // host path; the card needs the same rule as a kernel mode.
-      if (opts.errorDriven) {
-        const eOpts = { theta: opts.errorTheta, margin: opts.errorMargin };
-        const eta = (typeof opts.errorEta === 'number') ? opts.errorEta : 0.05;
+      // A projection can also carry the mode itself (`proj.errorDriven = { eta,
+      // theta, margin }`, set when the cortex is built) — then EVERY lesson that
+      // teaches it learns this way without passing anything, the same switch the
+      // card holds per matrix. A caller's `opts.errorDriven` still forces it.
+      const _ed = opts.errorDriven
+        ? { eta: opts.errorEta, theta: opts.errorTheta, margin: opts.errorMargin }
+        : (proj.errorDriven || null);
+      if (_ed) {
+        const eOpts = { theta: _ed.theta, margin: _ed.margin };
+        const eta = (typeof _ed.eta === 'number') ? _ed.eta : 0.05;
         const step = 200000;
         let sliceAt = Date.now();
         for (let rs = 0; rs < proj.rows; rs += step) {

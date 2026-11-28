@@ -1397,6 +1397,13 @@ export class NeuronCluster {
         } else {
           ab.initRandom(abDensity, abExcitatory, 0.2);
         }
+        // `opts.errorDrivenProjections` (true, or { eta, theta, margin }) puts every
+        // cross-projection on the only-when-wrong rule; the flag rides on the
+        // matrix so the host path and the card (one message per matrix) agree.
+        const _edMode = opts.errorDrivenProjections
+          ? { eta: opts.errorDrivenProjections.eta ?? 0.05, theta: opts.errorDrivenProjections.theta ?? 0.5, margin: opts.errorDrivenProjections.margin ?? 0.25 }
+          : null;
+        if (_edMode) ab.errorDriven = _edMode;
         this.crossProjections[`${a}_to_${b}`] = ab;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? ' [topographic]' : ''} (${bSize.toLocaleString()}×${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
@@ -1414,6 +1421,7 @@ export class NeuronCluster {
         } else {
           ba.initRandom(baDensity, baExcitatory, 0.2);
         }
+        if (_edMode) ba.errorDriven = { ..._edMode };
         this.crossProjections[`${b}_to_${a}`] = ba;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${b}_to_${a} (${aSize.toLocaleString()}×${bSize.toLocaleString()}, nnz=${ba.nnz.toLocaleString()}) in ${Date.now() - baTime}ms`);
