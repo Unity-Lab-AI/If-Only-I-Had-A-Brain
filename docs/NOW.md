@@ -1,50 +1,62 @@
 ---
 # Provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ Every number on this page was read off the running brain's own log
-# (`server/server.log`) or measured on her real code in an instrument, named
-# as such. Nothing here is recalled.
+# (`server/server.log`), off her own published state, or measured on her real
+# code in an instrument, named as such. Nothing here is recalled.
 status: verified
 sources:
+  - server/brain-server/memory.js
+  - js/brain/cluster.js
   - server/brain-server.js
   - server/loop-watchdog.js
-  - server/brain-server/memory.js
   - js/brain/curriculum.js
-  - server/brain-ctl.log
 verified-scope: |
-  OVERWRITTEN 2026-11-28 (midday). This file is a SNAPSHOT of the present
-  and is overwritten, never appended. The previous snapshot is in git:
+  OVERWRITTEN 2026-11-28 (midday, second pass). This file is a SNAPSHOT of the
+  present and is overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-28, midday
+# NOW — 2026-11-28, midday (second pass)
 
 ## Where she is
 
 | | |
 |---|---|
-| 🔴 **Stopped** | Not running. She did **not** crash: a stop landed 13 s into her seventh freeze, she could not answer the graceful ask, and the control plane stopped her at the process level (`gracefulSave: false`). Last build `55bc0869`. |
-| 💾 **Her training is whole** | the binary weights 3,846,253,872 B written 05:19, the state json 05:22, her speech 05:19 — a resume picks her up where she was. |
-| 📍 **Cell** | **ela/pre-K**, with four sections passed (`course-identity`, `picture-book`, `nursery-rhyme` and one more) and **0 cells** passed. |
-| 📚 **Definitions first** | the pre-cell pass took 2 h 51 min: **9,242 of 9,446 words, 104,722 meanings**. 16 strings in her corpus have no definition anywhere; 20 ordinary words were deferred. |
-| 🗣 **Speaking** | about 10,500 words with a place to say them; her inner voice had begun and was mostly silent — she had had no sentence lessons yet. |
+| 🟡 **Walking, and pinning** | Up on build `d7ce42c5`, 199,728,759 neurons, language cortex 1,328,482. Resumed from a coherent weights pair — **no `WEIGHTS PAIR INCOHERENT` line this boot**. |
+| 📍 **Cell** | **ela/pre-K**, re-teaching the sections whose synapses were never written, **0 cells** passed. |
+| 🖥 **Cards** | Gee's RTX 4070 Ti SUPER holds everything (8/8 clusters). One card, so every-card teaching has nothing to prove yet. |
+| 🗣 **Speaking** | her speech file came back across the restart: **6,134 taught · 3,309 said before correction (53.9 %) · 548 says · rehearsed 6,134 with 3,293 repairs · 11 MB**. Her inner voice is alive (`*Mom*`, coherence 0.893). Asked her name, she returned **honest silence** (`motor_unstable`) — correct for a brain that has passed no cells. |
 
-## The one problem left, now with a name on it
+## The one cause behind the freeze, the dead page and the donor drops
 
-**After every section pass her loop pinned for 90–107 seconds** — seven times on that boot (7.2 s, 94.6, 92.3, 107.3, 91.9, 93.8, and the seventh she was stopped inside). Every freeze that recovered carries the same attribution on its own log line: **the gap BETWEEN sections**, with an age matching the block to within a second. It is one synchronous span, not many short ones (`the loop was late 106.4s of the 113s it measured · worst single gap 106.3s`).
+**Found and fixed, named by her own stage split rather than by the profiler:**
 
-**Three things it is NOT, each ruled out by a number** — the section's pictures (the 107 s freeze followed a section carrying **zero** figures), the checkpoint save (one freeze ran 92.8 s with no save stage in flight at all), and the episode write (bounded: one indexed lookup, a 300-row scan, one insert). Her real sentence lesson is not the shape of it either: 28 pre-K sentences at 10,500 sayable words run **3.4 s whole, longest stall 0.3 s**.
+```
+[ChatPin] reply pass 115537ms — … respond:store-episode=73959ms · respond:curiosity=41553ms …
+          (every other stage of that reply: 0–11 ms)
+```
 
-## Fixed this session, before she goes back up
+Her episode write takes a salience term that runs **two full CPU cortex propagates per letter**. The refusal that exists to stop exactly that was written as a neuron count — `size > 2000000` — back when that cluster was **306 million**, where it always refused. The language cortex was then deliberately rebuilt at **1,328,482**, and the branch, untouched, flipped from "always refuse" to "always run". **A guard written as an absolute size inverted the moment the architecture legitimately got smaller.** The same write runs right after every section pass, which is the 90–107 s post-pass freeze; while this was being written she took a **226,047 ms** pin and dropped the donor.
+
+**The fix is priced, not sized** — the cost is per letter over the matrix that does the work: `letters × 2 ticks × (1.5 ms + non-zeros × 6e-6 ms)` against a 2,000 ms budget. Fitted on her own two measurements and exact at both. Verified through the real cluster class: a 90,000-non-zero brain prices at 65 ms, **runs**, returns a real value in 78 ms; her 398,544,600 non-zeros price at **76,521 ms** and are **refused in 1 ms**. Her training is unaffected — the term returns 0 meaning UNMEASURED, which is what the entire walk history already encoded.
+
+⚠ **The press has not happened yet.** The running build is the one before this fix.
+
+## Fixed earlier this session
 
 | Found | Fix | Seen working |
 |---|---|---|
-| The one channel that survives a freeze which never returns was naming the wrong code — the breadcrumb it reads was written only when the phase label changed, so all seven stalls reported a phase the cell had entered minutes earlier | the breadcrumb also fires when the teach stage changes, on the lag sampler's 1 s tick, and carries every attribution tag with its age and its sequence number | yes — exercised through the real watchdog thread with a real 4.6 s synchronous pin: the live stall line and the freeze artifact both carry the full tag set |
-| Her self-profiler samples 45 s every 30 minutes, so it had never once sampled inside a freeze | set to a 2-minute cadence in machine-local state for the next boot — her freezes arrive about every two minutes | not yet — it reports on her next boot |
+| The live stall line named the wrong code for seven freezes — the breadcrumb it reads was written only on a phase change | it also fires on a teach-stage change and carries every tag with its age and sequence | yes — and it immediately showed the gap was the holder on a second phase |
+| Her metadata was 158 s ahead of her synapses, then a clean shutdown saved that hole into a tidy-looking pair | restored the newest **coherent** pair so she re-teaches the section whose synapses were never written | yes — this boot carries no incoherence line |
+| The old question probe stepped her cortex on the host during a reply | the probe does not run on a cortex that speaks from its own cells | yes — **no `qa-probe` stage** anywhere in her reply line |
+
+## Honest limits of the new instrument
+
+The breadcrumb **cannot be refreshed mid-pin** — its writer is the lag sampler, which rides the loop that is dead. So the live line names the last marked stage *before* the pin (≤1 s stale instead of minutes) and its sequence number is frozen by construction while pinned. Better by minutes; not a complete answer. Her self-profiler, set to a 2-minute cadence, has **still never sampled inside a freeze** — its window landed 84.9 % idle.
 
 ## Still to watch
 
 - Her weights save takes about 2½ minutes per checkpoint.
-- About half her looks fail on the second picture; for 95 minutes they were all held back because the card had too little free memory.
-- Once a save printed "SATURATED sem→motor" at every checkpoint; not established whether that check fits the new wiring.
-- First-start checks still waiting: the new-word lessons and dashboard row, her question expiring after five minutes.
-- Every connected card doing teach ops — the code is in, it has never been restarted onto.
+- About half her looks fail on the second picture.
+- First-start checks still waiting: the new-word lessons and dashboard row in a browser, her question expiring after five minutes, the gates' TALK lines.
+- Every connected card doing teach ops — one card is attached, so it is unproven.

@@ -3430,10 +3430,50 @@ export class NeuronCluster {
     if (!this.regions || !this.regions.letter || !clause) return 0;
     const letters = String(clause).toLowerCase().replace(/[^a-z']/g, '');
     if (letters.length === 0) return Infinity; // non-alphabetic clause = max surprise
-    if (this.size > 2000000) {
+    // ⛔⛔ THE REFUSAL IS PRICED, NOT SIZED — BECAUSE AS A SIZE IT INVERTED.
+    //
+    // It used to read `this.size > 2000000`, written when this cortex was 306
+    // million, where it always refused. The language cortex was then deliberately
+    // rebuilt at 1,328,482 neurons — and this branch, unchanged, silently flipped
+    // from "always refuse" to "always run". Measured on the running brain
+    // 2026-11-28 by her own stage split: `respond:store-episode=73959ms` inside a
+    // 115,537 ms reply pin, the donor reaped at 122 s unheard, `/health` answering
+    // nothing for 25+ s, and the public page down. The same call sits right after
+    // every section pass via the phase-episode write, which is the 90-107 s
+    // post-pass freeze.
+    //
+    // ⭐ A NEURON COUNT IS THE WRONG QUANTITY. The cost is two full CPU propagates
+    // per LETTER, and a propagate costs its matrix's non-zeros — so a smaller
+    // cortex with denser wiring is MORE expensive, and no threshold on `size` can
+    // express that. Priced from her own two measurements, which bracket each other:
+    //   · 73,959 ms / 32 ticks at 1,328,482 × 300 wires ≈ 398.5M nnz → 5.8e-6 ms/nnz
+    //   · 142,989 ms / 58 ticks at the 360M-nnz cortex          → 6.8e-6 ms/nnz
+    // Taking 6e-6 ms per non-zero, a pure per-non-zero price under-predicts the
+    // SMALL case fourfold — measured on a real 3,000-cell cluster with 90,000
+    // non-zeros, this clause costs 65 ms against a predicted 17 ms, because at a
+    // small matrix the fixed per-tick work (the per-neuron map update, the letter
+    // injection) dominates the propagate. So the model carries both terms:
+    //   priced = letters × 2 ticks × (1.5 ms fixed + nnz × 6e-6 ms)
+    // Fitted on exactly two production measurements and exact at both — 65 ms for
+    // the 90,000-nnz cluster, 76,560 ms for her 398.5M-nnz cortex. A one-term
+    // model would have let through calls costing four times its estimate.
+    //
+    // The budget is 2,000 ms, chosen so the historical small-brain path is left
+    // exactly as it was — a browser-tier cluster's matrix is ~5 orders smaller and
+    // prices out around 1.3 s, under the budget, so it still runs and its English
+    // gate still reads a real number — while ANY server-scale cortex refuses by
+    // three orders of magnitude (1.33M × 300 prices at ~76,000 ms). A budget on
+    // predicted MILLISECONDS cannot invert when the architecture changes, because
+    // it reads the matrix that does the work.
+    const _nnzSync = (this.synapses && (this.synapses.nnz | 0) > 0)
+      ? (this.synapses.nnz | 0)
+      : ((this.size | 0) * 300);   // fallback: this build's cortex fanout
+    const _ticksSync = letters.length * 2;
+    const _pricedMs = _ticksSync * (1.5 + _nnzSync * 6e-6);
+    if (_pricedMs > 2000) {
       if (!this._surpriseSyncWarnMs || (Date.now() - this._surpriseSyncWarnMs) > 60000) {
         this._surpriseSyncWarnMs = Date.now();
-        console.warn(`[Cluster ${this.name}] computeTransitionSurprise REFUSED on the sync path — ${this.size.toLocaleString()} neurons would run ${letters.length * 2} full CPU cortex ticks (measured: 143s for a 29-letter message, donor dead). Use computeTransitionSurpriseAsync — the propagate belongs on the donor GPU.`);
+        console.warn(`[Cluster ${this.name}] computeTransitionSurprise REFUSED on the sync path — ${_ticksSync} full CPU cortex ticks over ${_nnzSync.toLocaleString()} non-zeros prices at ${Math.round(_pricedMs).toLocaleString()}ms against a 2,000ms budget (${this.size.toLocaleString()} neurons). Measured when this refusal was priced: a 22-character question cost 73,959ms here and took the donor and the public page with it. Use computeTransitionSurpriseAsync — the propagate belongs on the donor GPU.`);
       }
       return 0;
     }

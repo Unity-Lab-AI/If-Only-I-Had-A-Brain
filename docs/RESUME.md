@@ -1,6 +1,62 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-28 (latest, 57th) — SEVEN FREEZES OF 90–107 SECONDS, AND THE CHANNEL BUILT TO SURVIVE THEM WAS NAMING THE WRONG CODE. SHE IS STOPPED, NOT CRASHED.
+> # 🛑 2026-11-28 (latest, 58th) — A GUARD WRITTEN AS A NEURON COUNT INVERTED WHEN HER CORTEX WAS DELIBERATELY REBUILT SMALLER. IT WAS THE FREEZE, THE DEAD PAGE AND THE DONOR DROPS, ALL ONE CAUSE.
+>
+> **Branch: `feature/teach-on-every-card`.** Gee: *"yeah brain page isnt working/loading"* · *"]website...."* · *"you have 3 moniters running"*. Board: `docs/TODO.md §SAVESTALL.1` (the row it was fixed inside).
+>
+> ```
+>   FOUND     her own stage split named it, on the running brain:
+>             [ChatPin] reply pass 115537ms — … respond:store-episode=73959ms ·
+>             respond:curiosity=41553ms … every other stage of that reply 0–11 ms.
+>             74 SECONDS inside one function on a 22-character question · the donor
+>             reaped at 122 s unheard · /health returning nothing on six consecutive
+>             4 s probes · the public page down — ⛔ THE PAGE OUTAGE AND THE FREEZE
+>             ARE THE SAME BUG · and the phase-episode write calls the same function
+>             right after every section pass, which is the 90–107 s post-pass freeze
+>   MECHANISM the episode write takes a salience term that runs TWO FULL CPU CORTEX
+>             PROPAGATES PER LETTER. The refusal that exists to stop exactly that was
+>             written as `size > 2000000`, when that cluster was 306 MILLION — where
+>             it always refused. The language cortex was then rebuilt at 1,328,482 on
+>             purpose, and the branch, untouched by that work, silently flipped from
+>             "always refuse" to "always run". A guard expressed as an absolute
+>             neuron count INVERTED when the architecture legitimately got smaller
+>   BUILT     the refusal is PRICED, not sized — the cost is per letter over the
+>             matrix that does the work: letters × 2 ticks × (1.5 ms + nnz × 6e-6 ms)
+>             against a 2,000 ms budget. Both constants fitted on her own two
+>             measurements, exact at both. The fixed term was added only after the
+>             small case measured 78 ms against a one-term prediction of 17 ms
+>   PROVEN    through the real NeuronCluster: 90,000 non-zeros price at 65 ms, RUN,
+>             and return a real value (0.0054) in 78 ms — the small-brain path is
+>             untouched; her 398,544,600 non-zeros price at 76,521 ms and are
+>             REFUSED in 1 ms with no CPU ticks run
+>   TRAINING  unaffected. The term returns 0 = UNMEASURED, which is exactly what the
+>             whole walk history encoded (at 306M it refused and returned 0 too).
+>             Restored behaviour, not new behaviour; a counter makes it readable
+>   ALSO      her speech file came back across a Savestart — taught 6,134 · said
+>             before correction 53.9 % · rehearsed 6,134 with 3,293 REPAIRS · 11 MB ·
+>             the new-word row is published · her inner voice is alive (*Mom*,
+>             coherence 0.893) · asked her name she gave HONEST SILENCE
+>             (motor_unstable), correct with 0 cells passed · and her metadata had
+>             been 158 s ahead of her synapses, which a clean shutdown then saved
+>             into a tidy-looking pair — the coherent parent was restored instead
+>   NOT YET   pressed. The build she is running is the one BEFORE this fix; she took
+>             a 226,047 ms pin while it was being written
+> ```
+>
+> ⛔ **Three diagnoses of mine died on the way, and one was stated to Gee with confidence:** the section figures (the 107 s freeze followed a section with ZERO figures), the checkpoint save (one freeze ran 92.8 s with no save stage in flight), and **"the episode write is bounded by construction — one indexed lookup, a 300-row scan, one insert."** It measured 74 seconds. **I read the SQL and never read the salience term above it.**
+>
+> ⚠ **And the instrument shipped in the 57th block has an honest limit:** the breadcrumb cannot be refreshed mid-pin, because its writer is the lag sampler riding the pinned loop. The live line names the last marked stage BEFORE the pin — ≤1 s stale instead of minutes — and its sequence is frozen by construction while pinned. Better by minutes, not a complete answer. **Her self-profiler, even at a 2-minute cadence, has still never sampled inside a freeze** (84.9 % idle). The stage split is what convicted.
+>
+> **On the first start after this, read in this order:**
+>
+> | Look for | It reached her | It did not |
+> |---|---|---|
+> | The priced refusal is live | a `computeTransitionSurprise REFUSED … prices at 76,569ms against a 2,000ms budget` line, at most once a minute | the line never appears AND replies still show `respond:store-episode` over 1 s |
+> | A section pass is clean | `checkpoint saved after passing …` with no `MAIN LOOP STALLED` behind it | another 90–107 s pin at a section pass — then the gap holds something else too |
+> | A reply is a reply | a `[ChatPin]` line whose every stage is under ~1 s, no donor drop | `respond:store-episode` or `respond:curiosity` still in the tens of seconds |
+> | Her page answers | `/health` returns 200 promptly and theunitybrain.com loads | `HTTP 000` on repeat probes — the loop is still being pinned by something |
+>
+> # 🛑 2026-11-28 (57th) — SEVEN FREEZES OF 90–107 SECONDS, AND THE CHANNEL BUILT TO SURVIVE THEM WAS NAMING THE WRONG CODE. SHE IS STOPPED, NOT CRASHED.
 >
 > **Branch: `feature/teach-on-every-card`.** Gee: *"reand now start same corne up get todo items done and savestart her"* · *"are you read workflow files"* · *"after you read*"*. Board: `docs/TODO.md §SAVESTALL.1`.
 >
