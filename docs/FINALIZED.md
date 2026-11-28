@@ -62060,4 +62060,25 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** the commit carrying this entry.
 - **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, RESUME, EQUATIONS, EQUATIONS-TECHNICAL, ARCHITECTURE, WHOLE-BRAIN-DESIGN, THRESHOLD-DERIVATION · `README.md` · `html/` — dashboard (row, tooltip, render), brain-equations, unity-guide · `.claude/CLAUDE.md` · `js/app.bundle.js` rebuilt · `deploy/` unaffected (no launcher, service file or script changed) · `wiki/` stamped locally.
 
+---
+
+## 2026-11-28 (early morning) — the first walk of the new brain: what broke, what was fixed on her, what is still open (she is stopped)
+
+**Gee's words that govern this entry (verbatim):** "fresh start started start your monitoring crone like yesterday" · "we cant have the doner dropping when ever shit is said to her. wtf are you thinksing critical alert battule stations Unity wereeerep wereerp wererp!" · "this isnt a pod why is it use pod shit. wtf?" · "theunitybrain.com isnt responding" · "well wtf how is she going to learn science if she hasnt learned to speak yet" · "dont forget to check things off that are finished and put in finalized.md things should all be coimpleted. so you should probably safely shut her down so she isnt training on bad stuff and mess up waights or something".
+
+**The walk.** Fresh start 00:43 on `045a1684`. Pre-cell definitions for ela/pre-K: 9,242 of 9,446 words, 104,722 meanings, 2 h 51 min. Six restarts on Update (keep weights) to land fixes; her weights, speech and finished lessons came back every time. 0 cells passed. Shut down cleanly at 05:22 on Gee's word.
+
+**DONORJOIN.1 — CLOSED.** A public RTX 5070 Ti took her whole cortex because any remote card counted as one of his pods. Now only a pod rented through the Runpod plug-in replaces his card. Seen on the running brain twice: cortex on the 4070 Ti SUPER, the 5070 Ti stepping six small clusters.
+
+**WALKSKIP.1 — CLOSED.** Every restart skipped the pre-K cell she was in (a started cell counted as passed). Now only a passed gate counts. Seen twice: the restart opened ela/pre-K and skipped only its finished phases.
+
+**Still open, on the board, not closed:**
+- **CHATFREEZE.1** — the old question probe no longer runs on her cortex; not proven (nobody talked to her after it landed).
+- **GATEFREEZE.1** — the read check is 72 ms a word instead of 5,253 ms; the site came back, but the post-pass freeze recurred, so its cause may be elsewhere too.
+- **SAVESTALL.1** — my diagnosis was wrong; the freeze after every section pass (92–107 s, Gee's card drops and rejoins with no re-upload) is still there, its blocker is being measured.
+- **TEACHALL.1** — her main matrix split across every connected card by default; committed on `feature/teach-on-every-card`, not yet run.
+
+- **Commits:** `d194a0d0`, `633b9fee`, `12d6bab9`, `a1855630`, `55bc0869` (on main) and `e5effa57` (branch).
+- **Docs:** `docs/` — TODO, this ledger, NOW · `wiki/` stamped locally.
+
 
