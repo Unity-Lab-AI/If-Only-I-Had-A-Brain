@@ -90,6 +90,13 @@ function _launcherBody() {
   return t.slice(at).split('\n').filter((l) => !/^\s*#/.test(l) && l.trim()).join('\n');
 }
 
+// THE PODS SHE RENTS, by GPU model — the only remote cards that count as "a
+// pod". A card anyone in the public connects is not one. Filled from every
+// status read (the brain reads status every 5 min while a key is set) and from
+// every pod this plug-in starts; empty with no key.
+const _rented = new Set();
+function rentedGpuModels() { return _rented; }
+
 async function status() {
   const out = { hasKey: hasKey(), settings: settings(), balance: null, pods: [], gpus: [], error: null };
   if (!out.hasKey) return out;
@@ -112,6 +119,8 @@ async function status() {
         costPerHr: typeof p.cost === 'number' ? p.cost : null,
         createdAt: p.createdAt || null,
       }));
+    _rented.clear();
+    for (const p of out.pods) if (p.gpu && p.status !== 'EXITED') _rented.add(String(p.gpu));
     // Only cards that can hold a cluster and are in stock now, cheapest first.
     out.gpus = ((gpus && gpus.gpus) || [])
       // NVIDIA only: the pod image carries no Vulkan stack, so the donor computes over CUDA.
@@ -171,6 +180,7 @@ async function startDonor(gpuId, isAttached = null) {
     cmd: [_launcherBody()],
   };
   const pod = await _api('POST', '/v2/pods', body);
+  _rented.add(String(gpuId));
   console.log(`[Runpod] donor pod created — ${pod && pod.id} (${gpuId}) — it downloads the latest donor release and joins her pool over brain.theunitybrain.com.`);
   _watchJoin(pod, gpuId, isAttached);
   return pod;
@@ -209,4 +219,4 @@ async function stopAllOnShutdown() {
   return n;
 }
 
-module.exports = { hasKey, setKey, settings, saveSettings, status, startDonor, stopDonor, stopAllOnShutdown };
+module.exports = { hasKey, setKey, settings, saveSettings, status, startDonor, stopDonor, stopAllOnShutdown, rentedGpuModels };

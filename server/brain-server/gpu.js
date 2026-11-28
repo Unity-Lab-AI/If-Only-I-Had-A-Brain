@@ -1919,7 +1919,17 @@ const SERVER_GPU_MIXIN = {
     // only remote cards are placed on first; his card takes only what fits
     // nowhere else (and everything when no remote card is connected).
     const _isLocal = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return !!(c && c.isLocalHost); };
-    const _remoteLive = live.filter((ws) => !_isLocal(ws));
+    // ⛔ "A POD" MEANS A POD HE RENTS — not any card that connects. Gee
+    // 2026-11-28, when a stranger's RTX 5070 Ti joined and this rule moved her
+    // whole cortex off his card onto it: "this isnt a pod why is it use pod
+    // shit. wtf?". Only a card whose model is one of the pods the Runpod plug-in
+    // rented takes the place of his card; a public donor is placed beside his
+    // card like any other (it steps clusters; the cortex moves to it only by the
+    // ordinary room rule further down).
+    let _rentedModels = null;
+    try { _rentedModels = require('../runpod-control.js').rentedGpuModels(); } catch { _rentedModels = null; }
+    const _isRentedPod = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return !!(c && _rentedModels && _rentedModels.has(String(c.gpuName || ''))); };
+    const _remoteLive = live.filter((ws) => !_isLocal(ws) && _isRentedPod(ws));
     const _localLive = live.filter((ws) => _isLocal(ws));
     const _placeFirst = _remoteLive.length ? _remoteLive : live;
     const remaining = new Map(_placeFirst.map((ws) => [ws, this._donorCapacityMB(ws)]));
@@ -2075,7 +2085,7 @@ const SERVER_GPU_MIXIN = {
     const _name = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return (c && (c.gpuName || c.id)) || 'donor'; };
     const byCard = new Map();
     for (const [n, ws] of owner) { if (!byCard.has(ws)) byCard.set(ws, []); byCard.get(ws).push(n); }
-    const summary = [...byCard].map(([ws, cl]) => `${_name(ws)}: [${cl.join(', ')}] (${Math.round(this._donorCapacityMB(ws) - remaining.get(ws))}/${Math.round(this._donorCapacityMB(ws))} MB)`).join(' · ');
+    const summary = [...byCard].map(([ws, cl]) => `${_name(ws)}: [${cl.join(', ')}] (${Math.round(this._donorCapacityMB(ws) - (remaining.has(ws) ? remaining.get(ws) : this._donorCapacityMB(ws)))}/${Math.round(this._donorCapacityMB(ws))} MB)`).join(' · ');
     const _pmv = this._pendingCortexMove;
     // The 60 s placement check stays quiet when nothing changed.
     if (reason === 'placement check' && !moved.length && !_pmv && !unplaced.length) return owner;
