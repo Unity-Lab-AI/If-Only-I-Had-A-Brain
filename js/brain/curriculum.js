@@ -15629,6 +15629,15 @@ export class Curriculum {
     return { read: own >= 0.5 && own > rival, own, rival, rivalWord };
   }
 
+  /** READ, for a line: does she read every word of it? (False for an empty line.) */
+  async _readsAll(words) {
+    const list = (Array.isArray(words) ? words : String(words || '').split(/\s+/))
+      .map((w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '')).filter(Boolean);
+    if (!list.length) return false;
+    for (const w of list) { if (!(await this._readsWord(w)).read) return false; }
+    return true;
+  }
+
   // Reverse-lookup a region name from the {start,end} object. Cached
   // per-cluster so a curriculum run with thousands of _writeTiledPattern
   // calls doesn't re-scan cluster.regions on every call.
@@ -29285,35 +29294,10 @@ export class Curriculum {
         }
       }
 
-      // READ: letter → sem cross-projection → cosine vs word embedding
-      if (letterToSem && semRegion) {
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const semSize = semRegion.end - semRegion.start;
-        const SEM_DIM = 300;
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        const semReadout = new Float64Array(SEM_DIM);
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
-          }
-          semReadout[d] = sum / sGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < SEM_DIM; i++) mean += semReadout[i];
-        mean /= SEM_DIM;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] -= mean;
-        let norm = 0;
-        for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-
-        const wordEmb = sharedEmbeddings.getEmbedding(word);
-        if (wordEmb && cosine(semReadout, wordEmb) > 0.10) readPass++;
-      } else {
-        readPass++;
-      }
+      // READ: the written word, through letters→meaning, must bring up ITS
+      // meaning past threshold and more fully than any other word she knows
+      // (`_readsWord`). No pathway, or a word never taught, is a miss.
+      if ((await this._readsWord(word)).read) readPass++;
 
       // TALK: with this thing in mind, does she SAY its word? Read where she
       // speaks from (the speech readout, in the naming state the naming lesson
@@ -30413,35 +30397,8 @@ export class Curriculum {
         }
       }
 
-      // READ: letter → sem via cross-projection → cosine vs first word embedding
-      if (letterToSem && semRegion) {
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const semSize = semRegion.end - semRegion.start;
-        const SEM_DIM = 300;
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        const semReadout = new Float64Array(SEM_DIM);
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
-          }
-          semReadout[d] = sum / sGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < SEM_DIM; i++) mean += semReadout[i];
-        mean /= SEM_DIM;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] -= mean;
-        let norm = 0;
-        for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-
-        const wordEmb = sharedEmbeddings.getEmbedding(firstWord);
-        if (wordEmb && cosine(semReadout, wordEmb) > 0.10) readPass++;
-      } else {
-        readPass++; // no letter→sem projection = skip READ (pass by default)
-      }
+      // READ: she reads the sentence when she reads EVERY word of it (`_readsAll`).
+      if (await this._readsAll(words)) readPass++;
 
       // TALK: given the sentence so far, does she say its next word? Every
       // in-sentence step is read where she speaks from, in the state compose
@@ -31871,34 +31828,8 @@ export class Curriculum {
         ? sharedEmbeddings.getSentenceEmbedding(name)
         : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
 
-      // READ: letter → sem → cosine vs concept name embedding
-      if (letterToSem && nameEmb && nameEmb.length > 0) {
-        const letterPat = buildPattern(letterSize, letterOneHot);
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const semSize = semRegion.end - semRegion.start;
-        const SEM_DIM = 300;
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        const semReadout = new Float64Array(SEM_DIM);
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
-          }
-          semReadout[d] = sum / sGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < SEM_DIM; i++) mean += semReadout[i];
-        mean /= SEM_DIM;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] -= mean;
-        let norm = 0;
-        for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-        if (cosine(semReadout, nameEmb) > 0.10) readPass++;
-      } else {
-        readPass++;
-      }
+      // READ: she reads the name when she reads every word of it (`_readsAll`).
+      if (await this._readsAll(String(name).toLowerCase().split(/\s+/))) readPass++;
 
       // TALK: with this thing in mind, does she SAY its word? (see `_talkNames`)
       if (this._talkNames(name)) talkPass++;
