@@ -2745,16 +2745,21 @@ const K_LETTER_PHONEMES = {
   'm':  { type: 'consonant', voiced: 1, place: 'labial',    manner: 'nasal' },
   'n':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'nasal' },
   // ── APPROXIMANTS / LIQUIDS ──────────────────────────────────────
-  'l':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'approximant' },
+  // l and r are both voiced alveolar approximants; what tells them apart is
+  // that for l the air goes round the SIDES of the tongue (lateral).
+  'l':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'approximant', lateral: 1 },
   'r':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'approximant' },
   'w':  { type: 'consonant', voiced: 1, place: 'labial',    manner: 'approximant' },
   'y':  { type: 'consonant', voiced: 1, place: 'palatal',   manner: 'approximant' },
   // ── AFFRICATES ──────────────────────────────────────────────────
   'j':  { type: 'consonant', voiced: 1, place: 'palatal',   manner: 'affricate' },
   // ── SHORT VOWELS (K phonics primary sounds) ─────────────────────
-  'a':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0 },
+  // Short a (cat) and short i (sit) are both front and unrounded; they differ
+  // in how HIGH the tongue is — low for a, high for i. Without `height` the
+  // two letters had one and the same sound pattern.
+  'a':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0, height: 'low' },
   'e':  { type: 'vowel',     length: 'short', position: 'mid',   rounded: 0 },
-  'i':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0 },
+  'i':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0, height: 'high' },
   'o':  { type: 'vowel',     length: 'short', position: 'back',  rounded: 1 },
   'u':  { type: 'vowel',     length: 'short', position: 'back',  rounded: 0 },
 };
@@ -2780,7 +2785,10 @@ const K_LETTER_PHONEMES = {
 //   [16]    vowel_mid       (central vowel: e short)
 //   [17]    vowel_back      (back vowel: o,u short)
 //   [18]    vowel_rounded   (lip rounding: o short)
-//   [19-23] reserved for digraphs + irregular markers (G1+ extensions)
+//   [19]    vowel_high      (tongue high: i short)
+//   [20]    vowel_low       (tongue low: a short)
+//   [21]    lateral         (air round the sides of the tongue: l)
+//   [22-23] reserved for digraphs + irregular markers (G1+ extensions)
 
 // Two phonemes that share a letter-origin (e.g. /c/ and /k/ both mapping
 // to K_LETTER_PHONEMES['k']) produce IDENTICAL feature vectors — which
@@ -2805,6 +2813,8 @@ export function _phonemeFeatureForLetter(letter) {
     else if (entry.position === 'mid') out[16] = 1;
     else if (entry.position === 'back') out[17] = 1;
     if (entry.rounded) out[18] = 1;
+    if (entry.height === 'high') out[19] = 1;
+    else if (entry.height === 'low') out[20] = 1;
   } else if (entry.type === 'consonant') {
     out[1] = 1;  // is_consonant
     if (entry.voiced) out[2] = 1;
@@ -2818,6 +2828,7 @@ export function _phonemeFeatureForLetter(letter) {
     else if (entry.manner === 'nasal')   out[10] = 1;
     else if (entry.manner === 'approximant') out[11] = 1;
     else if (entry.manner === 'affricate') out[12] = 1;
+    if (entry.lateral) out[21] = 1;
   }
   // L2 normalize so injection strength is consistent across letters.
   let norm = 0;
