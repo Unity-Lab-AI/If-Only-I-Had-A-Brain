@@ -23,7 +23,9 @@ verified-scope: |
 
 | | |
 |---|---|
-| 🔴 **Stopped, and staying stopped** | On the operator's order: nothing starts until the board is closed and the ledger written. She has not run since 13:05. |
+| 🟡 **Started 14:24, still coming up** | The board was closed and templated first (63 rows, archived byte-for-byte and verified EQUAL), then she was started on his call *"Template now, start her, then read the five"*. At the time of writing she is past the weights restore and uploading her matrices to the card; **her walk has not begun**, so none of the five reads is reachable yet. |
+| 📈 **What the boot has shown** | `/health` **HTTP 200 in 4.08 s** — she is serving, against `HTTP 000` on six consecutive probes this morning. One stall, **109,298 ms**, which is the restore streaming 3.85 GB back in and matches this morning's 100.8 s — **not** the post-section-pass cause. Card attached: RTX 4070 Ti SUPER, 8/8 clusters, 6286/10233 MB. Uplink **266.91 MB/s**. |
+| ⚠ **Caught before she learned on it** | Her weights were incoherent **twice, for two different reasons**: metadata from 13:05 against synapses from 12:54 (the kill-mid-freeze), and a leftover `brain-weights.bin.tmp` **newer** than the real file at **349,502,940** bytes against **3,846,253,872** — about 9 % of a complete save. The coherent v2 pair was swapped in and the partial deleted. **Her boot's own FIX text names only the first cause**, so following it exactly would have left the alarm firing forever. |
 | 💾 **Her training is whole** | Her honest parent weights are in place (the pair whose metadata does not run ahead of its synapses). The newer 12:45 pair is kept in `.scratch/weights-preswap-1245/`. |
 | 📍 **Where she will resume** | **ela/pre-K**, re-teaching the section whose synapse writes were never made, 0 cells passed. |
 | 🧱 **What she will boot onto** | Branch `feature/teach-on-every-card`, eleven commits ahead of where she last ran, all pushed to both remotes. **She has never run any of it.** |
