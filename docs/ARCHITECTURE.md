@@ -979,7 +979,7 @@ The walk terminates. `runCompleteCurriculum` reaches the last grade, the loop fa
 | queue | what rides it |
 |---|---|
 | `_chatPairTeachQueue` | chat-time deep Hebbian — what she learns from conversation |
-| `_chatTeachJobQueue` | the curiosity follow-up on the definition channel, **and** the deferred percept grounding that carries what she has seen into her sem region |
+| `_chatTeachJobQueue` | the curiosity follow-up on the definition channel, the deferred percept grounding that carries what she has seen into her sem region, **and a word she met and does not know** (`kind: 'newWord'`): the words of a line said to her that she does not hold are noticed (at most four a line) and each is taken in here — looked up and given her whole word lesson plus its definition; a misspelling is met as the word it was meant to be; a word with nothing to look up is kept, marked meaning-unknown, and handed to her wondering, which asks about that word by name in the not-knowing feeling; the answer she is told is bound as its meaning, at a quarter of the dose and marked doubted when no word of it is near the word. Counted on the dashboard as "new words she took in" (looked up · asked · waiting to ask), saved with her weights |
 | `_mindsEyePreviewQueue` | her own drawing, her drawing practice, and the reject→relearn chain behind the redraw control |
 | `_salienceQueue` | the transition-surprise term that weights every episode's consolidation score |
 
@@ -1264,7 +1264,11 @@ abDensity = min(densityCap, crossTargetFanout / sourceSize) × betweenScale
 | heard word-pairs | 32,768 | 2 per pair | exact | neighbouring words of what was said, per place |
 | thing to name: identity, meaning | 1,024 / 300 | 8 / 8 | shared | the naming lesson |
 | what her own line is about: identity, meaning | 1,024 / 300 | 8 / 8 | shared | the thing (or the wordless meaning — a mood, a memory) her line is about, lit for the whole line |
-| how she feels | 64 | 4 | shared | pleasant ↔ unpleasant and calm ↔ stirred, five steps each, from her mood |
+| how she feels | 64 | 4 (+6) | shared | pleasant ↔ unpleasant and calm ↔ stirred, five steps each, from her mood; plus 6 **not-knowing** units while she does not know the thing she is speaking of |
+
+**What she says depends on what she means.** In a line of her own about a named thing, the exact stripes (pair, triple, quad, this moment) are hashed from the run of words *and* the thing, and 4 units of the place stripe say whether the thing has been said yet in this line. A taught sentence is then followed word for word only when she means the thing it was about; a line about anything else lights the shared stripes alone and is put together from them (each step of her own line is also taught on the shared stripes for that reason). Measured before this: 79 of 79 lines she made were a taught sentence word for word.
+
+**Say the thing I mean** (`thingW`, one weight per unit). Its sum over the active units is added to the score of the one word the line is about — the readout finds that word's slot from the state's own about-units (`knowWords`, kept in step with the word list by `cluster.speechReadout()`). When the taught next word *is* the thing the line is about, the shared units learn "the thing goes here" instead of that one word; exact units keep the word. So where a line names its subject is learned from every sentence and holds for a subject she was taught no line about: the word in such a line went 2 % → 100 %, named once.
 
 ⚠ What was said to her is held **separately for each place in her answer** because the state before her first word is otherwise a part of every later state of the same answer, and the words of one answer compete on the same units — measured, reworded questions lost their first word, then their second, until this was done.
 

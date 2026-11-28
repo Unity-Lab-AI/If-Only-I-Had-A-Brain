@@ -15695,6 +15695,137 @@ export class Curriculum {
     return fired * 2 >= own.length;
   }
 
+  /** Is this word already hers — taught to her by a lesson, or taken in before? */
+  _holdsWord(word) {
+    const cluster = this.cluster;
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    if (!w || !cluster) return false;
+    if (cluster._readTaughtWords instanceof Map && cluster._readTaughtWords.has(w)) return true;
+    if (cluster._newWordsTakenIn instanceof Map && cluster._newWordsTakenIn.has(w)) return true;
+    return !!(cluster.wordBucketMap && cluster.wordBucketMap.has(w));
+  }
+
+  /**
+   * MEETING A WORD SHE DOES NOT KNOW — the one door for it.
+   *
+   * She looks the word up. If the dictionary has it, the word becomes hers the
+   * way a taught word is: her whole word lesson (its spelling read into its
+   * meaning, a place among the words she can say), naming (she says it when it
+   * is on her mind), and then what it means (the definition lesson). If the
+   * dictionary has nothing for it, nothing is taught and `ask: true` comes
+   * back — the caller has her ask what it means. When she has been TOLD what
+   * it means (`opts.told`, the words of the answer), the same lessons run and
+   * the answer's words are bound to it in place of a looked-up definition.
+   *
+   * What she took in this way is kept apart from what lessons handed her:
+   * `cluster._newWordsTakenIn` (word → how, when), saved with her.
+   * Returns { word, took, how?, ask?, why? }.
+   */
+  async _meetNewWord(word, opts = {}) {
+    const cluster = this.cluster;
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    if (!cluster || !w || w.length < 2) return { word: w, took: false, why: 'not a word' };
+    const taken = cluster._newWordsTakenIn instanceof Map ? cluster._newWordsTakenIn : (cluster._newWordsTakenIn = new Map());
+    const beingTold = Array.isArray(opts.told);
+    const told = beingTold ? Array.from(new Set(opts.told.map((t) => (typeof t === 'string' ? t.toLowerCase().replace(/[^a-z']/g, '') : '')).filter((t) => t.length > 1 && t !== w))) : null;
+    // She can know a WORD — have met it, read it, say it — without knowing what
+    // it means. `meaningHeld`: she has been taught, looked up or been told it.
+    const formHeld = this._holdsWord(w);
+    const meaningHeld = taken.has(w) || (cluster._definitionTaughtWords instanceof Set && cluster._definitionTaughtWords.has(w))
+      || (formHeld && !(cluster._wordsMeaningUnknown instanceof Set && cluster._wordsMeaningUnknown.has(w)));
+    if (meaningHeld) return { word: w, took: false, why: 'already hers' };
+    if (beingTold && !told.length) return { word: w, took: false, ask: true, why: 'what she was told had no words in it she could take' };
+    let defs = null;
+    if (typeof cluster.lookupDefinitionFull === 'function') { try { defs = await cluster.lookupDefinitionFull(w); } catch { defs = null; } }
+    let found = Array.isArray(defs) && defs.length > 0;
+    // "Has an entry somewhere" is not "is a word": the lookup also answers from
+    // an encyclopedia and a slang site, and it answers for misspellings with
+    // the word they were meant to be. A misspelling is the word it was meant to
+    // be; a string only those two sources know is not a word she can look up.
+    if (found && typeof cluster.isRealWord === 'function' && !cluster.isRealWord(w)) {
+      const real = typeof cluster.lookupTypoOf === 'function' ? cluster.lookupTypoOf(w) : null;
+      if (real && real !== w && !opts._fromSpelling) {
+        const r = await this._meetNewWord(real, { ...opts, _fromSpelling: true });
+        return { ...r, spelledAs: w };
+      }
+      found = false;
+    }
+    if (!found && !beingTold) {
+      const st = typeof cluster.lookupDefinitionStatus === 'function' ? cluster.lookupDefinitionStatus(w) : 'unknown';
+      // a lookup that did not come back is not "no such word" — she neither learns it nor asks; she will meet it again
+      if (st === 'error') return { word: w, took: false, ask: false, why: 'the lookup did not come back' };
+      // The dictionary has nothing for it. She takes in the word itself — so
+      // she can say it when she asks — and holds it as a word she does not know.
+      if (!formHeld) await this._takeInWordForm(w, opts);
+      (cluster._wordsMeaningUnknown instanceof Set ? cluster._wordsMeaningUnknown : (cluster._wordsMeaningUnknown = new Set())).add(w);
+      return { word: w, took: false, ask: true, why: 'the dictionary has nothing for it' };
+    }
+    if (!formHeld) await this._takeInWordForm(w, opts);
+    let how, doubted = false;
+    if (found) { await this._teachWordDefinition(w, { reps: opts.reps ?? 4, label: 'NEW-WORD', sideLane: true }); how = 'looked up'; }
+    else {
+      // WITH DISCERNMENT. What she is told is weighed against what the word
+      // already is to her, when it is anything: if no word of the answer is
+      // closer to this word than her own words usually are (closer than nine in
+      // ten of a sample of words she knows), the answer may not be about the
+      // word at all — it is taken in at a quarter of the dose and marked as
+      // doubted, to be settled when she meets the word again. A word that is
+      // nothing to her yet (no meaning of its own) gives her nothing to weigh
+      // an answer against, so the answer is taken as told.
+      doubted = this._toldAnswerIsDoubtful(w, told);
+      await this._teachAssociationPairs(told.slice(0, 8).map((t) => [w, t]), { reps: doubted ? 3 : 12, label: doubted ? 'NEW-WORD-TOLD-DOUBTED' : 'NEW-WORD-TOLD', relationTagId: 23, sideLane: true });
+      how = 'asked';
+    }
+    if (cluster._wordsMeaningUnknown instanceof Set) cluster._wordsMeaningUnknown.delete(w);
+    taken.set(w, doubted ? { how, at: Date.now(), doubted: true } : { how, at: Date.now() });
+    return doubted ? { word: w, took: true, how, doubted: true } : { word: w, took: true, how };
+  }
+
+  /** The word itself becomes hers: her whole word lesson (read, a place to say it) and naming. (`sideLane`: these lessons are hers, not the class she happens to be in.) */
+  async _takeInWordForm(w, opts = {}) {
+    const cluster = this.cluster;
+    await this._teachWordIntegrated(w, { reps: opts.reps ?? 4, sideLane: true });
+    (cluster._newWordsHeld instanceof Set ? cluster._newWordsHeld : (cluster._newWordsHeld = new Set())).add(w);
+    // a word she holds is a word she can say: it joins her dictionary, which is where a place to say it comes from
+    if (this.dictionary && typeof this.dictionary.learnWord === 'function' && !(this.dictionary._words && this.dictionary._words.has(w))) {
+      try { this.dictionary.learnWord(w, null, 0.5, 0); } catch { /* a word the dictionary will not hold stays unsayable */ }
+    }
+    this._ensureWordBucketMap(this._currentGateSubject);
+    if (typeof cluster.speechReadout === 'function' && cluster.wordBucketMap && cluster.wordBucketMap.has(w)) {
+      const readout = cluster.speechReadout();
+      const keepU = cluster._speechUnits, keepC = cluster._speechCtx, keepM = cluster._mindFeats;
+      for (let rep = 0; rep < 8; rep++) {
+        cluster.setSpeechUnits(readout.conceptUnits(w)); cluster._speechCtx = null; cluster._mindFeats = null;
+        const r = this._speechTeach(w);
+        if (r && r.right) break;
+      }
+      cluster.setSpeechUnits(keepU); cluster._speechCtx = keepC; cluster._mindFeats = keepM;
+    }
+  }
+
+  /**
+   * Is an answer she was told likely NOT about the word? True when the word
+   * has a meaning of its own and no word of the answer is closer to it than
+   * the ninth-closest-in-ten of up to 64 words she knows (taken evenly from her
+   * word list). False when there is nothing to weigh against.
+   */
+  _toldAnswerIsDoubtful(w, told) {
+    const cluster = this.cluster;
+    const emb = (x) => (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') ? sharedEmbeddings.getEmbedding(x) : null;
+    const a = emb(w);
+    const known = Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : [];
+    if (!a || !a.length || known.length < 20) return false;
+    const cos = (b) => { if (!b || b.length !== a.length) return null; let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return (na > 0 && nb > 0) ? d / Math.sqrt(na * nb) : null; };
+    let best = -Infinity, weighed = 0;
+    for (const t of told) { const c = cos(emb(t)); if (c === null) continue; weighed++; if (c > best) best = c; }
+    if (!weighed) return false;
+    const sample = []; const step = Math.max(1, Math.floor(known.length / 64));
+    for (let i = 0; i < known.length && sample.length < 64; i += step) { const k = known[i]; if (k === w || told.includes(k)) continue; const c = cos(emb(k)); if (c !== null) sample.push(c); }
+    if (sample.length < 10) return false;
+    sample.sort((x, y) => x - y);
+    return best < sample[Math.floor(sample.length * 0.9)];
+  }
+
   /** How many earlier words she looks at after each new reading lesson (`DREAM_READ_LOOKS`; 0 = none). */
   _readLooksPerWord() {
     if (this._readLooksN === undefined) {
@@ -16148,6 +16279,22 @@ export class Curriculum {
                 brain._chatTimeHebbianStats.lastJobTs = Date.now();
               }
             }
+          } else if (job && job.kind === 'newWord' && typeof job.word === 'string') {
+            // A WORD SHE MET AND DOES NOT KNOW — taken in here, between teach
+            // calls, for the same reason as every other job on this lane: one
+            // teacher at a time. A word the dictionary has nothing for is handed
+            // back to the brain, which has her ask what it means.
+            const r = await this._meetNewWord(job.word, job.opts || {});
+            const st = brain._newWordStats || (brain._newWordStats = { met: 0, lookedUp: 0, asked: 0, toAsk: 0, noAnswer: 0, last: null });
+            st.met++;
+            if (r && r.took) { if (r.how === 'asked') st.asked++; else st.lookedUp++; st.last = { word: r.word, how: r.how, at: Date.now() }; }
+            else if (r && r.ask) {
+              st.toAsk++;
+              if (!Array.isArray(brain._wordsToAskAbout)) brain._wordsToAskAbout = [];
+              if (!brain._wordsToAskAbout.includes(r.word)) brain._wordsToAskAbout.push(r.word);
+              while (brain._wordsToAskAbout.length > 16) brain._wordsToAskAbout.shift();
+            } else st.noAnswer++;
+            if (brain._chatTimeHebbianStats) { brain._chatTimeHebbianStats.lastJobLabel = 'NEW-WORD'; brain._chatTimeHebbianStats.lastJobTs = Date.now(); }
           } else if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
             await this._teachAssociationPairs(job.pairs, { ...(job.opts || { reps: 1, label: 'CHAT-TEACH-JOB', relationTagId: 30 }), sideLane: true });
             if (brain._chatTimeHebbianStats) {
@@ -17873,7 +18020,11 @@ export class Curriculum {
       // The browser copy has no dictionary service attached and skips this.
       const _real = this.cluster && this.cluster.isRealWord;
       if (this.cluster) this.cluster._grammarStructuralWords = GRAMMAR_STRUCTURAL_WORDS;
-      if (_real && !GRAMMAR_STRUCTURAL_WORDS.has(w) && !_real(w)) continue;
+      // A word she met and took in on purpose (one she is about to ask the
+      // meaning of, or was told the meaning of) is hers to say whatever a
+      // dictionary holds for it.
+      const _held = this.cluster && this.cluster._newWordsHeld instanceof Set && this.cluster._newWordsHeld.has(w);
+      if (_real && !_held && !GRAMMAR_STRUCTURAL_WORDS.has(w) && !_real(w)) continue;
       out.push(w);
     }
     return out;
@@ -24483,21 +24634,33 @@ export class Curriculum {
         // push its siblings down — any of them is a right thing to say there.
         const _rd = cluster.speechReadout();
         const _sibs = new Map(); const _seenStep = new Set();
+        // The lines to teach: each sentence as it stands — and, because most of
+        // the questions in her reading are SPOKEN inside a sentence ("what does
+        // that mean?" she asked), each quoted span that ends in a question
+        // mark as a line of its own. A line that asks is taught in the feeling
+        // of not knowing; that is where she learns what asking sounds like.
+        const _lines = [];
         for (const s of sentences) {
-          const _w = _tok(s);
+          const _text = String(s || '');
+          _lines.push([_tok(_text), /\?["”'’]?\s*$/.test(_text)]);
+          const _quoted = _text.match(/["“]([^"“”]{3,160}\?)["”]/g);
+          if (_quoted) for (const q of _quoted) _lines.push([_tok(q), true]);
+        }
+        for (const [_w, _asks] of _lines) {
           if (_w.length < 2) continue;
           const _about = _rd.aboutOf(_w);
           for (let i = 0; i <= _w.length; i++) {
             const _next = i < _w.length ? _w[i] : SPEECH_END;
             if (_next !== SPEECH_END && (!cluster.wordBucketMap || !cluster.wordBucketMap.has(_next))) break;   // a word she has no slot for ends what can be taught of this line
-            const _key = `${_about || ''}|${_w.slice(0, i).join(' ')}`;
+            const _key = `${_asks ? '?' : ''}${_about || ''}|${_w.slice(0, i).join(' ')}`;
             const _stepKey = `${_key}>${_next === SPEECH_END ? '\u0000' : _next}`;
             let _g = _sibs.get(_key);
             if (!_g) { _g = []; _sibs.set(_key, _g); }
             if (_seenStep.has(_stepKey)) continue;
             _seenStep.add(_stepKey);
             _g.push(_next);
-            _items.push([_w.slice(0, i), _next, _g, _about]);
+            // a sentence that ASKS is taught in the feeling of not knowing
+            _items.push([_w.slice(0, i), _next, _g, _about, _asks]);
           }
         }
         const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
@@ -24507,9 +24670,12 @@ export class Curriculum {
         for (; _passes < _maxPasses && _items.length; ) {
           if (globalThis._brainShutdownRequested) break;
           this._speechLessonStart();
-          for (const [_prefix, _next, _g, _about] of _items) {
-            if (!this._writeSpeechState('', _prefix, { unitsOnly: true, about: _about })) continue;
+          for (const [_prefix, _next, _g, _about, _asks] of _items) {
+            cluster._unsureAbout = _asks === true;
+            const _wrote = this._writeSpeechState('', _prefix, { unitsOnly: true, about: _about });
+            if (!_wrote) { cluster._unsureAbout = false; continue; }
             this._speechTeach(_next, _g);
+            cluster._unsureAbout = false;
             _spoken++;
             if (Date.now() - _sliceAt > 30) { await _microtask(); _sliceAt = Date.now(); if (globalThis._brainShutdownRequested) break; }
           }

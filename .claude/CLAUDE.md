@@ -388,6 +388,17 @@ Pollinations       → GONE (2026-10-18); her images render locally via image-en
 
 **Gee's decisions on this branch (each asked as a question with options):** cells **silent at rest**; gates' untaught figure **shown only**; the word-vector table **kept**; the speech-wiring-on-the-card row **dropped**.
 
+### 2026-11-27 (later) — she only recited; now she makes lines of her own, asks about a word she does not know, and counts the words she took in
+
+**`NEWWORDS.1–.4`** (branch `feature/new-words-and-rules`; board `docs/TODO.md §NEWWORDS`). Every line she made was a taught sentence word for word (79 of 79); a never-met word left a definition and nothing else (place to say it, reads, says: 0 of 12 each). Built: exact-run units made from the run AND the thing the line is about; a learned **"say the thing I mean"** weight (`thingW`) added to the word the line is about; not knowing as a feeling taught on her reading's own questions; the door `Curriculum._meetNewWord` (notice → look up → whole word lesson + definition, or keep it and ask, a told answer weighed); the dashboard count. Measured: word in her line 2 % → 100 %, a question 70 % not knowing vs 15 % sure, next word of a never-taught sentence as her own line 18.9 → 26.8 % (the gates' said-to-her gap figure is untouched at 12.2 % — I first wrote these up as the same number; they are two paths).
+
+⛔ **What I got wrong on the way, each caught by a number:**
+- **"Looked up" was not "is a word".** The lookup answers for misspellings, so two made-up strings were counted as looked up. Ask `isRealWord`, and meet a misspelling as the word it was meant to be.
+- **A lesson I added became the fault.** Teaching "the word is right to say first" made her real compose path open with the bare word ("Door.") once the thing-weight existed. Measured through `composeSentence`, deleted. **Measure the path the server calls, not only the direct read.**
+- **A held word had no place to say it** — speaking slots come from her dictionary and pass a real-word guard, so a made-up word she was about to ask about could not be said. Three fixes before the instrument read "says it yes".
+- **A silent ask was the floor, not a break.** 8 of 20 asks said nothing: first-word mean 0.016–0.040 against the 0.04 floor. Left alone — moving a derived threshold needs a derivation.
+- **`_awaitComputeSubstrate` drains the chat lanes only with a card attached**, one job a call. An instrument that calls it without one measures nothing.
+
 ### The governing facts to check before believing any dashboard field
 
 | Fact | Consequence |

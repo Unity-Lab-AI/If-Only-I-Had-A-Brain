@@ -79,7 +79,11 @@ const SPEECH_FLOOR = 0.04;
 export const CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
   speechReadout() {
-    return this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+    const rd = this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
+    // her word list, so a read can find the word a line is about (new words only; a no-op when nothing was added)
+    const words = this.wordBucketWords;
+    if (Array.isArray(words) && (words !== rd._topicWords || words.length !== rd._topicN)) rd.knowWords(words);
+    return rd;
   },
 
   /**
@@ -205,7 +209,9 @@ export const CLUSTER_EMIT_MIXIN = {
     const b = this._brain;
     const m = b && (b.mood || b);
     if (!m || typeof m.valence !== 'number' || typeof m.arousal !== 'number') return [];
-    return this.speechReadout().liveUnits(m.valence, m.arousal);
+    // `_unsureAbout` — she does not hold what she is about to speak of (set
+    // while a question is taught, and while she wonders about a word)
+    return this.speechReadout().liveUnits(m.valence, m.arousal, this._unsureAbout === true);
   },
 
   /**
