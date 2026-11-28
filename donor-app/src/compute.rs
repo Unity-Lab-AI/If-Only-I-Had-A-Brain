@@ -1671,6 +1671,14 @@ impl Backend {
             Backend::Cuda(e) => e.error_bound(name, eta, theta, margin),
         }
     }
+    /// A forced raise / lower on a run of rows of a bound matrix.
+    fn step_rows_bound(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.step_rows_bound(name, row_start, row_count, raise, eta),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.step_rows_bound(name, row_start, row_count, raise, eta),
+        }
+    }
     /// v0.3.26 — masked bound plasticity (resident pre, explicit sparse post mask).
     fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
         match self {
@@ -2191,6 +2199,12 @@ impl MultiEngine {
         self.engines[g].error_bound(name, eta, theta, margin)
     }
 
+    /// A forced raise / lower on a run of rows, on the engine holding the matrix.
+    pub fn step_rows_bound(&self, name: &str, row_start: u32, row_count: u32, raise: bool, eta: f32) -> Result<bool, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
+        self.engines[g].step_rows_bound(name, row_start, row_count, raise, eta)
+    }
+
     /// v0.3.26 — masked bound plasticity for a type-13 frame. Routes to the engine
     /// holding the matrix; Ok(false) = skipped (not resident / unbound), never an error.
     pub fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
@@ -2615,6 +2629,34 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             }
             let changed3 = want3.iter().zip(values3.iter()).filter(|(a, b)| a != b).count();
             println!("  {} — row spans: the lesson's span matches the host rule ({} weights changed), the other span was left alone though a full sweep would have changed it", $label, changed3);
+            // THE FORCED STEP: on a fresh bound copy, raise rows 3..5 then lower
+            // rows 0..1. Only wires from LIT source cells (0,1,2) in those rows
+            // move, by exactly eta; every other weight is as uploaded.
+            let binding4 = crate::frames::Binding {
+                src_cluster: "errcluster".to_string(), dst_cluster: "errcluster".to_string(),
+                src_start: 0, src_end: 8, dst_start: 0, dst_end: 8,
+            };
+            $eng.upload_sparse("errmat4", 8, 8, &row_ptr, &values, &col_idx, Some(binding4));
+            if !$eng.step_rows_bound("errmat4", 3, 2, true, eta)? { return Err(format!("step_rows_bound refused a bound matrix ({})", $label)); }
+            if !$eng.step_rows_bound("errmat4", 0, 1, false, eta)? { return Err(format!("step_rows_bound refused a bound matrix ({})", $label)); }
+            let mut want4 = values;
+            let mut moved = 0;
+            for i in 0..8usize {
+                let d = if i == 3 || i == 4 { eta } else if i == 0 { -eta } else { 0.0 };
+                if d == 0.0 { continue; }
+                for k in (row_ptr[i] as usize)..(row_ptr[i + 1] as usize) { if lit[col_idx[k] as usize] != 0 { want4[k] = (want4[k] + d).clamp(-2.0, 2.0); moved += 1; } }
+            }
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat4", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want4[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("forced-step MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            println!("  {} — forced step: {} wires from lit cells moved by exactly the step in the named rows, every other weight untouched", $label, moved);
         }};
     }
     println!("self-test: error-driven plasticity parity...");
