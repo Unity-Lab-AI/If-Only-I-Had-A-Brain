@@ -401,8 +401,6 @@ enum Work {
     // shifted by `base` and dropped when they fall outside the slice. Queued in
     // the same lane as the upload so it lands after the matrix exists.
     SliceBase { name: String, base: u32, count: u32 },
-    /// Teach spoken words on a pathway: each item is (lit state cells, the word's bucket).
-    SpeechTeach { req_id: u64, name: String, bucket_size: u32, bucket_count: u32, margin: f32, tries: u32, eta: f32, items: Vec<(Vec<u32>, u32)> },
     // v0.3.48 — a slice built from her published weights, uploaded here, then
     // rows that changed since the snapshot written over it.
     UploadSlice { id: u64, name: String, base: u32, slice: crate::snapshot::Slice, binding: crate::frames::Binding },
@@ -1158,7 +1156,6 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::SetLineage { .. } => "set lineage".to_string(),
                 Work::FreeMatrices { names, clusters } => format!("free x{} + {} cluster(s)", names.len(), clusters.len()),
-                Work::SpeechTeach { name, items, .. } => format!("speech teach {name} x{}", items.len()),
                 Work::PlasticityMode { names, mode, .. } => format!("plasticity mode {} x{}", if mode.is_some() { "error-driven" } else { "default" }, names.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
                 Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
@@ -1558,23 +1555,6 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     if count == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), (base, count)); }
                     println!("[donor] {name} — rows {base}..{} on this card.", base.saturating_add(count));
                 }
-                Work::SpeechTeach { req_id, name, bucket_size, bucket_count, margin, tries, eta, items } => {
-                    // One answer for the whole batch: what she would have said at
-                    // each item BEFORE its lesson (-1 = nothing) and how many
-                    // corrections it took. An item that fails is reported as -2.
-                    let mut said: Vec<i32> = Vec::with_capacity(items.len());
-                    let mut fixes: Vec<u32> = Vec::with_capacity(items.len());
-                    let mut failed: Option<String> = None;
-                    for (pre, target) in &items {
-                        match engine.speech_teach(&name, pre, *target, bucket_size, bucket_count, margin, tries, eta) {
-                            Ok((s, f)) => { said.push(s); fixes.push(f); }
-                            Err(e) => { said.push(-2); fixes.push(0); if failed.is_none() { failed = Some(e); } }
-                        }
-                    }
-                    if let Some(e) = &failed { eprintln!("[donor] speech_teach '{name}' failed: {e}"); }
-                    let reply = serde_json::json!({ "type": "speech_teach_ack", "reqId": req_id, "name": name, "said": said, "fixes": fixes, "error": failed });
-                    let _ = reply_tx.send(Out::Text(reply.to_string()));
-                }
                 Work::PlasticityMode { names, mode, spans } => {
                     // Queued like any other work, so it takes effect in order with the
                     // teach frames around it. Kept by name: a matrix uploaded later
@@ -1909,28 +1889,6 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 if !name.is_empty() {
                                     pending.fetch_add(1, Ordering::Relaxed);
                                     workq.push(Work::SliceBase { name, base, count });
-                                }
-                                continue;
-                            }
-                            // {"type":"speech_teach","reqId":n,"name":"<pathway>","bucketSize":n,"bucketCount":n,
-                            //  "margin":x,"tries":n,"eta":x,"items":[{"pre":[lit state cells],"target":wordBucket},…]}
-                            // Bounded: 256 items, 4,096 lit cells an item, 8 tries.
-                            if v.get("type").and_then(|x| x.as_str()) == Some("speech_teach") {
-                                let gu = |k: &str| v.get(k).and_then(|x| x.as_u64()).unwrap_or(0);
-                                let gfl = |k: &str, d: f32| v.get(k).and_then(|x| x.as_f64()).map(|x| x as f32).unwrap_or(d);
-                                let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
-                                let items: Vec<(Vec<u32>, u32)> = v.get("items").and_then(|x| x.as_array())
-                                    .map(|a| a.iter().take(256).filter_map(|it| {
-                                        let pre: Vec<u32> = it.get("pre")?.as_array()?.iter().take(4096).filter_map(|c| c.as_u64().map(|c| c as u32)).collect();
-                                        Some((pre, it.get("target")?.as_u64()? as u32))
-                                    }).collect())
-                                    .unwrap_or_default();
-                                if !name.is_empty() && !items.is_empty() && gu("bucketSize") > 0 && gu("bucketCount") > 0 {
-                                    pending.fetch_add(1, Ordering::Relaxed);
-                                    workq.push(Work::SpeechTeach {
-                                        req_id: gu("reqId"), name, bucket_size: gu("bucketSize") as u32, bucket_count: gu("bucketCount") as u32,
-                                        margin: gfl("margin", 0.1), tries: (gu("tries") as u32).clamp(1, 8), eta: gfl("eta", 0.05), items,
-                                    });
                                 }
                                 continue;
                             }
