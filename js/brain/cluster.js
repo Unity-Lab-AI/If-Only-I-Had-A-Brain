@@ -1262,10 +1262,17 @@ export class NeuronCluster {
         try { return process?.env?.DREAM_SEM_TOPOGRAPHIC === '1'; }
         catch { return false; }
       })();
+      // ⛔ `letter-phon` IS NOT ALIGNED, and is off the list (the note above said
+      // it was). A letter is laid out by which letter it is (26 blocks); its
+      // sound is laid out by which of 24 sound features it has. Block 'a' of
+      // `letter` sits opposite an arbitrary slice of `phon`, so 70 % of a sound
+      // cell's wires pointed at one letter that mostly has nothing to do with
+      // it. Measured with the patterns the letter lessons write, 300 wires:
+      // letter → sound 58.5 % of taught cells past threshold and 17 of 26
+      // letters ranked right; sound → letter 53.3 %, 13 of 26. `letter-motor`
+      // (the same 26 blocks on both sides) is aligned: 100 %, 26 of 26.
       const TOPOGRAPHIC_PAIRS = new Set([
         'letter-motor', 'motor-letter',
-        'letter-phon', 'phon-letter',
-        'phon-motor', 'motor-phon',
       ]);
       if (_semTopographic) {
         for (const k of ['sem-motor', 'motor-sem']) TOPOGRAPHIC_PAIRS.add(k);
