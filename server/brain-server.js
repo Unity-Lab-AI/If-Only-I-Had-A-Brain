@@ -6659,6 +6659,14 @@ class ServerBrain {
       if (!g) { g = { mode: { eta: m.eta, theta: m.theta, margin: m.margin }, names: [] }; byMode.set(key, g); }
       g.names.push(`${cortex.name}_${pn}`);
     }
+    // The wiring inside the cortex is one more matrix on the card, under its own name.
+    const mi = cortex.synapses && cortex.synapses.errorDriven;
+    if (mi) {
+      const key = `${mi.eta}|${mi.theta}|${mi.margin}`;
+      let g = byMode.get(key);
+      if (!g) { g = { mode: { eta: mi.eta, theta: mi.theta, margin: mi.margin }, names: [] }; byMode.set(key, g); }
+      g.names.push(`${cortex.name}_intraSynapses`);
+    }
     let n = 0;
     for (const g of byMode.values()) {
       ws.send(JSON.stringify({ type: 'plasticity_mode', names: g.names, mode: g.mode }));

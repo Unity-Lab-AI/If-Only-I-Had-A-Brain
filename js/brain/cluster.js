@@ -666,6 +666,14 @@ export class NeuronCluster {
       this._intraTopologyThunk = null;
       _buildIntraTopology();
     }
+    // `opts.errorDrivenIntra` (true, or { eta, theta, margin }) puts the wiring
+    // INSIDE the cluster in the only-when-wrong mode: a lesson's lit target cells
+    // are what should fire for its lit source cells, and a wire changes only
+    // where a cell gets that wrong. Off unless asked for.
+    if (opts.errorDrivenIntra) {
+      const m = opts.errorDrivenIntra;
+      this.synapses.errorDriven = { eta: m.eta ?? 0.05, theta: m.theta ?? 0.5, margin: m.margin ?? 0.25 };
+    }
 
     // Per-region attention gain map. Posner attention
     // network functionally — amygdala (valence/arousal) and basal-
