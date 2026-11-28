@@ -1057,6 +1057,12 @@ export class NeuronCluster {
         ['sem',      'motor'],
         ['motor',    'letter'],
         ['auditory', 'phon'],
+        // READING BY SIGHT. A written word's letters-in-order code in `letter`
+        // (`Curriculum._spellingCells`) onto the word's own cells in `sem`, and
+        // back (meaning → how it is spelled). The sounding-out route
+        // (letter → phon → sem) stays; this is the direct one, and it is the
+        // pathway the READ gates measure.
+        ['letter',   'sem'],
         // ⛔ NO `['sem', 'word_motor']` PAIR. What she says is read by the speech
         // readout (`speech-readout.js`): active units of the speaking state →
         // word slots, every slot reading every unit. As a cell-to-cell sheet

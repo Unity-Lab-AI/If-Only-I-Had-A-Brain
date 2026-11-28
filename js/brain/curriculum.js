@@ -15496,6 +15496,65 @@ export class Curriculum {
     return cells.length;
   }
 
+  /**
+   * THE CELLS A WRITTEN WORD LIGHTS — its spelling, as she sees it on a page.
+   *
+   * A word on a page is its letters IN ORDER. One letter alone says almost
+   * nothing about which word it is, so the page code is built from parts that
+   * together pin the word down and that words spelled alike share:
+   *   · each letter at its place from the front        ("c" first, "a" second …)
+   *   · each letter at its place from the back         (endings: -ing, -ed, -s)
+   *   · each pair of neighbouring letters              ("ca", "at")
+   *   · how long the word is
+   * Every part lights a few cells of the region, chosen by a hash of the part,
+   * so the same word always lights the same cells, two words that share a
+   * part share those cells, and nothing here depends on a list of words: any
+   * string of letters has a code, taught or not.
+   *
+   * Returns region-relative cell indices (ascending, no repeats).
+   */
+  _spellingCells(word, region) {
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    const n = region ? (region.end - region.start) : 0;
+    if (!w || !(n > 0)) return _NO_CELLS;
+    const cache = this._spellCellCache || (this._spellCellCache = new Map());
+    const key = n + '|' + w;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const parts = [];
+    const L = Math.min(w.length, 16);
+    for (let i = 0; i < L; i++) { parts.push('f' + i + w[i]); parts.push('b' + i + w[w.length - 1 - i]); }
+    for (let i = 0; i + 1 < w.length && i < 16; i++) parts.push('p' + w[i] + w[i + 1]);
+    parts.push('n' + Math.min(w.length, 16));
+    // The same share of the region a word's meaning lights (8 of every 300
+    // cells), spread evenly over its parts, at least 2 cells a part.
+    const active = Math.max(8, Math.round(n * (8 / 300)));
+    const per = Math.max(2, Math.round(active / parts.length));
+    const set = new Set();
+    for (const p of parts) {
+      const before = set.size;
+      for (let t = 0; set.size - before < per && t < per * 8; t++) set.add(_cellHash(p, t) % n);
+    }
+    const out = Int32Array.from(set).sort();
+    if (cache.size > 60000) cache.clear();
+    cache.set(key, out);
+    return out;
+  }
+
+  /** Light a written word's cells in a region (`_spellingCells`), host copy and card alike. Returns the number lit. */
+  _writeSpelling(region, word) {
+    const cluster = this.cluster;
+    if (!cluster || !region) return 0;
+    const cells = this._spellingCells(word, region);
+    if (!cells.length) return 0;
+    for (let i = 0; i < cells.length; i++) cluster.lastSpikes[region.start + cells[i]] = 1;
+    if (cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice) {
+      const regionName = this._resolveRegionName(cluster, region);
+      if (regionName) { try { cluster._gpuProxy.writeSpikeSlice(regionName, Array.from(cells)); } catch { /* non-fatal */ } }
+    }
+    return cells.length;
+  }
+
   // Reverse-lookup a region name from the {start,end} object. Cached
   // per-cluster so a curriculum run with thousands of _writeTiledPattern
   // calls doesn't re-scan cluster.regions on every call.

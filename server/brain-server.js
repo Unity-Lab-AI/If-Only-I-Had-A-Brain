@@ -3547,9 +3547,9 @@ class ServerBrain {
         ['sem', 'motor'],     ['motor', 'sem'],
         ['motor', 'letter'],  ['letter', 'motor'],
         ['auditory', 'phon'], ['phon', 'auditory'],
-        // No sem↔word_motor pair: what she says is read by the speech readout
-        // (js/brain/speech-readout.js), a table in host memory, not a card
-        // matrix. 14 cross-projections + the intra matrix = 15 on the card.
+        ['letter', 'sem'],    ['sem', 'letter'],     // reading by sight, and spelling from meaning
+        // No sem↔word_motor pair in this list. 16 cross-projections + the intra
+        // matrix = 17 on the card.
       ];
       // ⛔⛔ THE TWO TERMS BELOW WERE MISSING, AND THEY ERRED IN OPPOSITE
       // DIRECTIONS SO THE TOTAL LOOKED PLAUSIBLE. Measured against the real
