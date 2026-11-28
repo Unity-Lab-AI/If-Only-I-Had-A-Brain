@@ -391,6 +391,8 @@ enum Work {
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
     // v0.3.56 — `clusters` drops resident neuron state too (an older brain sends none).
     FreeMatrices { names: Vec<String>, clusters: Vec<String> },
+    /// Put matrices into (Some) or out of (None) error-driven learning: (eta, theta, margin).
+    PlasticityMode { names: Vec<String>, mode: Option<(f32, f32, f32)> },
     // v0.3.48 — this card holds rows [base, base + rows) of a matrix, not all of
     // it. A lesson's `Masked` rows are full-matrix row numbers, so they are
     // shifted by `base` and dropped when they fall outside the slice. Queued in
@@ -1151,6 +1153,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::SetLineage { .. } => "set lineage".to_string(),
                 Work::FreeMatrices { names, clusters } => format!("free x{} + {} cluster(s)", names.len(), clusters.len()),
+                Work::PlasticityMode { names, mode } => format!("plasticity mode {} x{}", if mode.is_some() { "error-driven" } else { "default" }, names.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
                 Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
                 Work::PatchValues { name, vals, .. } => format!("slice patch {name} x{}", vals.len()),
@@ -1549,6 +1552,19 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     if count == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), (base, count)); }
                     println!("[donor] {name} — rows {base}..{} on this card.", base.saturating_add(count));
                 }
+                Work::PlasticityMode { names, mode } => {
+                    // Queued like any other work, so it takes effect in order with the
+                    // teach frames around it. Kept by name: a matrix uploaded later
+                    // (a move, a re-upload) learns by the same rule.
+                    let mut held = 0usize;
+                    for n in &names { if engine.set_plasticity_mode(n, mode) > 0 { held += 1; } }
+                    match mode {
+                        Some((eta, theta, margin)) => println!("[donor] {} matrix(es) now learn only when wrong (step {eta}, threshold {theta}, margin {margin}); {held} resident here.", names.len()),
+                        None => println!("[donor] {} matrix(es) back to the default learning rule; {held} resident here.", names.len()),
+                    }
+                    let reply = serde_json::json!({ "type": "plasticity_mode_ack", "names": names, "errorDriven": mode.is_some(), "held": held });
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                }
                 Work::FreeMatrices { names, clusters } => {
                     for n in &names { slice_base.remove(n); }
                     let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
@@ -1787,7 +1803,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch") | Some("plasticity_mode")));
                         if let Some(v) = ckpt_msg {
                             // v0.3.48 — build my slice from her published weights (on a
                             // thread: downloads take minutes), then queue the upload.
@@ -1856,6 +1872,20 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 if !name.is_empty() {
                                     pending.fetch_add(1, Ordering::Relaxed);
                                     workq.push(Work::SliceBase { name, base, count });
+                                }
+                                continue;
+                            }
+                            // {"type":"plasticity_mode","names":[…],"mode":{"eta":…,"theta":…,"margin":…}}
+                            // — "mode": null puts them back on the default rule.
+                            if v.get("type").and_then(|x| x.as_str()) == Some("plasticity_mode") {
+                                let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
+                                    .unwrap_or_default();
+                                let gf = |o: &serde_json::Value, k: &str, d: f32| o.get(k).and_then(|x| x.as_f64()).map(|x| x as f32).unwrap_or(d);
+                                let mode = v.get("mode").filter(|m| m.is_object()).map(|m| (gf(m, "eta", 0.05), gf(m, "theta", 0.5), gf(m, "margin", 0.25)));
+                                if !names.is_empty() {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::PlasticityMode { names, mode });
                                 }
                                 continue;
                             }
