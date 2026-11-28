@@ -443,12 +443,54 @@ export class SparseMatrix {
     const rowBufCol = new Uint32Array(effFanout);
     const rowBufVal = new WEIGHT_ARRAY(effFanout);
 
+    // `opts.spans` — [[start, end), …] ascending, not overlapping: the regions
+    // of the cluster. A cell inside a span takes `spanFrac` (0.95) of its
+    // wires from cells of ITS OWN span, picked evenly across it, and the rest
+    // from anywhere wired. This is what "the wiring inside a region" has to
+    // be for one pattern in a region to bring up another: the two patterns'
+    // cells sit anywhere in the region, so a cell needs wires from all over
+    // it. (Neighbour-only wiring gave a cell 4.2 lit inputs of 300 for a word;
+    // measured 78.8 % of taught cells past threshold against 99 % on the
+    // pathways between regions, which are wired evenly.)
+    const spans = Array.isArray(opts.spans) ? opts.spans : null;
+    const spanFrac = opts.spanFrac ?? 0.95;
+    let spanAt = 0;
+
     let idx = 0;
     this.rowPtr[0] = 0;
     for (let i = 0; i < rows; i++) {
       if (i >= wired) { this.rowPtr[i + 1] = idx; continue; }
       picks.clear();
       let filled = 0;
+
+      if (spans) {
+        while (spanAt < spans.length && i >= spans[spanAt][1]) spanAt++;
+        const sp = (spanAt < spans.length && i >= spans[spanAt][0]) ? spans[spanAt] : null;
+        const len = sp ? sp[1] - sp[0] : 0;
+        if (sp && len > effFanout * 2) {
+          const inSpan = Math.round(effFanout * spanFrac);
+          let tries = 0; const maxTries = effFanout * 6;
+          while (filled < inSpan && tries < maxTries) {
+            const col = sp[0] + Math.floor(_initRand() * len);
+            tries++;
+            if ((col === i && noSelfConnect) || picks.has(col)) continue;
+            picks.add(col);
+            rowBufCol[filled] = col;
+            rowBufVal[filled] = (_initRand() < excitatoryRatio ? 1 : -1) * (0.1 + _initRand() * 0.4) * strength;
+            filled++;
+          }
+          tries = 0;
+          while (filled < effFanout && tries < maxTries) {
+            const col = Math.floor(_initRand() * ring);
+            tries++;
+            if ((col === i && noSelfConnect) || picks.has(col)) continue;
+            picks.add(col);
+            rowBufCol[filled] = col;
+            rowBufVal[filled] = (_initRand() < excitatoryRatio ? 1 : -1) * (0.1 + _initRand() * 0.4) * strength;
+            filled++;
+          }
+        }
+      }
 
       // Tier 1: local — sample localCount from [i-radiusLocal, i+radiusLocal]
       let attempts = 0;

@@ -655,6 +655,8 @@ export class NeuronCluster {
         radiusMed: this.smallWorldRadiusMed,
         // the speaking-state cells at the end of the cortex take no inside wires
         wired: (name === 'cortex' && opts.speechUnitCells) ? size - SPEECH_LAYOUT.G : 0,
+        // `opts.regionWiring`: a cell's inside wires come from its own region
+        spans: opts.regionWiring ? this._regionSpans() : null,
       });
     } else {
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}×${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
@@ -667,7 +669,10 @@ export class NeuronCluster {
       if (_logIntra) console.log(`[Cluster ${name}] intra-synapse topology DEFERRED — a matching checkpoint is queued and would overwrite it anyway (saves the full construction pass at ${size.toLocaleString()} neurons). ensureIntraTopology() builds it if the restore does not deliver.`);
     } else {
       this._intraTopologyThunk = null;
-      _buildIntraTopology();
+      // The cortex is wired once its regions are known (a region's cells take
+      // their inside wires from that region); every other cluster is wired now.
+      if (name === 'cortex') this._buildIntraAfterRegions = _buildIntraTopology;
+      else _buildIntraTopology();
     }
     // `opts.errorDrivenIntra` (true, or { eta, theta, margin }) puts the wiring
     // INSIDE the cluster in the only-when-wrong mode: a lesson's lit target cells
@@ -899,6 +904,8 @@ export class NeuronCluster {
         this.regions.speech = { start: s, end: size };
         this._speechUnitCells = true;
       }
+      // the inside wiring, now that the regions exist (see `_buildIntraAfterRegions`)
+      if (this._buildIntraAfterRegions) { const build = this._buildIntraAfterRegions; this._buildIntraAfterRegions = null; build(); }
 
       // Region-boundary respect for microcolumns/six-layer lamination/hub neurons. The
       // earlier microcolumns/six-layer lamination/hub neurons assignment block ran BEFORE regions
@@ -4558,6 +4565,18 @@ export class NeuronCluster {
    * @param {string} reason — logged when the build actually has to happen
    * @returns {boolean} true if the topology was built here
    */
+  /**
+   * The cortex's regions as [[start, end), …] in order: every region that no
+   * other region contains (so `sem`, not `sem_ela`), leaving out the
+   * speaking-state run, which has no inside wires. Null when there are none.
+   */
+  _regionSpans() {
+    const all = Object.entries(this.regions || {}).filter(([n, r]) => n !== 'speech' && r && r.end > r.start);
+    const top = all.filter(([n, r]) => !all.some(([m, q]) => m !== n && q.start <= r.start && q.end >= r.end && (q.end - q.start) > (r.end - r.start)));
+    const spans = top.map(([, r]) => [r.start, r.end]).sort((a, b) => a[0] - b[0]);
+    return spans.length ? spans : null;
+  }
+
   ensureIntraTopology(reason = 'unspecified') {
     const thunk = this._intraTopologyThunk;
     if (!thunk) return false;
