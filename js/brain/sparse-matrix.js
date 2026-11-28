@@ -903,7 +903,27 @@ export class SparseMatrix {
   /**
    * Hebbian: ΔW = η · post · pre
    */
+  /**
+   * A matrix that carries `errorDriven` learns by ONE rule whichever teaching
+   * call reaches it — the same contract the card keeps by matrix name. A
+   * strengthening call becomes `errorUpdate` with the matrix's own numbers
+   * (every row in the caller's row range: a resting cell can be wrong, so a
+   * list of lit rows is not enough); a weakening call does nothing, because
+   * the rule already lowers a cell that fires for the wrong input.
+   * Returns undefined when the matrix is not in the mode.
+   */
+  _errorDrivenInstead(preSpikes, postSpikes, lr, opts) {
+    const m = this.errorDriven;
+    if (!m) return undefined;
+    if (!(lr > 0)) return 0;
+    return this.errorUpdate(preSpikes, postSpikes, m.eta, {
+      theta: m.theta, margin: m.margin,
+      rowStart: opts && opts.rowStart, rowEnd: opts && opts.rowEnd,
+    });
+  }
+
   hebbianUpdate(preSpikes, postSpikes, lr, opts) {
+    if (this.errorDriven) { this._errorDrivenInstead(preSpikes, postSpikes, lr, opts); return; }
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     // Null-CSR guard — post CPU CSR free this call would crash at
     // `rowPtr[i]` / `values[k]`. Silent no-op keeps teach paths safe
@@ -956,6 +976,10 @@ export class SparseMatrix {
    * replacement for the per-projection Hebbian call in the teach paths.
    */
   ojaUpdate(preSpikes, postSpikes, lr, opts) {
+    if (this.errorDriven) {
+      const changed = this._errorDrivenInstead(preSpikes, postSpikes, lr, opts);
+      return (opts && opts.trackDelta) ? changed * this.errorDriven.eta : undefined;
+    }
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return;
 
@@ -1061,6 +1085,7 @@ export class SparseMatrix {
    * together — push-pull discrimination instead of passive superposition.
    */
   antiHebbianUpdate(preSpikes, postSpikes, lr, opts) {
+    if (this.errorDriven) return (opts && opts.trackDelta) ? 0 : undefined;   // the rule lowers wrong cells itself
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return;
 
