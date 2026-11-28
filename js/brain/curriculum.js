@@ -15555,6 +15555,69 @@ export class Curriculum {
     return cells.length;
   }
 
+  /**
+   * READING BY SIGHT — the lesson. The written word's cells are lit in `letter`
+   * and the word's own cells in `sem`, and the two pathways between them learn
+   * (only where a cell is wrong): seeing the spelling brings up the meaning,
+   * and holding the meaning brings up the spelling. Needs the word-cell code
+   * (a meaning has to be a pattern of its own to be read back) and the
+   * `letter↔sem` pathways; returns false, teaching nothing, without them.
+   */
+  async _teachReadingBySight(word, opts = {}) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections;
+    if (!R || !R.letter || !R.sem || !proj || !proj.letter_to_sem || cluster.wordCellCode !== true) return false;
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    if (!w) return false;
+    const reps = opts.reps ?? 4;
+    const wl = proj.sem_to_letter ? ['letter_to_sem', 'sem_to_letter'] : ['letter_to_sem'];
+    this._clearSpikes(['letter', 'sem']);
+    if (!this._writeSpelling(R.letter, w) || !this._writeWordPattern(R.sem, w)) { this._clearSpikes(['letter', 'sem']); return false; }
+    for (let rep = 0; rep < reps; rep++) {
+      await this._teachHebbian(cluster.learningRate, { projectionsWhitelist: wl, skipIntraSynapses: true });
+    }
+    this._clearSpikes(['letter', 'sem']);
+    const st = this._readingLesson || (this._readingLesson = { taught: 0 });
+    st.taught++;
+    return true;
+  }
+
+  /**
+   * READ — does she read this written word? The word's spelling is lit, sent
+   * through `letter_to_sem`, and two things must hold in what arrives at `sem`:
+   * the word's own cells are driven (at least half of them past the pathway's
+   * firing threshold), and no other word she knows is driven as fully. A word
+   * she was never taught to read lights a spelling that shares parts with
+   * taught words but drives no pattern of its own, so it does NOT read — which
+   * is what makes this a measurement.
+   * `among` — the words to compare against (default: every word she has a slot
+   * for). Returns { read, own, rival, rivalWord }; `reason` when it cannot run.
+   */
+  async _readsWord(word, among = null) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections && cluster.crossProjections.letter_to_sem;
+    if (!R || !R.letter || !R.sem || !proj) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'no letters→meaning pathway' };
+    if (cluster.wordCellCode !== true) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'words have no cells of their own in this build' };
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    const lit = this._spellingCells(w, R.letter);
+    if (!lit.length) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'nothing to read' };
+    const out = await this._probePropagate('letter_to_sem', null, { active: Array.from(lit), size: R.letter.end - R.letter.start });
+    if (!out) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'the pathway gave no answer' };
+    const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
+    const driven = (cand) => { const c = this._wordCells(cand, R.sem); if (!c.length) return 0; let k = 0; for (let i = 0; i < c.length; i++) if (out[c[i]] >= theta) k++; return k / c.length; };
+    const own = driven(w);
+    const list = Array.isArray(among) ? among : (Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : []);
+    let rival = 0, rivalWord = null;
+    for (const cand of list) {
+      if (!cand || cand === w) continue;
+      const d = driven(cand);
+      if (d > rival) { rival = d; rivalWord = cand; }
+    }
+    return { read: own >= 0.5 && own > rival, own, rival, rivalWord };
+  }
+
   // Reverse-lookup a region name from the {start,end} object. Cached
   // per-cluster so a curriculum run with thousands of _writeTiledPattern
   // calls doesn't re-scan cluster.regions on every call.
