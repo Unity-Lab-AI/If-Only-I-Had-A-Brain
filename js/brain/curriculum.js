@@ -28592,6 +28592,20 @@ export class Curriculum {
     const wordEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
       ? sharedEmbeddings.getEmbedding(cleanWord) : null;
 
+    // === READING BY SIGHT: the written word ⇄ its meaning ===
+    // Knowing a word includes knowing it on a page. The whole spelling (its
+    // letters in order) is taught onto the word's own meaning cells and back
+    // (`_teachReadingBySight`) — this is what the READ gates measure. It runs
+    // first so the per-letter layers below, which clear and rewrite `letter`,
+    // start from a clean sheet. Skipped (returns false) in a build without the
+    // letters→meaning pathway or the word-cell code.
+    if (wordEmb && wordEmb.length > 0) {
+      const _rT = Date.now();
+      try { await this._teachReadingBySight(cleanWord, { reps }); } catch (e) { console.warn(`[Curriculum] reading-by-sight lesson for "${cleanWord}" failed: ${e && e.message ? e.message : e}`); }
+      const _wr = this._wordIntReadMs || (this._wordIntReadMs = { ms: 0, words: 0 });
+      _wr.ms += Date.now() - _rT; _wr.words++;
+    }
+
     const firstLetterOneHot = encodeLetter(letters[0]);
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
 
