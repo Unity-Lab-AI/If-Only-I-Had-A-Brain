@@ -1191,22 +1191,50 @@ export class SparseMatrix {
    * source cells in `preIdx` (a list of column indices). The read a spoken
    * word is taken from; the card's `propagate_bucket_means` is the same sum.
    */
-  bucketMeans(preIdx, bucketSize, bucketCount) {
-    const { rows, cols, values, colIdx, rowPtr } = this;
-    const out = new Float32Array(bucketCount);
-    if (!values || !rowPtr || !colIdx || !(bucketSize > 0)) return out;
-    if (!this._litMark || this._litMark.length !== cols) this._litMark = new Uint8Array(cols);
-    const lit = this._litMark;
-    for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 1; }
-    for (let b = 0; b < bucketCount; b++) {
-      const r0 = b * bucketSize; if (r0 >= rows) break;
-      const r1 = Math.min(rows, r0 + bucketSize);
-      let s = 0;
-      for (let k = rowPtr[r0]; k < rowPtr[r1]; k++) if (lit[colIdx[k]]) s += values[k];
-      out[b] = s / (r1 - r0);
+  bucketMeans(preIdx, bucketSize, bucketCount, out = null) {
+    const { rows, cols, values } = this;
+    if (!out || out.length < bucketCount) out = new Float32Array(bucketCount); else out.fill(0, 0, bucketCount);
+    if (!values || !(bucketSize > 0)) return out;
+    // Walk only the wires that leave a LIT source cell (the column index), so a
+    // read costs (lit cells × wires leaving each), not the whole pathway.
+    const ci = this.columnIndex();
+    if (!ci) return out;
+    const { colPtr, rowOf, at } = ci;
+    for (let i = 0; i < preIdx.length; i++) {
+      const c = preIdx[i]; if (!(c >= 0 && c < cols)) continue;
+      for (let k = colPtr[c]; k < colPtr[c + 1]; k++) {
+        const b = (rowOf[k] / bucketSize) | 0;
+        if (b < bucketCount) out[b] += values[at[k]];
+      }
     }
-    for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 0; }
+    for (let b = 0; b < bucketCount; b++) {
+      const r0 = b * bucketSize; if (r0 >= rows) { out[b] = 0; continue; }
+      out[b] /= (Math.min(rows, r0 + bucketSize) - r0);
+    }
     return out;
+  }
+
+  /**
+   * The same wiring, listed by SOURCE cell: for column c, entries
+   * colPtr[c] .. colPtr[c+1] give the target row (`rowOf`) and where that
+   * wire's weight sits in `values` (`at`). Built once and kept — the wiring of
+   * a matrix read this way never changes shape, only its weights.
+   */
+  columnIndex() {
+    const { cols, colIdx, rowPtr, rows } = this;
+    if (!colIdx || !rowPtr) return null;
+    const nnz = rowPtr[rows];
+    if (this._colIndex && this._colIndex.nnz === nnz) return this._colIndex;
+    const colPtr = new Uint32Array(cols + 1);
+    for (let k = 0; k < nnz; k++) colPtr[colIdx[k] + 1]++;
+    for (let c = 0; c < cols; c++) colPtr[c + 1] += colPtr[c];
+    const rowOf = new Uint32Array(nnz), at = new Uint32Array(nnz);
+    const fill = colPtr.slice(0, cols);
+    for (let r = 0; r < rows; r++) {
+      for (let k = rowPtr[r]; k < rowPtr[r + 1]; k++) { const p = fill[colIdx[k]]++; rowOf[p] = r; at[p] = k; }
+    }
+    this._colIndex = { nnz, colPtr, rowOf, at };
+    return this._colIndex;
   }
 
   /** Add `d` to every wire from a lit source cell into rows [rowStart, rowStart + rowCount). */
