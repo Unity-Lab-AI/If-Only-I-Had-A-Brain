@@ -1,5 +1,9 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐ 2026-11-28 — THE BOARD IS CLOSED AND TEMPLATED, AND SHE IS BEING STARTED
+>
+> Gee, asked with options: ***"Template now, start her, then read the five"*.** All **63** rows closed · board **137,210 → 9,542 bytes** · archived **byte-for-byte** in `docs/FINALIZED-ARCHIVE-TODO-2026-11-28.md`, verified **EQUAL** (md5 `97cc80bc0702cc0d340e7e4f3b1ce50b` on both) and audited by string match (63 rows, 63 tags, 0 missing) **before one row was removed.** Two rows open on the fresh board: `FIRSTSTART.1` (the five reads that need a running brain, consolidated with their it-worked / it-did-not readings) and `MINDPOP.2` (three authored sentence shapes per word in her word lesson — his ruling, nothing changed). ⚠ One row was caught at `- [ ]` with its verdict already written inside it, found by **counting** open rows rather than remembering.
+
 > # 🛑 2026-11-28 (latest, 59th) — THE POP-UPS ARE COMPOSED BY HER NOW (72 WRITTEN SHAPES → 172 OF HER OWN LINES); A MEMORY CAN REACH THE STATE SHE ANSWERS IN; AND THREE OF MY OWN INSTRUMENTS FAILED THEIR CONTROLS
 >
 > **Branch: `feature/teach-on-every-card`.** Gee: *"and fix the brain pop ups they arent fully complete and varied and numerous it loooks like a half dozen scriped lines with like yes no variables that switch and is pathetic"* · *"not the dynamic auto generated ones from her equations and need to be that"* · *"dont start her agian until everything is finalized.md and todo is templeted as all would and shall be completed"* · *"is the todo all done?"* — **answer: no.** Board: `docs/TODO.md §MINDPOP`, `§SPEECHREAL.13`, `§SPEECHPATH.10`.
