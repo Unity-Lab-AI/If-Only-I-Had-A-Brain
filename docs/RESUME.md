@@ -1,6 +1,53 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-27 (latest, 56th) — SHE MAKES LINES SHE WAS NEVER TAUGHT, ASKS ABOUT A WORD SHE DOES NOT KNOW, AND COUNTS THE WORDS SHE TOOK IN. NOT BOOTED.
+> # 🛑 2026-11-28 (latest, 57th) — SEVEN FREEZES OF 90–107 SECONDS, AND THE CHANNEL BUILT TO SURVIVE THEM WAS NAMING THE WRONG CODE. SHE IS STOPPED, NOT CRASHED.
+>
+> **Branch: `feature/teach-on-every-card`.** Gee: *"reand now start same corne up get todo items done and savestart her"* · *"are you read workflow files"* · *"after you read*"*. Board: `docs/TODO.md §SAVESTALL.1`.
+>
+> ```
+>   FOUND     she did NOT crash — a stop landed 13 s into her seventh freeze, she could not
+>             answer the graceful ask, and the control plane stopped her at the process level
+>             (gracefulSave: false). Her weights are whole (3,846,253,872 B at 05:19)
+>             · seven freezes on that boot: 7.2 s, 94.6, 92.3, 107.3, 91.9, 93.8, + the one
+>             she was stopped inside · ALL SIX that recovered name the same region — the
+>             runner's gap BETWEEN sections — with an age matching the block to within a
+>             second · ONE synchronous span, not many short ones (late 106.4 s of 113 s,
+>             worst single gap 106.3 s) · and the live watchdog line, the only channel that
+>             survives a freeze which never returns, named a phase the cell had entered
+>             minutes earlier on all seven, because the breadcrumb it reads was written only
+>             when the PHASE label changed
+>   RULED OUT by a number, so they are not chased again: the section's pictures (the 107 s
+>             freeze followed a section with ZERO figures of the 177 in the corpus) · the
+>             checkpoint save (one freeze ran 92.8 s with no save stage in flight, donors=0)
+>             · the episode write (one indexed lookup, a 300-row scan, one insert) · and the
+>             sentence lesson's own shape (28 pre-K sentences at 10,500 sayable words:
+>             3.4 s whole, longest stall 0.3 s)
+>   BUILT     the breadcrumb also fires on a teach-stage change, on the lag sampler's own
+>             1 s tick (at most one ~400-byte sync write a second), carrying the teach stage
+>             + age + SEQ, the banked longest-held stage, the save stage + age, its banked
+>             longest, and the chat stage — and the watchdog prints all of them
+>   PROVEN    through the real worker thread against the real payload shape with a real
+>             4.6 s synchronous pin: the live ⛔ MAIN LOOP STALLED line AND the
+>             .loop-freeze.json artifact both carry the full tag set
+>   ARMED     her own re-arming self-profiler set to a 2-minute cadence (machine-local,
+>             gitignored) so its 45 s windows land inside a freeze and name the thief by
+>             file:line — it had never once sampled inside one at its 30-minute default
+>   NOT YET   booted. The gap's own 92 s is still unnamed; the instruments to name it ride
+>             the next start
+>   OPEN      SAVESTALL.1 (the gap) · CHATFREEZE.1 · GATEFREEZE.1 · TEACHALL.1 ·
+>             SPEECHPATH.READ · SPEECHPATH.10 · SPEECHREAL.13 (a decision for Gee)
+> ```
+>
+> **On the first start, read these in this order — they are why the start is worth spending:**
+>
+> | Look for | It reached her | It did not |
+> |---|---|---|
+> | The live stall line names the real region | a `⛔ MAIN LOOP STALLED` line carrying `teachStage=…(+Nms seq=N)` beside the phase | the line still ends at `rssMB=` — the breadcrumb did not pick up the stage |
+> | The named stage IS the stall | its age matches the block length, and `seq` is frozen (nothing marked is running) or climbing (the named stage really is) | a small `teachStageMax` on a long block — the stall is in code nothing has marked, and that says where to mark next |
+> | Her profiler lands inside a freeze | a `[CPUProfile] TOP SELF-TIME` block whose top rows are not `(idle)` — the thief by `file:line`, with `(garbage collector)` ruled in or out | every window still 85–90 % `(idle)` — it keeps missing the freeze and the cadence goes lower |
+> | Every connected card teaches | both cards reporting teach ops, and lesson speed measured before and after | one card teaching while the other idles |
+>
+> # 🛑 2026-11-27 (56th) — SHE MAKES LINES SHE WAS NEVER TAUGHT, ASKS ABOUT A WORD SHE DOES NOT KNOW, AND COUNTS THE WORDS SHE TOOK IN. NOT BOOTED.
 >
 > **Branch: `feature/new-words-and-rules`.** Gee: *"okay the issue of her never producing what was never teaught we teach her how to create nd conclude and formulate bvia eqautional math of language laws and rules and characteriestics.... just like humans do... "i before e except after c" so that equationally when she sees a new word(should alread y exist>) she looks it up and incorportests the under standing or says like arreal peson  what does ""  word mean? and incorportests the answer with discernment into her understandings. That was the whole learns new words and counter for it on dashboard"* · *"no we arent booting her up till everything is done and complete and finished"*. Board: `docs/TODO.md §NEWWORDS`.
 >

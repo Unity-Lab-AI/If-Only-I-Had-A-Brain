@@ -72,10 +72,28 @@ function emit(line) {
 // on every phase change — synchronously, for exactly this reason. Reading
 // that breadcrumb reuses the work instead of duplicating it, and it is a
 // plain readFileSync from this thread, so a jammed parent loop cannot block it.
+// ⭐ AND IT CARRIES THE ATTRIBUTION TAGS NOW, BECAUSE THE PHASE NAME ALONE
+// CONVICTED THE WRONG CODE SEVEN TIMES IN ONE BOOT. The phase is coarse — a pin
+// living inside one phase never changed it — so this line used to name whatever
+// the cell entered minutes ago, while the recovery line printed afterwards by the
+// main loop named the real sub-op with an age matching the stall. The breadcrumb
+// writer now also fires on a teach-stage change and carries every tag, so the one
+// channel that survives a freeze that never returns says the same thing the
+// recovery line would have said. `seq` is here for the question the age alone
+// cannot answer: a frozen seq means the tag is STALE and the stall is in unmarked
+// code; a climbing one means the named stage really is still running.
 function lastBreadcrumb() {
   try {
     const b = JSON.parse(fs.readFileSync(breadcrumbFile, 'utf8'));
-    return `phase="${b.phase}" cell=${b.cell || '(none)'} donors=${b.donors} rssMB=${b.rssMB} breadcrumbAt=${b.at}`;
+    const ms = (v) => (typeof v === 'number' ? `${Math.round(v)}ms` : '?');
+    const tags = [];
+    if (b.teachStage) tags.push(`teachStage=${b.teachStage}(+${ms(b.teachStageAgeMs)} seq=${b.teachStageSeq || 0})`);
+    if (b.teachStageMaxMs) tags.push(`teachStageMax=${b.teachStageMax}(${ms(b.teachStageMaxMs)})`);
+    if (b.saveStage) tags.push(`saveStage=${b.saveStage}(+${ms(b.saveStageAgeMs)})`);
+    if (b.saveStageMaxMs) tags.push(`saveStageMax=${b.saveStageMax}(${ms(b.saveStageMaxMs)})`);
+    if (b.chatStage) tags.push(`chatStage=${b.chatStage}(+${ms(b.chatStageAgeMs)})`);
+    return `phase="${b.phase}" cell=${b.cell || '(none)'} donors=${b.donors} rssMB=${b.rssMB} breadcrumbAt=${b.at}`
+      + (tags.length ? ` ${tags.join(' ')}` : ' (no stage tag was set when this was written)');
   } catch {
     return 'phase=(no breadcrumb on disk yet)';
   }

@@ -17552,14 +17552,40 @@ const _lagTimer = setInterval(() => {
   // `.last-breadcrumb.json` is excluded from the deploy overlay's `--delete`
   // alongside the other runtime state (`STATEWIPE.1`), so a redeploy cannot eat
   // the evidence of the crash that prompted it.
+  // ⛔⛔ THE PHASE ALONE WAS NOT ENOUGH, AND SEVEN FREEZES IN ONE BOOT PROVED IT.
+  //
+  // The phase label is seconds-to-minutes coarse, so a pin that lives INSIDE one
+  // phase never changed it and never rewrote this file. The watchdog thread reads
+  // only this file, so the line it writes WHILE a freeze happens — the one channel
+  // that survives a freeze that never returns — named the phase the cell entered
+  // minutes earlier. Measured: seven stalls of 90-107s each reported
+  // `phase="_teachAssociationPairs"` live, while the recovery line that printed
+  // afterwards named `teachStage=cell:phase-gap:_teachSentenceList` with an age
+  // matching the block to within a second. **The attribution existed in memory the
+  // whole time and was unreachable from the only place that could still speak.**
+  // One of those freezes was then killed at the process level mid-pin, which is
+  // exactly the case where the recovery line never comes.
+  //
+  // So the write is ALSO triggered by the teach stage changing, and the payload
+  // carries every attribution tag the `[EventLoop] BLOCKED` line carries. The cost
+  // law from the original is unchanged and is what bounds this: the trigger is
+  // evaluated on the lag sampler's own 1s tick, so "stage changed" can cost at
+  // most ONE ~400-byte sync write per second no matter how many times `_tstage`
+  // fires between ticks. The maxima come along because a stage that was overwritten
+  // before the last tick is precisely the one that held the loop.
+  //
+  // ⚠ INSTRUMENT ONLY — nothing she is taught changes, so it lands on any press.
   try {
     const _cc = brain.cortexCluster;
     const _ph = (_cc && _cc._activePhase && _cc._activePhase.name)
       || (brain._curriculumInProgress ? 'curriculum' : 'idle');
-    if (_ph !== brain._bcLastPhase) {
+    const _ts = brain._teachStage || null;
+    if (_ph !== brain._bcLastPhase || _ts !== brain._bcLastTeachStage) {
       brain._bcLastPhase = _ph;
+      brain._bcLastTeachStage = _ts;
+      const _nowBc = Date.now();
       fs.writeFileSync(path.join(__dirname, '.last-breadcrumb.json'), JSON.stringify({
-        at: new Date().toISOString(),
+        at: new Date(_nowBc).toISOString(),
         phase: _ph,
         cell: (_cc && _cc._currentCellKey) || null,
         uptimeS: Math.round(process.uptime()),
@@ -17567,7 +17593,23 @@ const _lagTimer = setInterval(() => {
         rssMB: Math.round(process.memoryUsage().rss / 1048576),
         donors: brain._gpuClients ? brain._gpuClients.size : 0,
         cortexFullyReady: !!(_cc && _cc._cortexFullyReady),
-        note: 'LOOPNAME.7 — written SYNCHRONOUSLY on every phase change. If the process froze or was killed, THIS is where it was. Compare `at` against the process start to see how long it survived.',
+        // The innermost teach sub-op and how long it has been in it. When this age
+        // matches the stall length, this sub-op IS the stall.
+        teachStage: _ts,
+        teachStageAgeMs: brain._teachStageAt ? (_nowBc - brain._teachStageAt) : null,
+        teachStageSeq: brain._teachStageSeq || 0,
+        // The longest-held sub-op since the last report, banked by `_tstage` when it
+        // overwrites. A SMALL maximum on a long stall is equally decisive: the stall
+        // is in code nothing has marked, and that says where to mark next.
+        teachStageMax: brain._teachStageMaxName || null,
+        teachStageMaxMs: brain._teachStageMaxMs || null,
+        saveStage: brain._saveStage || null,
+        saveStageAgeMs: (brain._saveStage && brain._saveStageAt) ? (_nowBc - brain._saveStageAt) : null,
+        saveStageMax: brain._saveStageMaxName || null,
+        saveStageMaxMs: brain._saveStageMaxMs || null,
+        chatStage: brain._chatStage || null,
+        chatStageAgeMs: (brain._chatStage && brain._chatStageAt) ? (_nowBc - brain._chatStageAt) : null,
+        note: 'LOOPNAME.7 — written SYNCHRONOUSLY when the phase OR the teach stage changes, on the lag sampler tick (so at most one write per second). If the process froze or was killed, THIS is where it was. Compare `at` against the process start to see how long it survived; compare `teachStageAgeMs` against the stall length to see whether the named stage IS the stall.',
       }));
     }
   } catch { /* a breadcrumb must never be the thing that breaks the loop */ }
