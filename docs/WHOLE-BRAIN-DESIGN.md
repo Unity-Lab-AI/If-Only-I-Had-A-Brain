@@ -184,4 +184,4 @@ So about **276 weights per taught pair** holds 2,000 pairs perfectly and 3,000 p
 | At rest | silent; a cell fires when its wiring, a lesson or drive pushes it |
 | A fresh cortex | comes out this way with no settings at all |
 | Her own lines | a taught sentence word for word only when she means what it was about; otherwise put together from what lines share, with the thing she means named once |
-| A word she does not know | looked up and given her whole word lesson and its definition; asked about by name when there is nothing to look up; the answer weighed before it is taken in |
+| A word she does not know | looked up (formal dictionary, slang dictionary, encyclopedia) and given her whole word lesson and its definition; refused when it is a word of another language; asked about by name when there is nothing to look up; the answer weighed before it is taken in, a doubted answer at a quarter and re-opened on the next meeting; all of it saved with her |

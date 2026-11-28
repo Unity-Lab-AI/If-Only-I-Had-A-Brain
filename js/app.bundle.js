@@ -10291,6 +10291,49 @@ var SemanticEmbeddings = class {
     }
     return dot / (Math.sqrt(normA * normB) || 1);
   }
+  /** Does the table itself hold a vector for this word (not one put together from its letters)? */
+  knows(word) {
+    return this._embeddings.has(String(word || "").toLowerCase().trim());
+  }
+  /**
+   * The k words of the table nearest in meaning to `word` (the word itself left
+   * out), nearest first. One pass that keeps only the k best — no list of the
+   * whole table, no sort — and it hands the loop back every 40,000 words, so a
+   * table of 400,000 does not hold everything else up. Empty when the table
+   * has no vector for the word.
+   */
+  async nearestWords(word, k = 12) {
+    const w = String(word || "").toLowerCase().trim();
+    const a = this._embeddings.get(w);
+    if (!a || !(k > 0)) return [];
+    let na = 0;
+    for (let i = 0; i < a.length; i++) na += a[i] * a[i];
+    if (!(na > 0)) return [];
+    const words = new Array(k).fill(null);
+    const sims = new Float64Array(k).fill(-Infinity);
+    let seen = 0;
+    for (const [other, v] of this._embeddings) {
+      if (++seen % 4e4 === 0) await new Promise((r) => setTimeout(r, 0));
+      if (other === w || !v || v.length !== a.length) continue;
+      let d = 0, nb = 0;
+      for (let i = 0; i < a.length; i++) {
+        d += a[i] * v[i];
+        nb += v[i] * v[i];
+      }
+      if (!(nb > 0)) continue;
+      const s = d / Math.sqrt(na * nb);
+      if (!(s > sims[k - 1])) continue;
+      let j = k - 1;
+      while (j > 0 && s > sims[j - 1]) {
+        sims[j] = sims[j - 1];
+        words[j] = words[j - 1];
+        j--;
+      }
+      sims[j] = s;
+      words[j] = other;
+    }
+    return words.filter(Boolean);
+  }
   /**
    * Find the k most similar words to a given embedding.
    * @param {Float32Array} embedding
@@ -14131,8 +14174,11 @@ var K = {
   about: 8,
   aboutMean: 8,
   live: 2,
-  unsure: 6
+  unsure: 6,
+  thing: 4
 };
+var THING_SALT = 53;
+var UNSURE_SALT = 36;
 var HEARD_MAX = 16;
 var SPEECH_END = -2;
 var MARGIN = 0.1;
@@ -14188,6 +14234,25 @@ var clampW = (v) => v > W_MAX ? W_MAX : v < -W_MAX ? -W_MAX : v;
 var stepUp = (n) => Math.max(VOCAB_STEP, Math.ceil(n / VOCAB_STEP) * VOCAB_STEP);
 var isHeardPair = (u) => u >= L.heardBi && u < L.heardKey;
 var isExact = (u) => u >= L.pair && u < L.heardBag || isHeardPair(u);
+{
+  const of = (text, k, span, salt) => {
+    const o = [];
+    hashUnits(text, k, span, salt, 0, o);
+    return o;
+  };
+  const places = /* @__PURE__ */ new Set();
+  for (let n = 0; n <= 12; n++) for (const u of of("p" + n, K.pos, POS, 21)) places.add(u);
+  const said = of("thing-said", K.thing, POS, THING_SALT), unsaid = of("thing-unsaid", K.thing, POS, THING_SALT);
+  const mood = /* @__PURE__ */ new Set();
+  for (let i = 0; i < 5; i++) {
+    for (const u of of("v" + i, K.live, LIVE, 31)) mood.add(u);
+    for (const u of of("a" + i, K.live, LIVE, 33)) mood.add(u);
+  }
+  const unsure = of("not-knowing", K.unsure, LIVE, UNSURE_SALT);
+  if (said.length !== K.thing || unsaid.length !== K.thing || unsure.length !== K.unsure || said.some((u) => places.has(u) || unsaid.includes(u)) || unsaid.some((u) => places.has(u)) || unsure.some((u) => mood.has(u))) {
+    throw new Error("speech-readout: the said / not-said / not-knowing units share a unit with a neighbour \u2014 choose salts that keep them apart");
+  }
+}
 var aboutMix = (u) => {
   let x = Math.imul(u + 2135587861, 2654435761) >>> 0;
   x ^= x >>> 15;
@@ -14326,7 +14391,7 @@ var SpeechReadout = class {
     if (n >= 2) hashUnits(p[0], K.opener, ID, 23, L.opener, out);
     hashUnits("p" + Math.min(n, 12), K.pos, POS, 21, L.pos, out);
     const own = !h.length && topic ? topic + "|" : "";
-    if (own) hashUnits(p.includes(topic) ? "thing-said" : "thing-unsaid", 4, POS, 37, L.pos, out);
+    if (own) hashUnits(p.includes(topic) ? "thing-said" : "thing-unsaid", K.thing, POS, THING_SALT, L.pos, out);
     if (n >= 2) hashUnits(own + p[n - 2] + " " + p[n - 1], K.conj, CJ, 7, L.pair, out);
     if (n >= 3) hashUnits(own + p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.conj, CJ, 9, L.triple, out);
     if (n >= 4) hashUnits(own + p[n - 4] + " " + p[n - 3] + " " + p[n - 2] + " " + p[n - 1], K.quad, CJ, 10, L.quad, out);
@@ -14418,7 +14483,7 @@ var SpeechReadout = class {
     };
     hashUnits("v" + step(valence, -1, 1), K.live, LIVE, 31, L.live, out);
     hashUnits("a" + step(arousal, 0, 1), K.live, LIVE, 33, L.live, out);
-    if (unsure === true) hashUnits("not-knowing", K.unsure, LIVE, 35, L.live, out);
+    if (unsure === true) hashUnits("not-knowing", K.unsure, LIVE, UNSURE_SALT, L.live, out);
     return unique(out);
   }
   // ── Rows ──────────────────────────────────────────────────────────────────────
@@ -15066,8 +15131,9 @@ var SpeechReadout = class {
       // words AND what the line is about. A file saved before that holds
       // weights on units that no longer mean the same thing, and is refused.
       // v 4: every unit's "say the thing" weight follows the correction counts.
+      // v 5: the said / not-said / not-knowing labels moved to units of their own.
       header: {
-        v: 4,
+        v: 5,
         G: this.G,
         nWords: this.nWords,
         units: nU,
@@ -15094,7 +15160,7 @@ var SpeechReadout = class {
   restore(header, body) {
     const H = header;
     const int = (x) => Number.isInteger(x) && x >= 0;
-    if (!H || H.v !== 4 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
+    if (!H || H.v !== 5 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
     if (H.units > this.G) return false;
     const need = (2 * H.units + 2 * H.entries + 3 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
     let off = 0;
@@ -16673,8 +16739,7 @@ var CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
   speechReadout() {
     const rd = this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
-    const words = this.wordBucketWords;
-    if (Array.isArray(words) && (words !== rd._topicWords || words.length !== rd._topicN)) rd.knowWords(words);
+    rd.knowWords(this.wordBucketWords);
     return rd;
   },
   /**
@@ -16792,10 +16857,10 @@ var CLUSTER_EMIT_MIXIN = {
    * (her lit cells and how she feels), then restores what was in mind before.
    * Probes and gates use this, so they measure the path speech takes.
    */
-  speechStateFor(units) {
+  speechStateFor(units, opts = null) {
     const keepU = this._speechUnits, keepC = this._speechCtx, keepM = this._mindFeats;
     this.setSpeechUnits(units);
-    this._speechCtx = null;
+    this._speechCtx = opts && opts.unsure === true ? { heard: "", prefix: [], about: null, unsure: true } : null;
     this._mindFeats = null;
     const got = this.currentSpeechUnits();
     this.setSpeechUnits(keepU);
@@ -16809,7 +16874,8 @@ var CLUSTER_EMIT_MIXIN = {
     const b = this._brain;
     const m = b && (b.mood || b);
     if (!m || typeof m.valence !== "number" || typeof m.arousal !== "number") return [];
-    return this.speechReadout().liveUnits(m.valence, m.arousal, this._unsureAbout === true);
+    const c = this._speechCtx;
+    return this.speechReadout().liveUnits(m.valence, m.arousal, !!(c && c.unsure === true));
   },
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
@@ -17383,7 +17449,7 @@ var CLUSTER_EMIT_MIXIN = {
       if (_canState && _heardText) {
         _cur._writeSpeechState(_heardText, words, { unitsOnly: true });
       } else if (_canState && (_about || words.length > 0)) {
-        _cur._writeSpeechState("", words, { unitsOnly: true, about: _about });
+        _cur._writeSpeechState("", words, { unitsOnly: true, about: _about, unsure: opts.unsure === true });
       } else if (_taught) {
       } else {
         for (let t = 0; t < TICKS_PER_WORD; t++) {

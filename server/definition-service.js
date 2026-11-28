@@ -215,6 +215,13 @@ function _typoOf(word) {
 // A typo found here is RECORDED (not defined) so the harvest can teach the real
 // word; see typoOf() below.
 const _typoMap = new Map();
+// Which of those are a DICTIONARY'S OWN verdict ("Misspelling of receive."), as
+// against the one-letter-away guess of `_typoOf`. The guess is right for a
+// typo in her reading; it is wrong for a word of another language that happens
+// to sit one letter from an English word ("danke" → dance, "porque" → torque),
+// so a caller that may be looking at any word a person typed asks for the
+// dictionary's verdict (`misspellingByDictionary`).
+const _typoByDictionary = new Set();
 
 // A dictionary's OWN verdict that a spelling is wrong: Wiktionary files "recieve"
 // with the single sense "Misspelling of receive." — that is not a definition to
@@ -385,8 +392,8 @@ function _cacheGet(key) {
   if (!entry.error && Array.isArray(entry.definitions)) {
     const m = _misspellingOf(entry.definitions);
     if (m) {
-      _typoMap.set(key, m);
-      entry = { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: m };
+      _typoMap.set(key, m); _typoByDictionary.add(key);
+      entry = { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: m, typoBy: 'dictionary' };
       _cachePut(key, entry);
       return entry;
     }
@@ -556,8 +563,8 @@ async function getDefinition(word, opts = {}) {
           }
           const _miss = _misspellingOf(union);
           if (_miss) {
-            _typoMap.set(key, _miss);
-            _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss });
+            _typoMap.set(key, _miss); _typoByDictionary.add(key);
+            _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss, typoBy: 'dictionary' });
             return null;
           }
           if (union.length > 0) {
@@ -680,8 +687,8 @@ async function getDefinition(word, opts = {}) {
       }
       const _miss2 = _misspellingOf(definitions);
       if (_miss2) {
-        _typoMap.set(key, _miss2);
-        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss2 });
+        _typoMap.set(key, _miss2); _typoByDictionary.add(key);
+        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true, noDefGen: NODEF_GEN, typoOf: _miss2, typoBy: 'dictionary' });
         return null;
       }
       const first = definitions[0].definition;
@@ -1033,6 +1040,27 @@ function typoOf(word) {
   return (e && e.typoOf) || _typoMap.get(key) || null;
 }
 
+// Does the OFFLINE English dictionary (WordNet) hold this word? Unlike
+// `isRealWord` the answer does not depend on what has been looked up so far,
+// and it does not count a word of another language that an online English
+// dictionary happens to list. Used to judge a word's neighbours, where a
+// steady answer matters more than a complete one.
+function inOfflineDictionary(word) {
+  const key = _normalize(word);
+  if (!key) return false;
+  try { const off = offlineDict.lookup(key); return !!(off && off.length); } catch { return false; }
+}
+
+// The real word a DICTIONARY says this spelling is a misspelling of, or null —
+// never the one-letter-away guess (see `_typoByDictionary`). Cache-only.
+function misspellingByDictionary(word) {
+  const key = _normalize(word);
+  if (!key) return null;
+  const e = cache.get(key);
+  if (e && e.typoOf && e.typoBy === 'dictionary') return e.typoOf;
+  return _typoByDictionary.has(key) ? (_typoMap.get(key) || null) : null;
+}
+
 // ⭐ IS THIS A REAL WORD — answered by a DICTIONARY, never an encyclopedia.
 // Wikipedia and Urban Dictionary answer for names, places, typos and slang
 // spellings ("alquife", "effeminancy"), so "has a definition" stopped meaning
@@ -1053,6 +1081,8 @@ function isRealWord(word) {
 module.exports = {
   isRealWord,
   typoOf,
+  misspellingByDictionary,
+  inOfflineDictionary,
   getDefinition,
   getDefinitionSync,
   getDefinitionsSync,

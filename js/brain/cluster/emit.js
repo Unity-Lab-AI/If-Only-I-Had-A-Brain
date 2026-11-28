@@ -80,9 +80,8 @@ export const CLUSTER_EMIT_MIXIN = {
   /** The one speech readout of this cluster (made on first use, saved with her weights). */
   speechReadout() {
     const rd = this._speechReadout || (this._speechReadout = new SpeechReadout(sharedEmbeddings));
-    // her word list, so a read can find the word a line is about (new words only; a no-op when nothing was added)
-    const words = this.wordBucketWords;
-    if (Array.isArray(words) && (words !== rd._topicWords || words.length !== rd._topicN)) rd.knowWords(words);
+    // her word list, so a read can find the word a line is about (it takes in only words added since the last call)
+    rd.knowWords(this.wordBucketWords);
     return rd;
   },
 
@@ -195,9 +194,10 @@ export const CLUSTER_EMIT_MIXIN = {
    * (her lit cells and how she feels), then restores what was in mind before.
    * Probes and gates use this, so they measure the path speech takes.
    */
-  speechStateFor(units) {
+  speechStateFor(units, opts = null) {
     const keepU = this._speechUnits, keepC = this._speechCtx, keepM = this._mindFeats;
-    this.setSpeechUnits(units); this._speechCtx = null; this._mindFeats = null;
+    // `opts.unsure` — read the state as she would in the feeling of not knowing
+    this.setSpeechUnits(units); this._speechCtx = (opts && opts.unsure === true) ? { heard: '', prefix: [], about: null, unsure: true } : null; this._mindFeats = null;
     const got = this.currentSpeechUnits();
     this.setSpeechUnits(keepU); this._speechCtx = keepC; this._mindFeats = keepM;
     if (this._speechUnitCells) this._mindLitFor = null;   // a meaning in mind lights its cells again on the next read
@@ -209,9 +209,12 @@ export const CLUSTER_EMIT_MIXIN = {
     const b = this._brain;
     const m = b && (b.mood || b);
     if (!m || typeof m.valence !== 'number' || typeof m.arousal !== 'number') return [];
-    // `_unsureAbout` — she does not hold what she is about to speak of (set
-    // while a question is taught, and while she wonders about a word)
-    return this.speechReadout().liveUnits(m.valence, m.arousal, this._unsureAbout === true);
+    // NOT KNOWING travels with the state it was written for (`_speechCtx.unsure`:
+    // a question being taught, or her wondering about a word). It is never a
+    // switch on the cluster — a lesson and a thought of hers can be under way at
+    // once, and each reads its own.
+    const c = this._speechCtx;
+    return this.speechReadout().liveUnits(m.valence, m.arousal, !!(c && c.unsure === true));
   },
 
   /**
@@ -1284,7 +1287,7 @@ export const CLUSTER_EMIT_MIXIN = {
       if (_canState && _heardText) {
         _cur._writeSpeechState(_heardText, words, { unitsOnly: true });
       } else if (_canState && (_about || words.length > 0)) {
-        _cur._writeSpeechState('', words, { unitsOnly: true, about: _about });
+        _cur._writeSpeechState('', words, { unitsOnly: true, about: _about, unsure: opts.unsure === true });
       } else if (_taught) {
         // No seed at all: she says whatever meaning sem already holds (the
         // injected intent), or nothing when nothing is in mind. No cortex ticks.

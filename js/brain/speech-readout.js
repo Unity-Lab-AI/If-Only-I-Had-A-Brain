@@ -74,7 +74,13 @@ const L = (() => {
   l.G = o; return l;
 })();
 const K = { w1: 8, mean: 4, w2: 6, w3: 4, opener: 3, pos: 2, gist: 12, conj: 6, quad: 4, line: 6,
-  bag: 3, bi: 2, heardKey: 8, heardGist: 12, concept: 8, conceptMean: 8, about: 8, aboutMean: 8, live: 2, unsure: 6 };
+  bag: 3, bi: 2, heardKey: 8, heardGist: 12, concept: 8, conceptMean: 8, about: 8, aboutMean: 8, live: 2, unsure: 6, thing: 4 };
+// Three labels live in stripes other labels already use: "the thing is said" /
+// "not said yet" beside the places of a line, and "not knowing" beside the
+// steps of her mood. Each must have units of its own, or it says part of what
+// its neighbour says. These salts give that (checked below when this file
+// loads, so a change to a stripe that breaks it stops her at boot, not later).
+const THING_SALT = 53, UNSURE_SALT = 36;
 const HEARD_MAX = 16;                // words of a heard line that enter the bag / pairs
 
 /** The slot that means "the line is finished". Passed as `target` to teach(). */
@@ -120,6 +126,18 @@ const stepUp = (n) => Math.max(VOCAB_STEP, Math.ceil(n / VOCAB_STEP) * VOCAB_STE
 /** An exact unit stands for one particular run of words (a pair, triple, quad, a whole moment, a heard pair). */
 const isHeardPair = (u) => u >= L.heardBi && u < L.heardKey;
 const isExact = (u) => (u >= L.pair && u < L.heardBag) || isHeardPair(u);
+// The check promised beside THING_SALT / UNSURE_SALT.
+{
+  const of = (text, k, span, salt) => { const o = []; hashUnits(text, k, span, salt, 0, o); return o; };
+  const places = new Set(); for (let n = 0; n <= 12; n++) for (const u of of('p' + n, K.pos, POS, 21)) places.add(u);
+  const said = of('thing-said', K.thing, POS, THING_SALT), unsaid = of('thing-unsaid', K.thing, POS, THING_SALT);
+  const mood = new Set(); for (let i = 0; i < 5; i++) { for (const u of of('v' + i, K.live, LIVE, 31)) mood.add(u); for (const u of of('a' + i, K.live, LIVE, 33)) mood.add(u); }
+  const unsure = of('not-knowing', K.unsure, LIVE, UNSURE_SALT);
+  if (said.length !== K.thing || unsaid.length !== K.thing || unsure.length !== K.unsure
+    || said.some((u) => places.has(u) || unsaid.includes(u)) || unsaid.some((u) => places.has(u)) || unsure.some((u) => mood.has(u))) {
+    throw new Error('speech-readout: the said / not-said / not-knowing units share a unit with a neighbour — choose salts that keep them apart');
+  }
+}
 /** One "about" unit's part of the key for the word a line is about (summed over the units, so order does not matter). */
 const aboutMix = (u) => { let x = Math.imul(u + 0x7F4A7C15, 0x9E3779B1) >>> 0; x ^= x >>> 15; x = Math.imul(x, 0x85EBCA6B) >>> 0; return (x ^ (x >>> 13)) >>> 0; };
 
@@ -248,7 +266,7 @@ export class SpeechReadout {
     // was said to her) is keyed by what was said, as before.
     const own = (!h.length && topic) ? topic + '|' : '';
     // whether she has already said the thing in this line (a thing is named, then talked about — not named again and again)
-    if (own) hashUnits(p.includes(topic) ? 'thing-said' : 'thing-unsaid', 4, POS, 37, L.pos, out);
+    if (own) hashUnits(p.includes(topic) ? 'thing-said' : 'thing-unsaid', K.thing, POS, THING_SALT, L.pos, out);
     if (n >= 2) hashUnits(own + p[n - 2] + ' ' + p[n - 1], K.conj, CJ, 7, L.pair, out);
     if (n >= 3) hashUnits(own + p[n - 3] + ' ' + p[n - 2] + ' ' + p[n - 1], K.conj, CJ, 9, L.triple, out);
     if (n >= 4) hashUnits(own + p[n - 4] + ' ' + p[n - 3] + ' ' + p[n - 2] + ' ' + p[n - 1], K.quad, CJ, 10, L.quad, out);
@@ -325,7 +343,7 @@ export class SpeechReadout {
     // NOT KNOWING is a feeling too: she is about to speak of something she
     // does not hold. Lit while a question is taught and while she wonders, so
     // what she learned to say when unsure (to ask) is what that feeling calls up.
-    if (unsure === true) hashUnits('not-knowing', K.unsure, LIVE, 35, L.live, out);
+    if (unsure === true) hashUnits('not-knowing', K.unsure, LIVE, UNSURE_SALT, L.live, out);
     return unique(out);
   }
 
@@ -775,7 +793,8 @@ export class SpeechReadout {
       // words AND what the line is about. A file saved before that holds
       // weights on units that no longer mean the same thing, and is refused.
       // v 4: every unit's "say the thing" weight follows the correction counts.
-      header: { v: 4, G: this.G, nWords: this.nWords, units: nU, entries: total, moments: this.mem.length, momentUnits: mU, momentTargets: mT,
+      // v 5: the said / not-said / not-knowing labels moved to units of their own.
+      header: { v: 5, G: this.G, nWords: this.nWords, units: nU, entries: total, moments: this.mem.length, momentUnits: mU, momentTargets: mT,
         memSeen: this.memSeen, bytes, mu: this.mu ? Array.from(this.mu) : null, muWords: this.muWords, stats: this.stats },
       buffers,
     };
@@ -790,7 +809,7 @@ export class SpeechReadout {
   restore(header, body) {
     const H = header;
     const int = (x) => Number.isInteger(x) && x >= 0;
-    if (!H || H.v !== 4 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
+    if (!H || H.v !== 5 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
     if (H.units > this.G) return false;
     const need = (2 * H.units + 2 * H.entries + 3 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
     let off = 0;
