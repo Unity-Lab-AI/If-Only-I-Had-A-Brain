@@ -15437,6 +15437,17 @@ export class Curriculum {
    * Returns region-relative cell indices (ascending, no repeats). Cached per
    * (word, region size). A word with no embedding gets its identity cells only.
    */
+  /**
+   * The share of a region one word lights. It decides how many LIT inputs a
+   * cell downstream receives for a word (its wires × this share), and a cell
+   * can only be taught to fire for a word it receives several lit inputs
+   * from. `wordCellShare` on the curriculum overrides the built value.
+   */
+  _wordCellShare() {
+    const s = Number(this.wordCellShare);
+    return (s > 0 && s < 1) ? s : (8 / 300);
+  }
+
   _wordCells(word, region) {
     const w = typeof word === 'string' ? word.toLowerCase().trim() : '';
     const n = region ? (region.end - region.start) : 0;
@@ -15445,7 +15456,7 @@ export class Curriculum {
     const key = n + '|' + w;
     const hit = cache.get(key);
     if (hit) return hit;
-    const active = Math.max(8, Math.round(n * (8 / 300)));
+    const active = Math.max(8, Math.round(n * this._wordCellShare()));
     const half = Math.floor(n / 2);
     const set = new Set();
     // meaning — value-ranked, so only dimensions that can fire are chosen
@@ -15528,7 +15539,7 @@ export class Curriculum {
     parts.push('n' + Math.min(w.length, 16));
     // The same share of the region a word's meaning lights (8 of every 300
     // cells), spread evenly over its parts, at least 2 cells a part.
-    const active = Math.max(8, Math.round(n * (8 / 300)));
+    const active = Math.max(8, Math.round(n * this._wordCellShare()));
     const per = Math.max(2, Math.round(active / parts.length));
     const set = new Set();
     for (const p of parts) {
