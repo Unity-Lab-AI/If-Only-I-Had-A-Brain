@@ -769,6 +769,7 @@ y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &si
  </table>
  <p><strong>Spike detection:</strong> The fast variable x jumps from ≈&minus;1 to &asymp;+3 in a single iteration when the neuron fires, so the clean edge detector (x<sub>n</sub> &le; 0) &and; (x<sub>n+1</sub> &gt; 0) catches exactly one spike per action potential.</p>
  <p><strong>Refractoriness:</strong> without the &beta; term her firing had no middle &mdash; it flipped between ~1.5% and ~20%. With it, a neuron that just fired has to recover first, and her firing settles at the 7.5% target (measured 7.59%).</p>
+ <p><strong><span class="eq-tip" data-tip="In her language cortex a cell is not driven by drive alone. Every step each cell receives the summed weight of its wires from cells that fired the step before, and that sum goes straight into the fast variable, so a cell whose inputs just fired can cross on this very step. Measured on the card's self-test with twenty taught pattern pairs of 54 cells: one step after a source pattern is lit, 54.0 of 54 taught target cells fire and 0.7 of the other 1,946. With the wiring's input switched off: 0.0 and 0.2.">Wiring in her language cortex:</span></strong> x<sub>n+1</sub> = &alpha; / (1 + x<sub>n</sub>&sup2;) + y<sub>n</sub> + g &middot; S<sub>i</sub>, where S<sub>i</sub> = &Sigma;<sub>j</sub> W<sub>ij</sub> &middot; spike<sub>j</sub> is what cell i hears from the cells that just fired, and g = 5. Her cortex cells also rest lower, &sigma; = &minus;1 &minus; 1.75 + clamp(drive / 40, 0, 1) &middot; 1.5, so a cell with no input is silent and how much of her cortex fires is the result of what she is doing. The 7.5% target above is held for her other clusters, not this one.</p>
  <p><strong>Biological drive mapping:</strong> &sigma; = &minus;1.0 + clamp(effectiveDrive / 40, 0, 1) &middot; 1.5, where effectiveDrive = tonic &times; driveBaseline &times; emotionalGate &times; &Psi;gain + errorCorrection. Low drive &rarr; &sigma; &asymp; &minus;1 (silent / period-doubling). High drive &rarr; &sigma; &rarr; +0.5 (fully developed chaotic bursting). Every cluster's hierarchical modulation collapses to this one scalar per step.</p>
  <p><strong>GPU storage:</strong> (x, y) packed as <code>vec2&lt;f32&gt;</code> per neuron &mdash; 8 bytes/neuron. At 400K cerebellum neurons that's 3.2MB; at full auto-scaled N the state buffer is still well under any modern GPU's VRAM. WGSL shader at <code>js/brain/gpu-compute.js</code> (the <code>LIF_SHADER</code> constant name is historical; the shader body is the Rulkov iteration).</p>
  </div>
@@ -853,6 +854,19 @@ P = A &middot; e<sup>&minus;&kappa;&middot;&radic;h</sup> &nbsp;&nbsp; (the chan
  <p><strong>&eta;</strong> is the learning rate. Implemented on GPU via the WGSL <code>PLASTICITY_SHADER</code> in <code>js/brain/gpu-compute.js</code>, touching every non-zero column of a firing post row each dispatch. Same CPU formula via <code>SparseMatrix.ojaUpdate()</code>.</p>
  <p><strong>Repetitions and the learning rate are interchangeable, exactly.</strong> Drive the same pair <em>n</em> times and the update above is a geometric series, so the weight lands at <code>W_n = x &middot; (1 &minus; (1 &minus; &eta;)<sup>n</sup>)</code>. The amount learned is therefore a property of the <strong>asymptote</strong>, not of the repetition count — 100 reps at &eta; = 0.03 and 20 reps at &eta; = 0.1413 both reach <strong>95.24%</strong>. To change one and hold the other, solve <code>&eta;&prime; = 1 &minus; (1 &minus; &eta;)<sup>n/n&prime;</sup></code>. This is what lets a teaching phase run five times faster without teaching five times less — and it is also the trap: cutting reps from 100 to 20 while <em>keeping</em> the authored rate lands at 45.6%, which is not an optimisation, it is removing most of the lesson.</p>
  <p class="mod-bio">Biology: Long-term potentiation (LTP) + intrinsic homeostatic scaling at glutamatergic synapses. NMDA receptor-dependent. Turrigiano &amp; Nelson 2004 — real cortex scales synaptic weights so total postsynaptic drive stays bounded, exactly what Oja&rsquo;s subtractive term captures mathematically.</p>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="The rule every pathway of her language cortex, and the wiring inside it, learns by. A wire changes only when its cell gives the wrong answer, and by exactly as much as closes the gap. It replaced Oja there because each lesson partly overwrote the last: 100 taught pairs came back as 6 to 54. With this rule, a word written on its own cells, and 300 wires a cell, 95.8 to 100 percent of taught cells reach threshold on every pathway at her full size.">Only when wrong &mdash; her language cortex</span></div>
+ <div class="eq">s = &Sigma; W<sub>ij</sub> over the cell's lit inputs, k = how many are lit
+should fire and s &lt; &theta; + m: each lit wire += &eta; &middot; (&theta; + m &minus; s) / k
+should rest and s &gt; &theta; &minus; m: each lit wire += &eta; &middot; (&theta; &minus; m &minus; s) / k
+otherwise: no change</div>
+ <div class="eq-desc">
+ &theta; = 0.5 is the cell's firing threshold on the pathway, m = 0.25 the safety margin either side, &eta; = 1 (the whole gap in one step). A cell with no lit input is skipped; weights are held within &plusmn;2. A cell can only be taught to fire if enough of its wires come from lit cells, so every cell has 300 wires and a word lights 2.67% of a region &mdash; about 8 lit inputs a cell.
+ <p>Wires that learn this way start at 0.003&ndash;0.015. Because every cell hears every cell that fires, wiring that started larger set 85% of a cluster firing from one lit pattern; started this small, only the taught cells fire.</p>
+ <p>Implemented as <code>SparseMatrix.errorUpdate()</code> on the host and the <code>plasticity_error</code> kernel on the card (both graphics backends agree with the host on every test weight). The Oja and anti-Hebbian cards around this one describe the rule her other clusters use.</p>
  </div>
  </div>
 
@@ -1861,7 +1875,13 @@ ANTI-HEBBIAN PLASTICITY (wrong transition correction):
  digit indices only before argmax — prevents alphabet
  Hebbian from ELA-K overpowering digit sequences.
 
-CROSS-PROJECTION DENSITY:
+CROSS-PROJECTION DENSITY (her language cortex, 2026-11-27):
+ 300 wires per target cell on every pathway and inside
+ every region, no density ceiling, no cut between groups.
+ The block below is what she was built with before, and
+ what a cortex too small to hold her speech cells still uses.
+
+CROSS-PROJECTION DENSITY (before):
  crossTargetFanout = 10 pre-synaptic per post-neuron
  density = min(CROSS_DENSITY_CAP=0.005, 10 / srcRegionSize)
  At 6700 cortex: sem(335) → motor(66) ≈ 3% density

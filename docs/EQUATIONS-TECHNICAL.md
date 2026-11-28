@@ -50,6 +50,8 @@ Three ideas carry the whole document:
 
 ⭐ **And the claim the whole project rests on: the brain equations ARE the language equations.** There is no separate language model bolted to a brain. The same propagation that fires a neuron is the thing that produces a word.
 
+> ⚠ **What an instrument has shown of that, as of 2026-11-27:** the state she speaks from is activity in her own cells (one cell per unit of the state) and the word is read from the cells that are lit — with those cells dark she says nothing (7 of 7 taught answers, 0 of 7 dark, 7 of 7 relit). The weights that read is summed over are held on the host, not on the card. In her language cortex every pathway and the wiring inside it learns by the only-when-wrong rule, not Oja, and on the card each cell receives the summed weight of the cells that just fired; those equations and their measurements are in [EQUATIONS.md](EQUATIONS.md) §3–§5, with a column in its contents table saying which sections an instrument has exercised and which it has not. **Sections of this page that describe Oja, anti-Hebbian and lateral inhibition describe her other clusters.**
+
 ---
 
 ## Contents

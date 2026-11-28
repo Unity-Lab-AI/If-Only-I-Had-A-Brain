@@ -15531,6 +15531,7 @@ export class Curriculum {
    *   · each letter at its place from the back         (endings: -ing, -ed, -s)
    *   · each pair of neighbouring letters              ("ca", "at")
    *   · how long the word is
+   *   · the whole word at once                         (half of its cells)
    * Every part lights a few cells of the region, chosen by a hash of the part,
    * so the same word always lights the same cells, two words that share a
    * part share those cells, and nothing here depends on a list of words: any
@@ -15546,16 +15547,20 @@ export class Curriculum {
     const key = n + '|' + w;
     const hit = cache.get(key);
     if (hit) return hit;
-    const parts = [];
-    const L = Math.min(w.length, 16);
-    for (let i = 0; i < L; i++) { parts.push('f' + i + w[i]); parts.push('b' + i + w[w.length - 1 - i]); }
-    for (let i = 0; i + 1 < w.length && i < 16; i++) parts.push('p' + w[i] + w[i + 1]);
-    parts.push('n' + Math.min(w.length, 16));
+    const parts = this._spellingParts(w);
     // The same share of the region a word's meaning lights (8 of every 300
-    // cells), spread evenly over its parts, at least 2 cells a part.
+    // cells). Half of them are the word AS A WHOLE — its full run of letters
+    // seen at once, the way a known word is read at a glance — and half are
+    // spread evenly over its parts, at least 2 cells a part. It is the split a
+    // word's meaning cells have (half its own, half shared), for the same
+    // reason: with every cell shared, each new word's lesson lowered the cells
+    // of every word spelled like it — measured, 600 words met once left 505
+    // read even with constant going-back; the whole-word half is a word's own.
     const active = Math.max(8, Math.round(n * this._wordCellShare()));
-    const per = Math.max(2, Math.round(active / parts.length));
+    const whole = Math.max(4, Math.round(active / 2));
+    const per = Math.max(2, Math.round((active - whole) / parts.length));
     const set = new Set();
+    for (let t = 0; set.size < whole && t < whole * 8; t++) set.add(_cellHash('w' + w, t) % n);
     for (const p of parts) {
       const before = set.size;
       for (let t = 0; set.size - before < per && t < per * 8; t++) set.add(_cellHash(p, t) % n);
@@ -15564,6 +15569,34 @@ export class Curriculum {
     if (cache.size > 60000) cache.clear();
     cache.set(key, out);
     return out;
+  }
+
+  /** The parts of a written word that words spelled alike share (see `_spellingCells`). `w` is already lower-case letters. */
+  _spellingParts(w) {
+    const parts = [];
+    const L = Math.min(w.length, 16);
+    for (let i = 0; i < L; i++) { parts.push('f' + i + w[i]); parts.push('b' + i + w[w.length - 1 - i]); }
+    for (let i = 0; i + 1 < w.length && i < 16; i++) parts.push('p' + w[i] + w[i + 1]);
+    parts.push('n' + Math.min(w.length, 16));
+    return parts;
+  }
+
+  /**
+   * Spelling part → the words she has been taught to read that contain it.
+   * Built from the saved list the first time it is asked for, then kept up as
+   * words are added (the list only grows).
+   */
+  _spellingPartIndex(known) {
+    const st = this._readingLesson || (this._readingLesson = { taught: 0 });
+    if (!st.partIndex || st.partIndexOf !== known) { st.partIndex = new Map(); st.partIndexed = new Set(); st.partIndexOf = known; }
+    if (st.partIndexed.size !== known.size) {
+      for (const word of known.keys()) {
+        if (st.partIndexed.has(word)) continue;
+        st.partIndexed.add(word);
+        for (const p of new Set(this._spellingParts(word))) { const l = st.partIndex.get(p); if (l) l.push(word); else st.partIndex.set(p, [word]); }
+      }
+    }
+    return st.partIndex;
   }
 
   /** Light a written word's cells in a region (`_spellingCells`), host copy and card alike. Returns the number lit. */
@@ -15609,23 +15642,39 @@ export class Curriculum {
     // words she already reads, and its lesson lowers their cells for those
     // letters. So after each new word she LOOKS at earlier words — a look is a
     // few hundred weights summed on the word's own cells, no lesson — and only
-    // a word the look finds broken (one of its own cells no longer reaches its
-    // firing threshold from its own spelling) is taught again. Looks go round
-    // the words she has been taught to read, in turn; the list lives on the
-    // cluster so it is saved with her.
+    // a word the look finds broken (fewer than half of its own cells reach the
+    // firing threshold from its own spelling) is taught again. The list of
+    // words she has been taught to read lives on the cluster so it is saved
+    // with her.
     const known = cluster._readTaughtWords instanceof Map ? cluster._readTaughtWords : (cluster._readTaughtWords = new Map());
     if (!known.has(w)) known.set(w, Date.now());
     const looks = opts.looks ?? this._readLooksPerWord();
     if (looks > 0 && known.size > 1) {
-      if (!st.order || st.orderSize !== known.size) { st.order = Array.from(known.keys()); st.orderSize = known.size; }
-      const order = st.order;
-      const n = Math.min(looks, order.length - 1);
+      // WHICH words to look at: the ones this lesson could have disturbed —
+      // the words that share the most parts of their spelling with the new
+      // word (its letters at their places, its letter pairs, its length). A
+      // lesson lowers a cell only through a wire lit by the new word's
+      // spelling, so a word that shares none of it was not touched. This keeps
+      // the looks few however many words she knows.
+      const idx = this._spellingPartIndex(known);
+      const shared = new Map();
+      for (const p of this._spellingParts(w)) {
+        const list = idx.get(p);
+        if (!list) continue;
+        for (let i = 0; i < list.length; i++) { const o = list[i]; if (o !== w) shared.set(o, (shared.get(o) || 0) + 1); }
+      }
+      const near = Array.from(shared.entries()).sort((a, b) => b[1] - a[1]);
+      const n = Math.min(looks, near.length);
       for (let k = 0; k < n; k++) {
-        st.cursor = ((st.cursor ?? -1) + 1) % order.length;
-        const old = order[st.cursor];
-        if (old === w) continue;
+        const old = near[k][0];
         st.looked = (st.looked || 0) + 1;
-        if (this._ownCellsFire(old)) continue;
+        // Two ways the older word can have stopped being read: its own cells
+        // no longer fire from its spelling — or the NEW word's cells now fire
+        // from the older word's spelling (the new word was taught after the
+        // older word's lesson told every other cell to rest, so nothing has
+        // told the new word's cells to rest for it). Either is put right by
+        // the older word's own lesson.
+        if (this._ownCellsFire(old) && !this._answersTo(w, old)) continue;
         if (!this._writeSpelling(R.letter, old) || !this._writeWordPattern(R.sem, old)) { this._clearSpikes(['letter', 'sem']); continue; }
         await this._teachHebbian(cluster.learningRate, { projectionsWhitelist: wl, skipIntraSynapses: true });
         this._clearSpikes(['letter', 'sem']);
@@ -15642,26 +15691,52 @@ export class Curriculum {
    * almost nothing beside a lesson, which sweeps the whole region.
    */
   _ownCellsFire(word) {
-    const cluster = this.cluster;
-    const R = cluster && cluster.regions;
-    const proj = cluster && cluster.crossProjections && cluster.crossProjections.letter_to_sem;
-    if (!R || !R.letter || !R.sem || !proj || !proj.rowPtr) return true;   // nothing to look through
-    const own = this._wordCells(word, R.sem), lit = this._spellingCells(word, R.letter);
-    if (!own.length || !lit.length) return true;
-    const mark = this._lookMark && this._lookMark.length === proj.cols ? this._lookMark : (this._lookMark = new Uint8Array(proj.cols));
-    for (let i = 0; i < lit.length; i++) mark[lit[i]] = 1;
-    const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
     // The same bar the read itself uses (`_readsWord`): at least half of the
     // word's own cells at threshold. Asking for every cell would re-teach a
     // word forever over a cell that has no wire from its spelling at all.
-    let fired = 0;
+    const d = this._drivenBySpelling(word, word, null);
+    return d === null || d.fired * 2 >= d.cells;
+  }
+
+  /**
+   * Do `word`'s cells answer to `otherSpelling` — that is, with the other
+   * word's spelling lit, does any of `word`'s meaning cells that is NOT also
+   * one of the other word's own cells reach the firing threshold? (Cells the
+   * two words share by meaning are meant to fire for both.)
+   */
+  _answersTo(word, otherSpelling) {
+    const R = this.cluster && this.cluster.regions;
+    if (!R || !R.sem) return false;
+    const d = this._drivenBySpelling(word, otherSpelling, this._wordCells(otherSpelling, R.sem));
+    return d !== null && d.fired > 0;
+  }
+
+  /**
+   * With `spellingOf`'s written form lit, how many of `cellsOf`'s meaning cells
+   * reach the letters→meaning pathway's firing threshold — leaving out any cell
+   * listed in `skip`. Summed from the pathway's weights on those cells only.
+   * Returns { fired, cells }, or null when there is nothing to look through.
+   */
+  _drivenBySpelling(cellsOf, spellingOf, skip) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections && cluster.crossProjections.letter_to_sem;
+    if (!R || !R.letter || !R.sem || !proj || !proj.rowPtr) return null;
+    const own = this._wordCells(cellsOf, R.sem), lit = this._spellingCells(spellingOf, R.letter);
+    if (!own.length || !lit.length) return null;
+    const mark = this._lookMark && this._lookMark.length === proj.cols ? this._lookMark : (this._lookMark = new Uint8Array(proj.cols));
+    for (let i = 0; i < lit.length; i++) mark[lit[i]] = 1;
+    const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
+    let fired = 0, cells = 0, si = 0;
     for (let i = 0; i < own.length; i++) {
+      if (skip) { while (si < skip.length && skip[si] < own[i]) si++; if (si < skip.length && skip[si] === own[i]) continue; }   // both lists ascend
+      cells++;
       let s = 0;
       for (let k = proj.rowPtr[own[i]], e = proj.rowPtr[own[i] + 1]; k < e; k++) if (mark[proj.colIdx[k]]) s += proj.values[k];
       if (s >= theta) fired++;
     }
     for (let i = 0; i < lit.length; i++) mark[lit[i]] = 0;
-    return fired * 2 >= own.length;
+    return { fired, cells };
   }
 
   /** How many earlier words she looks at after each new reading lesson (`DREAM_READ_LOOKS`; 0 = none). */
@@ -16628,6 +16703,12 @@ export class Curriculum {
   // clean comparisons the scan is skipped. `DREAM_LATERAL_HINT=0` opts out
   // entirely.
   async _teachLateralInhibition(lr, numBuckets = 26, opts = null) {
+    // Wiring that learns only-when-wrong already lowers every cell that fires
+    // when it should rest, in the lesson itself; this pass writes through the
+    // anti-Hebbian verb, which changes nothing on such wiring (host and card).
+    // Measured: 207 calls in one vocabulary + sentence lesson, 0 wires changed.
+    // So on that wiring it is skipped instead of scanning for nothing.
+    if (this.cluster && this.cluster.synapses && this.cluster.synapses.errorDriven) return;
     const _lp0 = Date.now();
     this._tstage('lateral:substrate');   // LOOPNAME
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding

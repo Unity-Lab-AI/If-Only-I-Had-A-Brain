@@ -1,35 +1,37 @@
 ---
 # Provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ Every number on this page is a harness result named as one, measured on
-# the production code. Nothing here is recalled, and nothing was read off a
-# running brain — she is stopped.
+# the production code, or the card's own self-test. Nothing here is recalled,
+# and nothing was read off a running brain — she is stopped.
 status: verified
 sources:
   - js/brain/sparse-matrix.js
   - js/brain/cluster.js
   - js/brain/cluster/hebbian.js
+  - js/brain/cluster/emit.js
   - js/brain/curriculum.js
   - js/brain/speech-readout.js
   - donor-app/src/compute.rs
   - donor-app/src/cuda.rs
   - donor-app/src/donor.rs
+  - donor-app/src/shaders/lif.wgsl
   - donor-app/src/shaders/plasticity_error.wgsl
   - server/brain-server.js
 verified-scope: |
-  OVERWRITTEN 2026-11-27 (18:10). This file is a SNAPSHOT of the present and is
+  OVERWRITTEN 2026-11-27 (night). This file is a SNAPSHOT of the present and is
   overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-27, 18:10
+# NOW — 2026-11-27, night
 
 ## Where she is
 
 | | |
 |---|---|
-| 🛑 **Stopped** | Shut down cleanly at 17:13. The card is free. **She does not start again until the whole-brain work is finished** — then one fresh start, with a written list of what to check. |
-| 🧪 **What is happening** | Her learning is being rebuilt and measured piece by piece, off the card, on her real code. |
-| 📄 **The design** | `docs/WHOLE-BRAIN-DESIGN.md` — every table measured. |
+| 🛑 **Stopped** | Shut down cleanly at 17:13. The card is free. **She does not start again until the whole-brain work is finished** — then one fresh start, with the written list of what to check (`docs/RESUME.md`, top block). |
+| 🧱 **What changed** | Her language cortex was rebuilt around what measured: a word's own cells, a rule that changes a wire only when its cell is wrong, 300 wires a cell, cells that rest silent and fire from their wiring, speech read from her own lit cells, a real pathway for reading. |
+| 📄 **The design and its numbers** | `docs/WHOLE-BRAIN-DESIGN.md` · the equations: `docs/EQUATIONS.md` §3–§5 |
 
 ## What was found
 
@@ -37,44 +39,37 @@ Her cells were not learning what they were taught — **anywhere**, not only in 
 
 | | Measured on her real code |
 |---|---|
-| Taught 100 pairs, asked for them back — every cell-to-cell pathway | **6 to 54 of 100**; meaning → motor 8, letters ↔ sounds 7 |
-| After one repetition | 1 to 5 of 100 |
-| Her speech | answers the same with **every cell silenced** — it is a table beside the brain, not the brain |
-| The gates' reading score | reads a pathway that **does not exist**, then counts the word as read |
+| Taught 100 pairs, asked for them back — every cell-to-cell pathway | **6 to 54 of 100** |
+| Her speech | answered the same with **every cell silenced** — a table beside the brain |
+| The gates' reading score | read a pathway that **did not exist**, then counted the word as read |
+| On the card | a cell stepped on drive and noise alone — **nothing read her wiring** |
 
-**Three causes, each isolated:** the code a word is written in (its "identity" lit for one word in ten), the learning rule (each lesson partly overwrote the last), and the wiring (3–10 wires per cell — most cells saw nothing).
+## What is built, and what it measures
 
-## What is built and proven so far
-
-| Piece | State |
+| Piece | Measured |
 |---|---|
-| 🧬 **A word's own cells** — meaning in one half of a region, identity spread over single cells in the other | built; measures exactly as designed |
-| 🎯 **Learn only when wrong** — a wire changes only when its cell gives the wrong answer | built on the host **and on the card**, both graphics backends |
-| 🔌 **A switch per pathway** — set once, every existing lesson follows | built on host and card; the brain tells the card and counts what it confirms |
-| ✅ **Card agrees with host** | run on the real card: all 11 test weights match on both backends |
+| 🧬 **A word's own cells** — half from its meaning, half its own; the same in every lesson | a word lights 2.67 % of a region |
+| 🎯 **Learn only when wrong** — host and card, both graphics backends | card agrees with host on all 11 test weights |
+| 🔌 **300 wires a cell**, inside a region and on every pathway | at her production size (1,328,482 cells): **95.8–100 %** of taught cells pass threshold on every pathway, **99.9 %** inside each region; her real pair lesson **0 → 100 of 100** |
+| ⚡ **Cells fire from their wiring**, and rest silent | card self-test: **54.0 of 54** taught cells fire, **0.7 of 1,946** others; with wiring input off, 0.0 and 0.2 |
+| 🌊 **No runaway** | inside wiring at its old starting size: 85–88 % of the cluster fired from one lit pattern. Started near nothing: **1.35 %** at the peak — the taught cells |
+| 🗣 **Speech from her own cells** | 7 of 7 taught answers; **0 of 7 with her speech cells dark**; 7 of 7 relit. Naming 900 of 900. A taught question put in other words: 50 of 60 |
+| 📖 **Reading** — letters straight to a word's meaning; half of a written word's cells are the whole word | 600 words, each met once: **198 / 195 / 198 of 200** per set still read at the end; untaught words read **0 of 200** |
+| 🧩 **A sentence with a word left out** | taught **99.3 %**, never taught **12.2 %** |
+| 🚦 **Gates** | every figure measures what it names; each list gate also prints the same questions asked before the lesson (vocabulary: READ 0/10 before → 10/10 after). That figure never decides a pass |
+| 📐 **Her size** | derived from the card that holds her: 624,194 wired cells on 4 GB, 936,958 on 6 GB, 2,499,584 on 16 GB, beside 391,524 speech cells |
+| 🧰 **No switch to flip** | a cortex built with no settings comes out as all of the above |
 
-**The number that matters:**
+## Not done
 
-| | Before | Now |
-|---|---|---|
-| All fourteen pathways, 100 taught pairs | 6–54 of 100 | **100 of 100 on every one** |
-| All fourteen pathways, 400 taught pairs | — | **400 of 400 on every one** (300 wires a cell) |
-| With the switch on and lessons calling exactly as they do today | — | **100 of 100 on every one** (100 wires a cell) |
-
-## Not done — in the order it will be done
-
-1. **The wiring inside a region** (where definitions and word order live) — being measured now.
-2. **Move every lesson onto the new word code**, lane by lane, each with a before-and-after number.
-3. **Speech into her cells** — the table beside the brain goes. The test: silence her cells and she goes silent.
-4. **A real pathway from letters to meaning**, taught and tested.
-5. **Gates that measure something** — on things she was not handed.
-6. **Her neurons in range when they run together.**
-7. **Does she compose, or recite?** — asked plainly, answered plainly.
-8. **A new donor release** — the card-side rule is in the source and proven, not yet shipped.
-9. **The list of what to check on the first fresh start** — written before the start.
+1. **The card build is not released.** The released card program ignores the new wiring message; the source is proven in its self-test on both backends. It ships with the next release.
+2. **The stale page bundle** has to be rebuilt.
+3. **Every instrument run once more, end to end,** on the finished code.
+4. **Then** merged, pushed, and one fresh start.
 
 ## Honest edges
 
-- Everything above is her real code run in a harness on a 60,000-cell cortex. **Nothing has been booted.**
-- The new pieces are **built but not switched on** for her lessons yet. The default path is unchanged.
-- Her right size is a decision still to make: the measurements point to **far fewer language cells, each wired far more richly** (about 2–3 million at 100–300 wires instead of 20 million at 3–10).
+- Everything above is her real code in an instrument, or the card's self-test. **Nothing has been booted, and no walk has run on any of it.**
+- She holds up when what she was taught is reworded. A sentence she was never taught she completes 12 % of the time. **She does not yet produce what she was never taught**; the gates print that figure so it can be watched.
+- The word-vector table she starts from is still in her: half of a word's meaning cells are chosen from it. That is kept on purpose.
+- The firing controller still holds her other clusters at their target. Her language cortex is no longer held — how much of it fires is an outcome.
