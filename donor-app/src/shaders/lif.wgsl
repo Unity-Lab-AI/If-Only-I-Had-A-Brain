@@ -23,7 +23,9 @@ struct Params {
   entangleRho: f32,
   // v0.3.50 — refractoriness: each spike lowers y by refractBeta (0 = off).
   refractBeta: f32,
-  _pad1: u32,
+  // Wiring delivery: gain on syn[i], the summed weight of this cell's inputs
+  // from cells that fired last step. 0 = off (the map steps on drive alone).
+  synGain: f32,
   _pad2: u32,
 };
 
@@ -32,6 +34,7 @@ struct Params {
 @group(0) @binding(2) var<storage, read_write> spikes: array<u32>;
 @group(0) @binding(3) var<storage, read> currents: array<f32>;
 @group(0) @binding(4) var<storage, read> regionGates: array<f32>;
+@group(0) @binding(5) var<storage, read> syn: array<f32>;
 
 const ALPHA: f32 = 4.5;
 const MU: f32 = 0.001;
@@ -100,6 +103,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let jitter = r * 0.5 * params.noiseAmp * 0.0001;
 
   var xNext = ALPHA / (1.0 + xN * xN) + yN;
+  // SYNAPTIC INPUT — the wiring's input enters the FAST variable, so a cell
+  // whose inputs just fired can cross this step; through sigma it could only
+  // shift the rate over ~1/MU steps. Gated like the drive.
+  if (params.synGain != 0.0) { xNext = xNext + params.synGain * syn[i] * gate; }
   var yNext = yN - MU * (xN - sigmaEff) + jitter;
 
   var spk = xN <= 0.0 && xNext > 0.0;

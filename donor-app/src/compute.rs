@@ -50,7 +50,8 @@ struct LifParams {
     entangle_rho: f32,
     /// v0.3.50 — spike-triggered adaptation: each spike lowers y by β.
     refract_beta: f32,
-    _pad1: u32,
+    /// Gain on the delivered wiring input (`syn`); 0 = delivery off.
+    syn_gain: f32,
     _pad2: u32,
 }
 
@@ -218,6 +219,11 @@ struct Cluster {
     state: wgpu::Buffer,        // vec2<f32> per neuron
     spikes: wgpu::Buffer,       // u32 per neuron
     currents: wgpu::Buffer,     // f32 per neuron
+    /// f32 per neuron — the wiring's input this step: for every matrix bound
+    /// INTO this cluster, the summed weight from source cells that fired last
+    /// step. Cleared and refilled at the top of each step while `syn_gain` ≠ 0.
+    syn: wgpu::Buffer,
+    syn_gain: f32,
     region_gates: wgpu::Buffer, // [start,end,gate,pad] f32 per region (≥1 dummy)
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>, // name → (start, end) for region ops
@@ -383,13 +389,20 @@ impl ComputeEngine {
         let spikes = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{name}-spikes")),
             contents: bytemuck::cast_slice(&zero_u32),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            // COPY_SRC: `readback_letter_buckets` copies this buffer out; without
+            // it that copy fails validation and the readback returns zeros.
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         });
         let zero_f32 = vec![0f32; n.max(1)];
         let currents = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{name}-currents")),
             contents: bytemuck::cast_slice(&zero_f32),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+        let syn = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{name}-syn")),
+            contents: bytemuck::cast_slice(&zero_f32),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         });
         // region_gates packed [start, end, gate, pad] per region; gate defaults to 1.0
         // (psi modulation is a later refinement). Needs ≥1 entry (no zero-size binding).
@@ -424,6 +437,8 @@ impl ComputeEngine {
                 state: state_buf,
                 spikes,
                 currents,
+                syn,
+                syn_gain: 0.0,
                 region_gates,
                 num_regions,
                 regions: regions.clone(),
@@ -545,7 +560,7 @@ impl ComputeEngine {
             tunnel_kappa: q.tunnel_kappa,
             entangle_rho: q.entangle_rho,
             refract_beta: q.refract_beta,
-            _pad1: 0,
+            syn_gain: c.syn_gain,
             _pad2: 0,
         };
         let lif_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -562,8 +577,38 @@ impl ComputeEngine {
                 wgpu::BindGroupEntry { binding: 2, resource: c.spikes.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 3, resource: c.currents.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 4, resource: c.region_gates.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: c.syn.as_entire_binding() },
             ],
         });
+
+        // WIRING DELIVERY — one propagate pass per matrix bound into this
+        // cluster: syn[dst + row] += Σ weight over the row's source cells whose
+        // spike bit (left by the previous step, or written by a lesson) is set.
+        let mut deliver: Vec<(wgpu::BindGroup, u32)> = Vec::new();
+        if c.syn_gain != 0.0 {
+            for m in self.sparse.values() {
+                let b = match &m.binding { Some(b) if b.dst_cluster == name => b, _ => continue };
+                if m.rows == 0 || m.nnz == 0 { continue; }
+                let src = match self.clusters.get(&b.src_cluster) { Some(s) => s, None => continue };
+                if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { continue; }
+                if (b.dst_start as u64) + (m.rows as u64) > (c.size as u64) { continue; }
+                let p = PropagateParams { rows: m.rows, cols: m.cols, nnz: m.nnz, src_offset: b.src_start, dst_offset: b.dst_start };
+                let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("deliver-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM });
+                let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("deliver-bg"),
+                    layout: &self.propagate_pipeline.get_bind_group_layout(0),
+                    entries: &[
+                        wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 5, resource: c.syn.as_entire_binding() },
+                    ],
+                });
+                deliver.push((bg, (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM)));
+            }
+        }
 
         let spike_params = SpikeParams { n: c.size, grid_x, half, _pad: 0 };
         let spike_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -585,6 +630,17 @@ impl ComputeEngine {
         self.queue.write_buffer(&c.count, 0, &[0u8; 8]);
 
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("step") });
+        if c.syn_gain != 0.0 {
+            enc.clear_buffer(&c.syn, 0, None);
+            // One pass per matrix: two matrices bound into the same cluster both
+            // add into `syn`, and passes run in order.
+            for (bg, wg) in &deliver {
+                let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("deliver"), timestamp_writes: None });
+                cp.set_pipeline(&self.propagate_pipeline);
+                cp.set_bind_group(0, bg, &[]);
+                cp.dispatch_workgroups(*wg, 1, 1);
+            }
+        }
         {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("lif"), timestamp_writes: None });
             cp.set_pipeline(&self.lif_pipeline);
@@ -789,6 +845,12 @@ impl ComputeEngine {
         self.queue.submit(std::iter::once(enc.finish()));
         // No blocking readback — same fire-and-forget contract as standalone hebbian.
         Ok(true)
+    }
+
+    /// Set how strongly a cluster's cells feel their wiring (0 = not at all).
+    /// Returns whether the cluster is resident here.
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.syn_gain = gain; true } None => false }
     }
 
     /// Put a matrix into (Some) or out of (None) error-driven learning. Returns
@@ -1608,6 +1670,14 @@ impl Backend {
             Backend::Cuda(e) => e.hebbian_bound(name, lr),
         }
     }
+    /// How strongly a cluster's cells feel their wiring on this backend.
+    fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.set_delivery(cluster, gain),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.set_delivery(cluster, gain),
+        }
+    }
     /// Put a matrix into / out of error-driven learning on this backend.
     fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
         match self {
@@ -2132,6 +2202,12 @@ impl MultiEngine {
         self.engines[g].hebbian_bound(name, lr)
     }
 
+    /// Set how strongly a cluster's cells feel their wiring (0 = off) on the
+    /// engine holding the cluster. Returns whether it is resident.
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+        match self.cluster_gpu.get(cluster).copied() { Some(g) => self.engines[g].set_delivery(cluster, gain), None => false }
+    }
+
     /// Put a matrix into / out of error-driven learning on EVERY engine (a row-sliced
     /// matrix lives on several cards). Returns how many engines hold it.
     pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> usize {
@@ -2590,6 +2666,104 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         match crate::cuda::CudaEngine::new(gpu_index) {
             Err(e) => println!("  CUDA skipped — no CUDA engine here ({e})"),
             Ok(mut ce) => { error_parity!(ce, "cuda"); }
+        }
+    }
+
+    // ── WIRING DELIVERY — do taught cells FIRE from their wiring? A 4,000-cell
+    // cluster, source region 0..2000 and target region 2000..4000, joined by a
+    // pathway of 300 wires a target cell at the brain's starting weights. Twenty
+    // (source pattern → target pattern) pairs, 54 cells each (2.7 %), are taught
+    // by the error-driven kernel. Then for each pair: the cluster runs free, the
+    // source pattern is lit, ONE step runs with delivery on, and the target
+    // region is read — how many of the pair's 54 target cells fired, against how
+    // many of the other 1,946. Gain 0 is the step as it was (drive and noise only).
+    // Then the same cluster with inside wiring too, 400 free steps: fired share.
+    macro_rules! delivery_check {
+        ($eng:expr, $label:expr) => {{
+            let (half_n, n, fan, lit_n, pairs) = (2000u32, 4000u32, 300u32, 54usize, 20usize);
+            let mut regions = HashMap::new();
+            regions.insert("src".to_string(), (0u32, half_n));
+            regions.insert("dst".to_string(), (half_n, n));
+            $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
+            let xs = std::cell::Cell::new(0x1234_5678u32);
+            let rnd = || { let mut x = xs.get(); x ^= x << 13; x ^= x >> 17; x ^= x << 5; xs.set(x); x };
+            let build =|rows: u32, cols: u32| -> (Vec<u32>, Vec<f32>, Vec<u32>) {
+                let (mut rp, mut vals, mut ci) = (Vec::with_capacity(rows as usize + 1), Vec::new(), Vec::new());
+                for r in 0..rows {
+                    rp.push(r * fan);
+                    let mut seen = std::collections::HashSet::new();
+                    while (seen.len() as u32) < fan { seen.insert(rnd() % cols); }
+                    let mut row: Vec<u32> = seen.into_iter().collect(); row.sort_unstable();
+                    for c in row {
+                        ci.push(c);
+                        let sign = if rnd() % 100 < 80 { 1.0f32 } else { -1.0 };
+                        vals.push(sign * (0.1 + (rnd() % 10_000) as f32 / 10_000.0 * 0.4) * 0.3);
+                    }
+                }
+                rp.push(rows * fan);
+                (rp, vals, ci)
+            };
+            let (rp, vals, ci) = build(half_n, half_n);
+            let path = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: half_n, dst_start: half_n, dst_end: n };
+            $eng.upload_sparse("dlvpath", half_n, half_n, &rp, &vals, &ci, Some(path));
+            $eng.set_plasticity_mode("dlvpath", Some((1.0, 0.5, 0.25)));
+            let pick = |k: usize| -> Vec<u32> { let mut s = std::collections::HashSet::new(); while s.len() < k { s.insert(rnd() % half_n); } let mut v: Vec<u32> = s.into_iter().collect(); v.sort_unstable(); v };
+            let lessons: Vec<(Vec<u32>, Vec<u32>)> = (0..pairs).map(|_| (pick(lit_n), pick(lit_n))).collect();
+            for _round in 0..3 {
+                for (s, d) in &lessons {
+                    $eng.write_spike_slice("dlv", "src", s)?;
+                    $eng.write_spike_slice("dlv", "dst", d)?;
+                    $eng.hebbian_bound("dlvpath", 0.01)?;
+                }
+            }
+            let q = Quantum::default();
+            let mut seed: u32 = 1;
+            println!("  {} — one step after the source pattern is lit (taught cells fired of {}, other cells fired of {}), mean over {} pairs:", $label, lit_n, half_n as usize - lit_n, pairs);
+            for &ed in &[0.0f32, 10.0, 20.0] {
+                let mut line = format!("    drive {ed:>4}:");
+                for &g in &[0.0f32, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0] {
+                    let (mut hit, mut stray) = (0usize, 0usize);
+                    for (s, d) in &lessons {
+                        $eng.set_delivery("dlv", 0.0);
+                        for _ in 0..20 { seed += 1; $eng.step("dlv", ed, ed, n, 0.0, seed, q)?; }
+                        $eng.write_spike_slice("dlv", "src", s)?;
+                        $eng.set_delivery("dlv", g);
+                        seed += 1; $eng.step("dlv", ed, ed, n, 0.0, seed, q)?;
+                        let fired = $eng.readback_letter_buckets("dlv", "dst", half_n, half_n, 0)?;
+                        let all: usize = fired.iter().filter(|&&f| f != 0).count();
+                        let h: usize = d.iter().filter(|&&i| fired[i as usize] != 0).count();
+                        hit += h; stray += all - h;
+                    }
+                    line.push_str(&format!("  g{g}: {:.1}/{:.1}", hit as f64 / pairs as f64, stray as f64 / pairs as f64));
+                }
+                println!("{line}");
+            }
+            // inside wiring too — every cell hears every region; does firing stay in range?
+            let (rp2, vals2, ci2) = build(n, n);
+            let inside = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: n, dst_start: 0, dst_end: n };
+            $eng.upload_sparse("dlvin", n, n, &rp2, &vals2, &ci2, Some(inside));
+            println!("  {} — 400 free steps with pathway + inside wiring delivering, share of cells firing a step (min / mean / max %):", $label);
+            for &ed in &[0.0f32, 10.0, 20.0] {
+                let mut line = format!("    drive {ed:>4}:");
+                for &g in &[0.0f32, 1.0, 2.0, 3.0, 4.0] {
+                    $eng.set_delivery("dlv", g);
+                    let (mut lo, mut hi, mut sum) = (u32::MAX, 0u32, 0u64);
+                    for _ in 0..400 { seed += 1; let (l, r) = $eng.step("dlv", ed, ed, n, 0.0, seed, q)?; let c = l + r; lo = lo.min(c); hi = hi.max(c); sum += c as u64; }
+                    let pct = |c: f64| c * 100.0 / n as f64;
+                    line.push_str(&format!("  g{g}: {:.2}/{:.2}/{:.2}", pct(lo as f64), pct(sum as f64 / 400.0), pct(hi as f64)));
+                }
+                println!("{line}");
+            }
+            $eng.set_delivery("dlv", 0.0);
+        }};
+    }
+    println!("self-test: wiring delivery...");
+    delivery_check!(eng, "wgpu");
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("  CUDA skipped — no CUDA engine here ({e})"),
+            Ok(mut ce) => { delivery_check!(ce, "cuda"); }
         }
     }
 

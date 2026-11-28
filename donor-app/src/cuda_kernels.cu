@@ -51,7 +51,8 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
                     float noiseAmp, unsigned int seed, unsigned int numRegions,
                     float* state, unsigned int* spikes,
                     const float* currents, const float* regionGates,
-                    float tunnelA, float tunnelKappa, float entangleRho, float refractBeta) {
+                    float tunnelA, float tunnelKappa, float entangleRho, float refractBeta,
+                    const float* syn, float synGain) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   const float ALPHA = 4.5f;
@@ -84,6 +85,9 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
   }
   float jitter = r * 0.5f * noiseAmp * 0.0001f;
   float xNext = ALPHA / (1.0f + xN * xN) + yN;
+  // SYNAPTIC INPUT — the wiring's input enters the FAST variable (see the
+  // WGSL twin): a cell whose inputs just fired can cross this step.
+  if (synGain != 0.0f) xNext = xNext + synGain * syn[i] * gate;
   float yNext = yN - MU * (xN - sigmaEff) + jitter;
   unsigned int spk = (xN <= 0.0f && xNext > 0.0f) ? 1u : 0u;
   // TUNNELLING (v0.3.48) — WKB-shaped crossing of the barrier left below

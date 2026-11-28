@@ -113,6 +113,9 @@ struct CudaCluster {
     state: CudaSlice<f32>,        // 2*n interleaved (x,y)
     spikes: CudaSlice<u32>,       // n
     currents: CudaSlice<f32>,     // n
+    /// n — the wiring's input this step (see `ComputeEngine`'s `Cluster::syn`).
+    syn: CudaSlice<f32>,
+    syn_gain: f32,
     region_gates: CudaSlice<f32>, // 4 * numRegions
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>,
@@ -304,12 +307,15 @@ impl CudaEngine {
             let state_buf = self.stream.memcpy_stod(&state).map_err(|e| e.to_string())?;
             let spikes = self.stream.alloc_zeros::<u32>(n.max(1)).map_err(|e| e.to_string())?;
             let currents = self.stream.alloc_zeros::<f32>(n.max(1)).map_err(|e| e.to_string())?;
+            let syn = self.stream.alloc_zeros::<f32>(n.max(1)).map_err(|e| e.to_string())?;
             let region_gates = self.stream.memcpy_stod(&gates).map_err(|e| e.to_string())?;
             Ok(CudaCluster {
                 size,
                 state: state_buf,
                 spikes,
                 currents,
+                syn,
+                syn_gain: 0.0,
                 region_gates,
                 num_regions,
                 regions: regions.clone(),
@@ -323,6 +329,11 @@ impl CudaEngine {
 
     pub fn has_cluster(&self, name: &str) -> bool {
         self.clusters.contains_key(name)
+    }
+
+    /// Set how strongly a cluster's cells feel their wiring (0 = not at all).
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.syn_gain = gain; true } None => false }
     }
 
     /// RHYTHM3S.2 (v0.3.34) — overwrite this cluster's `[start,end,gate,pad]`
@@ -356,6 +367,24 @@ impl CudaEngine {
             return Ok((0, 0));
         }
         let launch_cfg = cfg(n);
+        // WIRING DELIVERY — mirrors the wgpu half: clear `syn`, then one
+        // propagate launch per matrix bound into this cluster (stream order
+        // keeps clear → deliver → step).
+        if c.syn_gain != 0.0 {
+            self.dev_zero_f32(&c.syn, 0, n)?;
+            for m in self.sparse.values() {
+                let bd = match &m.binding { Some(bd) if bd.dst_cluster == name => bd, _ => continue };
+                if m.rows == 0 || m.nnz == 0 { continue; }
+                let src = match self.clusters.get(&bd.src_cluster) { Some(s) => s, None => continue };
+                if (bd.src_start as u64) + (m.cols as u64) > (src.size as u64) { continue; }
+                if (bd.dst_start as u64) + (m.rows as u64) > (n as u64) { continue; }
+                let mut d = self.stream.launch_builder(&self.f_prop);
+                d.arg(&m.rows).arg(&bd.src_start).arg(&bd.dst_start)
+                    .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr)
+                    .arg(&src.spikes).arg(&c.syn);
+                unsafe { d.launch(cfg(m.rows)) }.map_err(|e| format!("deliver launch: {e}"))?;
+            }
+        }
         // LIF step — writes state + spikes through the device pointers (GPU-side mutation, so
         // shared refs are fine, exactly like wgpu's queue.submit).
         let mut b = self.stream.launch_builder(&self.f_lif);
@@ -374,7 +403,9 @@ impl CudaEngine {
             .arg(&q.tunnel_a)
             .arg(&q.tunnel_kappa)
             .arg(&q.entangle_rho)
-            .arg(&q.refract_beta);
+            .arg(&q.refract_beta)
+            .arg(&c.syn)
+            .arg(&c.syn_gain);
         unsafe { b.launch(launch_cfg) }.map_err(|e| format!("lif launch: {e}"))?;
 
         // Spike counts (left, right) into a fresh zeroed pair.
