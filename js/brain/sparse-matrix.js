@@ -1104,6 +1104,64 @@ export class SparseMatrix {
   }
 
   /**
+   * Error-driven update — a wire changes only when its cell is WRONG.
+   *
+   *   s[i] = Σ_j w[i,j] · x[j]                      the cell's summed input
+   *   should fire  and s[i] < θ + m  →  w[i,j] += η · x[j]
+   *   should rest  and s[i] > θ − m  →  w[i,j] −= η · x[j]
+   *   otherwise                      →  nothing changes
+   *
+   * `postSpikes` is the TEACHING pattern (which target cells should fire for
+   * this input), not what the cells did. The rule is local to a cell: its own
+   * inputs, its own summed input, and whether it should be firing.
+   *
+   * Why this and not Oja for taught associations: Oja pulls every wire of a
+   * lit cell toward the current input each time, so each lesson partly
+   * overwrites the last and a cell that is already right keeps moving. Here a
+   * cell that is already right is left alone, and a cell that fires for the
+   * wrong input is pushed down — the part Oja has no term for. Measured on
+   * the same projection, codes and wiring (400 pairs, 100 wires per cell):
+   * Oja 242 recalled, this rule 400. docs/WHOLE-BRAIN-DESIGN.md.
+   *
+   * Unlike `ojaUpdate`, every row is visited (a resting cell can be wrong).
+   * `opts.rowStart` / `opts.rowEnd` slice the pass, as in `ojaUpdate`.
+   * Returns the number of cells that were changed.
+   *
+   * @param {ArrayLike<number>} preSpikes   source activity (0/1)
+   * @param {ArrayLike<number>} postSpikes  which target cells should fire (0/1)
+   * @param {number} eta                    step per active input
+   * @param {object} [opts]  theta (0.5), margin (0.25), rowStart, rowEnd
+   */
+  errorUpdate(preSpikes, postSpikes, eta, opts) {
+    const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
+    if (!values || !rowPtr || !colIdx) return 0;
+    const theta = (opts && typeof opts.theta === 'number') ? opts.theta : 0.5;
+    const margin = (opts && typeof opts.margin === 'number') ? opts.margin : 0.25;
+    const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
+    const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
+    const hi = theta + margin, lo = theta - margin;
+    let changed = 0;
+    for (let i = rowStart; i < rowEnd; i++) {
+      const start = rowPtr[i], end = rowPtr[i + 1];
+      let s = 0;
+      for (let k = start; k < end; k++) if (preSpikes[colIdx[k]]) s += values[k];
+      let d = 0;
+      if (postSpikes[i]) { if (s < hi) d = eta; }
+      else if (s > lo) d = -eta;
+      if (d === 0) continue;
+      let touched = false;
+      for (let k = start; k < end; k++) {
+        if (!preSpikes[colIdx[k]]) continue;
+        const v = values[k] + d;
+        values[k] = v > wMax ? wMax : v < wMin ? wMin : v;
+        touched = true;
+      }
+      if (touched) changed++;
+    }
+    return changed;
+  }
+
+  /**
    * BCM plasticity rule (Bienenstock, Cooper, Munro 1982 — J Neurosci
    * 2:32) — sliding-threshold Hebbian where the sign of the update
    * depends on whether the post neuron's activity crosses a per-neuron
