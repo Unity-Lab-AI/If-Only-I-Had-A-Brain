@@ -142,8 +142,9 @@ struct ErrParams {
     w_max: f32,
     src_offset: u32,
     dst_offset: u32,
-    pad0: u32,
-    pad1: u32,
+    /// First row to visit, and how many from there (0 = every row).
+    row_start: u32,
+    row_count: u32,
     pad2: u32,
 }
 
@@ -780,7 +781,7 @@ impl ComputeEngine {
         let (ub, pipe) = match self.err_mode.get(name) {
             Some(&(eta, theta, margin)) => {
                 if lr <= 0.0 { return None; }
-                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, pad0: 0, pad1: 0, pad2: 0 };
+                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, row_start: 0, row_count: 0, pad2: 0 };
                 (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-err-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_error_pipeline)
             }
             None => {
@@ -819,7 +820,7 @@ impl ComputeEngine {
         let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
         if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
         if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
-        let params = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start, pad0: 0, pad1: 0, pad2: 0 };
+        let params = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start, row_start: 0, row_count: 0, pad2: 0 };
         let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("err-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM });
         let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("err-bound-bg"),

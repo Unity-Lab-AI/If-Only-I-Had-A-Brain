@@ -614,7 +614,9 @@ impl CudaEngine {
         if let Some(&(eta, theta, margin)) = self.err_mode.get(name) {
             if lr <= 0.0 { return Ok(()); }
             let mut bld = self.stream.launch_builder(&self.f_hebb_err);
+            let (row_start, row_count) = (0u32, 0u32);   // every row
             bld.arg(&rows).arg(&eta).arg(&theta).arg(&margin).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+                .arg(&row_start).arg(&row_count)
                 .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
             return unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| e.to_string());
         }
@@ -641,6 +643,7 @@ impl CudaEngine {
         let rows = m.rows;
         let (w_min, w_max) = (-2.0f32, 2.0f32);
         let (src_off, dst_off) = (b.src_start, b.dst_start);
+        let (row_start, row_count) = (0u32, 0u32);   // every row
         let mut bld = self.stream.launch_builder(&self.f_hebb_err);
         bld.arg(&rows)
             .arg(&eta)
@@ -650,6 +653,8 @@ impl CudaEngine {
             .arg(&w_max)
             .arg(&src_off)
             .arg(&dst_off)
+            .arg(&row_start)
+            .arg(&row_count)
             .arg(&m.values)
             .arg(&m.col_idx)
             .arg(&m.row_ptr)

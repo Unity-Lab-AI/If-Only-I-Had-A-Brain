@@ -1,5 +1,5 @@
 // Error-driven plasticity — a wire changes only when its cell is WRONG.
-// One thread per post-neuron row; every row is visited (a resting cell can be wrong).
+// One thread per post-neuron row; every row in the range is visited (a resting cell can be wrong).
 //   s = sum of w over the row's ACTIVE inputs
 //   should fire (postSpikes != 0) and s < theta + margin  ->  w += eta on active inputs
 //   should rest (postSpikes == 0) and s > theta - margin  ->  w -= eta on active inputs
@@ -17,8 +17,8 @@ struct Params {
   wMax: f32,
   srcOffset: u32,
   dstOffset: u32,
-  pad0: u32,
-  pad1: u32,
+  rowStart: u32,   // first row to visit
+  rowCount: u32,   // how many rows from there; 0 = every row of the matrix
   pad2: u32,
 };
 
@@ -31,7 +31,11 @@ struct Params {
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let i = gid.x;
+  // A lesson that lies inside one region visits that region's rows only; the
+  // dispatch is sized to the count, so the rest of the matrix costs nothing.
+  let count = select(params.rowCount, params.rows, params.rowCount == 0u);
+  if (gid.x >= count) { return; }
+  let i = params.rowStart + gid.x;
   if (i >= params.rows) { return; }
   let start = rowPtr[i];
   let end = rowPtr[i + 1u];

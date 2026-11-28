@@ -248,9 +248,15 @@ __global__ void plasticity(unsigned int rows, float lr, float reward, float wMin
 __global__ void plasticity_error(unsigned int rows, float eta, float theta, float margin,
                                  float wMin, float wMax,
                                  unsigned int srcOffset, unsigned int dstOffset,
+                                 unsigned int rowStart, unsigned int rowCount,
                                  float* values, const unsigned int* colIdx, const unsigned int* rowPtr,
                                  const unsigned int* preSpikes, const unsigned int* postSpikes) {
-  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  // rowCount 0 = every row; otherwise the launch is sized to the count and
+  // visits rows rowStart .. rowStart + rowCount.
+  unsigned int t = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int count = rowCount == 0u ? rows : rowCount;
+  if (t >= count) return;
+  unsigned int i = rowStart + t;
   if (i >= rows) return;
   unsigned int start = rowPtr[i];
   unsigned int end   = rowPtr[i + 1u];
