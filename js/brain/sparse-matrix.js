@@ -1237,20 +1237,28 @@ export class SparseMatrix {
     return this._colIndex;
   }
 
-  /** Add `d` to every wire from a lit source cell into rows [rowStart, rowStart + rowCount). */
+  /**
+   * Add `d` to every wire from a lit source cell into rows
+   * [rowStart, rowStart + rowCount). Returns what those rows now receive from
+   * the lit cells, summed — so a caller holding the read can update it without
+   * reading the whole pathway again.
+   */
   stepRows(preIdx, rowStart, rowCount, d) {
     const { rows, cols, values, colIdx, rowPtr, wMin, wMax } = this;
-    if (!values || !rowPtr || !colIdx) return;
+    if (!values || !rowPtr || !colIdx) return 0;
     if (!this._litMark || this._litMark.length !== cols) this._litMark = new Uint8Array(cols);
     const lit = this._litMark;
     for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 1; }
     const r1 = Math.min(rows, rowStart + rowCount);
+    let sum = 0;
     for (let k = rowPtr[Math.max(0, rowStart)]; k < rowPtr[r1]; k++) {
       if (!lit[colIdx[k]]) continue;
       const v = values[k] + d;
-      values[k] = v > wMax ? wMax : v < wMin ? wMin : v;
+      const w = v > wMax ? wMax : v < wMin ? wMin : v;
+      values[k] = w; sum += w;
     }
     for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 0; }
+    return sum;
   }
 
   /**

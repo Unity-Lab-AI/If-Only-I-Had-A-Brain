@@ -353,6 +353,83 @@ export class SpeechReadout {
     this.wd[u] = w; this.lk[u] = null; this.lv[u] = null; this.lx[u] = null; this.ln[u] = 0; this.wide++;
   }
 
+  // ── What she says, held in her cells ────────────────────────────────────────────
+  /**
+   * Put the learned part in her cells. From here on the state lights cells
+   * (`cellsOf`), every word's score is what the pathway delivers to that
+   * word's own run of cells, and a lesson changes the pathway's wires — no
+   * weight is kept in this object. The last run of cells stands for "the line
+   * is finished". `matrix` is word-cell rows × state-cell columns.
+   */
+  attachPathway(matrix, opts = {}) {
+    const cell = Math.max(1, Math.floor(opts.cellSize || 1));
+    const buckets = Math.floor(matrix.rows / cell);
+    if (buckets < 2) throw new Error(`[SpeechReadout] the speech pathway has room for ${buckets} word(s) at ${cell} cells a word`);
+    this.path = {
+      m: matrix, cell, buckets, end: buckets - 1, span: matrix.cols,
+      per: Math.max(1, Math.floor(opts.cellsPerUnit || 4)),       // state cells one unit lights
+      eta: typeof opts.eta === 'number' ? opts.eta : 0.05,          // one correction's step on a wire
+      fan: matrix.rows > 0 ? matrix.nnz / matrix.rows : 0,          // wires a word cell has
+    };
+    return this.path;
+  }
+  /** The state cells these units light (region-relative, each listed once). */
+  cellsOf(units) {
+    const p = this.path; const seen = new Set();
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      for (let s = 0; s < p.per; s++) {
+        let h = (Math.imul(u + 1, 0x9E3779B1) ^ Math.imul(s + 7, 0x85EBCA6B)) >>> 0;
+        h ^= h >>> 15; h = Math.imul(h, 0x2C1B3C6D) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297A2D39) >>> 0; h ^= h >>> 15;
+        seen.add((h >>> 0) % p.span);
+      }
+    }
+    return Int32Array.from(seen);
+  }
+  /** The lead a taught word must have: what ONE correction adds to a word's cells in this state. */
+  _cellMargin(cells) { const p = this.path; return p.eta * p.fan * cells.length / p.span; }
+  _scoresCells(units, nWords) {
+    const p = this.path;
+    if (nWords > this.nWords) this.nWords = nWords;
+    if (this._score.length < p.buckets) { this._score = new Float32Array(p.buckets); this._mark = new Int32Array(0); }
+    const cells = this.cellsOf(units);
+    p.m.bucketMeans(cells, p.cell, p.buckets, this._score);
+    this._cells = cells;
+    this._end = this._score[p.end];
+    this._all = true; this._n = Math.min(nWords, p.end); this._nt = 0;
+    return this._score;
+  }
+  /** `_fit` when the weights are her pathway's: raise the taught word's cells, lower the word that wrongly led. */
+  _fitCells(units, target, nWords, also, tries) {
+    const p = this.path; const isEnd = target === SPEECH_END;
+    if (!isEnd && !(target >= 0 && target < p.end)) return { right: false, updates: 0 };
+    const s = this._scoresCells(units, nWords); const cells = this._cells;
+    const margin = this._cellMargin(cells);
+    const alsoEnd = !!(also && also.includes(SPEECH_END));
+    let updates = 0, right = false;
+    for (let t = 0; t < tries; t++) {
+      const e = this._end;
+      const tv = isEnd ? e : s[target];
+      let [rival, rv] = this._best(isEnd ? -1 : target, also, 0);
+      if (!isEnd && !alsoEnd && e > rv) { rv = e; rival = SPEECH_END; }
+      if (t === 0) {
+        let sib = -Infinity;
+        if (also) { for (const b of also) { if (b === target) continue; const v = b === SPEECH_END ? e : (b >= 0 && b < this._n ? s[b] : -Infinity); if (v > sib) sib = v; } }
+        right = Math.max(tv, sib) > rv;
+      }
+      if (tv > 0 && tv - rv >= margin) break;
+      const tb = isEnd ? p.end : target;
+      s[tb] = p.m.stepRows(cells, tb * p.cell, p.cell, p.eta) / p.cell;
+      if (rival !== -1 && rv > 0) {
+        const rb = rival === SPEECH_END ? p.end : rival;
+        s[rb] = p.m.stepRows(cells, rb * p.cell, p.cell, -p.eta) / p.cell;
+      }
+      this._end = s[p.end];
+      updates++;
+    }
+    return { right, updates };
+  }
+
   // ── Read ──────────────────────────────────────────────────────────────────────
   /**
    * Score of every word slot [0, nWords) in this state. The returned array is
@@ -360,6 +437,7 @@ export class SpeechReadout {
    * a weight for. The end slot's score is left in `this._end`.
    */
   scores(units, nWords) {
+    if (this.path) return this._scoresCells(units, nWords);
     if (nWords > this.nWords) this.nWords = nWords;
     if (this._score.length < nWords) {
       const cap = stepUp(nWords);
@@ -394,7 +472,10 @@ export class SpeechReadout {
     return s;
   }
   /** Score of "the line is finished" in this state. */
-  endScore(units) { let e = 0; for (let i = 0; i < units.length; i++) e += this.endW[units[i]]; return e; }
+  endScore(units) {
+    if (this.path) { this._scoresCells(units, this.nWords || 1); return this._end; }
+    let e = 0; for (let i = 0; i < units.length; i++) e += this.endW[units[i]]; return e;
+  }
   /** The strongest word of the last read that is not in `skip`: [slot, score]; slot −1 when no word scores above `floor`. */
   _best(skipA, skipList, floor) {
     const s = this._score; let bw = -1, bv = floor;
@@ -410,6 +491,11 @@ export class SpeechReadout {
    *  with the end-of-line mean alongside as `.end`. */
   bucketMeans(units, nWords) {
     const s = this.scores(units, nWords); const out = new Float32Array(nWords);
+    if (this.path) {   // already a mean per word cell
+      const m = Math.min(nWords, this._n); for (let b = 0; b < m; b++) out[b] = s[b];
+      out.end = this._end; this.stats.says++;
+      return out;
+    }
     const d = Math.max(1, units.length);
     if (this._all) for (let b = 0; b < nWords; b++) out[b] = s[b] / d;
     else { const T = this._touched; for (let i = 0; i < this._nt; i++) out[T[i]] = s[T[i]] / d; }
@@ -523,6 +609,7 @@ export class SpeechReadout {
   }
   /** One "teach until she says it" in one state. Returns { right, updates }. */
   _fit(units, target, nWords, also, marginPer, tries) {
+    if (this.path) return this._fitCells(units, target, nWords, also, tries);
     const isEnd = target === SPEECH_END;
     const n = units.length; const margin = marginPer * n;
     const s = this.scores(units, nWords);            // read once; the changes below are applied to it directly
@@ -629,6 +716,19 @@ export class SpeechReadout {
   /** "Not this word, here": lower `word` until the best other slot leads it by the margin. */
   pushAway(units, word, nWords, opts = {}) {
     if (!units || !units.length || !(word >= 0) || word >= nWords) return false;
+    if (this.path) {
+      const p = this.path; if (word >= p.end) return false;
+      const sc = this._scoresCells(units, nWords); const cells = this._cells; const margin = this._cellMargin(cells);
+      let pushed = false;
+      for (let t = 0; t < TRIES; t++) {
+        const [, bv] = this._best(word, null, 0);
+        if (Math.max(bv, this._end, 0) - sc[word] >= margin || !(sc[word] > 0)) break;
+        sc[word] = p.m.stepRows(cells, word * p.cell, p.cell, -p.eta) / p.cell;
+        pushed = true;
+      }
+      if (pushed) this.stats.pushes++;
+      return pushed;
+    }
     const s = this.scores(units, nWords);
     const [, bv] = this._best(word, null, 0);
     const rv = Math.max(bv, this._end, 0);
