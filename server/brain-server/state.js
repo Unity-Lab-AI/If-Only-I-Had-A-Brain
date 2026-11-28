@@ -3315,6 +3315,25 @@ const SERVER_STATE_MIXIN = {
       //   that was wrong in KIND, not by a little: `_definitionTaughtWords` is a
       //   Set keyed by word, so a word with 32 senses advances it by one.
       kVocabTaught: kvocabTaught,
+      // WORDS SHE TOOK IN HERSELF — met in what was said to her (or asked
+      // about by the person), looked up, and made hers; or asked about by HER
+      // and told. Kept apart from the count above, which is words a lesson
+      // handed her. `waitingToAsk` = words the dictionary had nothing for,
+      // which she has yet to ask about.
+      newWords: (() => {
+        const m = cortex && cortex._newWordsTakenIn;
+        let lookedUp = 0, asked = 0, last = null;
+        if (m instanceof Map) for (const [w, v] of m) {
+          if (v && v.how === 'asked') asked++; else lookedUp++;
+          if (v && (!last || v.at > last.at)) last = { word: w, how: v.how, at: v.at };
+        }
+        const st = this._newWordStats || {};
+        return {
+          total: m instanceof Map ? m.size : 0, lookedUp, asked,
+          waitingToAsk: Array.isArray(this._wordsToAskAbout) ? this._wordsToAskAbout.length : 0,
+          noticed: st.queued || 0, last,
+        };
+      })(),
       // ⭐ THE ACTUAL NUMBER OF MEANINGS BOUND, cumulative, and deliberately
       //   WITHOUT a denominator — the journey's definition total is not knowable
       //   ahead of time, because how many senses a word has is only discovered

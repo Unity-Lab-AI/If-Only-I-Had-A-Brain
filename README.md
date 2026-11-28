@@ -191,6 +191,10 @@ Emission is then:
 - 🔁 **She is taught the way a rewording would find it.** Every answer is taught again with the exact sentence left out, so *"what's your name"* reaches what *"what is your name"* taught.
 - 🧠 **She rehearses.** While new lessons run she goes back over old ones and corrects only what a newer lesson disturbed — so pre-K is still there after PhD.
 - 💭 **Every sentence is a line about something.** From its first word, so a thought is a sentence about what is on her mind, not a name followed by silence.
+- ✨ **What she says depends on what she means.** The exact parts of her own line are made from her words *and* the thing the line is about, so a taught sentence comes back word for word only when she means that thing. About anything else she puts a line together herself. Before this, 79 of 79 lines she made were a taught sentence word for word.
+- 👉 **She can say the thing she means.** One more learned weight per unit — "name it here" — is added to whichever word her line is about, so where a line names its subject is learned once from every sentence. A line about a thing she was taught no line about has that word in it **100 %** of the time (2 % before), named once.
+
+**A word she does not know.** A word in something said to her that she does not hold is noticed and taken in between lessons: looked up, given her whole word lesson (read it, a place to say it, name it) and its definition. A misspelling is met as the word it was meant to be. When there is nothing to look up she keeps the word and **asks about it** — not knowing is a feeling in her speaking state, taught on the questions in her own reading, and it makes a question **70 %** of the time against 15 % when she is sure. What she is then told becomes its meaning, weighed first: an answer with no word near the word is taken at a quarter of the dose and marked doubted. The dashboard counts these apart from lesson words — *new words she took in: looked up · asked · waiting to ask*.
 
 And when too little of anything she was taught is present, **she says nothing** instead of guessing.
 

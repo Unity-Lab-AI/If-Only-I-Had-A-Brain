@@ -404,6 +404,7 @@ Before every word she is in a **state**: a small set `A` of active units (about 
 | `say argmax_w score(w)` | the strongest word is the one she says |
 | `score(end)` highest → stop | "the line is finished" is a slot like any word's |
 | `score / |A| < 0.04` → silence | too little of anything she was taught is present — she says nothing |
+| `score(topic) += Σ_{u ∈ A} T[u]` | **say the thing I mean:** one more learned weight per unit, added to whichever word her line is about — so *where* in a line the thing gets named is learned once, from every sentence, and holds for a thing she was taught no line about |
 
 ### Taught until she says it
 
@@ -422,6 +423,21 @@ Before every word she is in a **state**: a small set `A` of active units (about 
 | **Rewordings** | an answer is taught again with the exact sentence left out, so a question worded differently still finds it |
 | **Rehearsal** | for every lesson she goes back over one old moment and corrects it only if a newer lesson disturbed it |
 | **About something** | every sentence is taught as a line *about* its most distinctive word, from the first word — so a thought is a sentence about what is on her mind |
+| **What she says depends on what she means** | the units for an exact run of her own words are made from the run *and* the thing the line is about — a taught sentence is followed word for word only when she means the thing it was about; about anything else she puts a line together from the shared units |
+| **Named once** | the state knows whether she has already said the thing in this line, so it is named and then talked about, not named again and again |
+| **Not knowing is a feeling** | a question in her reading is taught with a *not-knowing* unit lit beside how she feels; when she does not know a word, that same unit is lit and what comes out leans toward asking |
+
+### A word she does not know
+
+| Step | What happens |
+|---|---|
+| **She meets it** | a word in something said to her that she does not hold is noticed and queued (a few a line), and taken in between lessons |
+| **She looks it up** | her whole word lesson (read it, a place to say it, name it) and then its definition — the word is hers the way a taught word is |
+| **A misspelling** | is met as the word it was meant to be |
+| **Nothing to look up** | she keeps the word itself, marks its meaning unknown, and asks about it — in the not-knowing feeling, about *that* word |
+| **She is told** | the answer is bound as its meaning. **With discernment:** if no word of the answer is closer to the word than nine in ten of her own words are, the answer is taken at a quarter of the dose and marked doubted |
+
+⭐ **Measured** (1,645 of her own sentences taught, 660 of them questions; 60 words she was taught no line about): a line about the word **has the word in it 100 %** of the time (2 % before she could "say the thing") · it is a **question 70 %** of the time when she does not know, **15 %** when she is sure · the next word of a sentence she was never taught, said as a line of her own about its subject: right **18.9 % → 26.8 %** (2,400 sentences taught), while taught sentences went 88.2 % → 92.3 %.
 
 ⭐ **Measured on her whole life** (pre-K → PhD, 78,120 taught steps): **100.0 %** said back after three passes · pre-K still **98 %** after every later grade was taught on top of it (69 % without rehearsal) · **82–87 %** of 60 rewordings she never heard answered exactly.
 

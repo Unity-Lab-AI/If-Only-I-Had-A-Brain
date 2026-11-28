@@ -787,6 +787,7 @@
             <div>prefetched: <span id="d-cortex-kvocab-prefetched" class="c-dim">no</span></div>
             <div title="WORDS whose definitions have been taught, against the journey's unique-word total. This pair was labelled &quot;defs taught&quot; and that was wrong in kind: the numerator is a Set keyed by WORD, so a word with 32 senses advances it by one. Both numbers are word counts and the percentage is progress through the vocabulary, not through meanings.">words defined: <span id="d-cortex-kvocab-taught" class="c-ok">0</span> / <span id="d-cortex-kvocab-total" class="c-mute">…</span> (<span id="d-cortex-kvocab-pct" class="c-cy">0%</span>)</div>
             <div title="The actual number of MEANINGS bound, cumulative. No denominator on purpose: how many senses a word has is only discovered by asking the dictionary — measured live, &quot;set&quot; has 91, &quot;take&quot; 65, &quot;old&quot; 32, &quot;any&quot; 10 — so the journey's definition total is not knowable in advance and any &quot;A of X&quot; here would require inventing X. Every sense of every word is bound; the teach feed labels each line &quot;sense 1 of N — all N are bound&quot; because it prints one sample per word, not one per sense.">senses bound: <span id="d-cortex-senses-bound" class="c-ok">0</span> <span class="c-mute fs10">(no total — unknowable until asked)</span></div>
+            <div title="Words she took in HERSELF, apart from the words her lessons handed her. &quot;Looked up&quot;: she met a word she did not know in something said to her (or the person asked her what it means), looked it up, and it became hers the way a taught word is — she can read it, say it, and holds what it means. &quot;Asked&quot;: the dictionary had nothing for it, so she asked what it means and was told. &quot;Waiting to ask&quot;: words she has no entry for and has not asked about yet. The last word taken in is shown beside the counts.">new words she took in: <span id="d-cortex-newwords-total" class="c-ok">0</span> <span class="c-mute fs10">(<span id="d-cortex-newwords-looked">0</span> looked up · <span id="d-cortex-newwords-asked">0</span> asked · <span id="d-cortex-newwords-waiting">0</span> waiting to ask<span id="d-cortex-newwords-last"></span>)</span></div>
           </div>
         </div>
       </div>
@@ -2075,6 +2076,21 @@
           const sb = $('d-cortex-senses-bound');
           if (sb) sb.textContent = (typeof m.definitionSensesBound === 'number')
             ? m.definitionSensesBound.toLocaleString() : 'not published';
+        }
+        // Words she took in herself (looked up or asked). An older backend
+        // does not publish the block — say so rather than show a zero.
+        {
+          const nw = m.newWords, t = $('d-cortex-newwords-total');
+          if (t) {
+            if (!nw) { t.textContent = 'not published'; }
+            else {
+              t.textContent = (nw.total || 0).toLocaleString();
+              $('d-cortex-newwords-looked').textContent = (nw.lookedUp || 0).toLocaleString();
+              $('d-cortex-newwords-asked').textContent = (nw.asked || 0).toLocaleString();
+              $('d-cortex-newwords-waiting').textContent = (nw.waitingToAsk || 0).toLocaleString();
+              $('d-cortex-newwords-last').textContent = nw.last ? ` · last: “${nw.last.word}” (${nw.last.how})` : '';
+            }
+          }
         }
         // Journey-wide denominator (unique words across all 19 grade lists).
         // null = the server's one-time warm hasn't finished — show … rather

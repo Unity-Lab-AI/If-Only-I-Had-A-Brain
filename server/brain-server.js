@@ -4745,6 +4745,14 @@ class ServerBrain {
         if (!this.curriculum || typeof this.curriculum._teachWordDefinition !== 'function') {
           return Promise.resolve(null);
         }
+        // A word she does not hold yet is not given a definition alone: it goes
+        // through the one door for a new word (looked up, her whole word
+        // lesson, naming, then what it means), queued so it is taught between
+        // teach calls like every other chat-time lesson.
+        if (typeof this.curriculum._holdsWord === 'function' && !this.curriculum._holdsWord(word)) {
+          this._queueNewWord(word);
+          return Promise.resolve(null);
+        }
         // Don't await — fire-and-forget so chat response returns instantly.
         return this.curriculum._teachWordDefinition(word, { reps: 4, label: 'CHAT-DEF', ...(opts || {}), sideLane: true }).catch(() => null);
       };
@@ -9461,6 +9469,10 @@ class ServerBrain {
             // each new reading lesson goes back over a few of these.
             readTaughtWords: cortex._readTaughtWords instanceof Map
               ? Array.from(cortex._readTaughtWords) : [],
+            // Words she took in herself — met, looked up, or asked about — kept
+            // apart from the words a lesson handed her: [word, how, when].
+            newWordsTakenIn: cortex._newWordsTakenIn instanceof Map
+              ? Array.from(cortex._newWordsTakenIn, ([w, v]) => [w, v && v.how, v && v.at]) : [],
             // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
             // (so contributions survive restart/resume) and is WIPED on a fresh
             // walk (force-fresh clears brain-weights). Keyed by persistent donorId
@@ -11020,6 +11032,13 @@ class ServerBrain {
             if (Array.isArray(e) && e.length >= 2 && typeof e[0] === 'string') m.set(e[0], Number(e[1]) || Date.now());
           }
           cortex._readTaughtWords = m;
+        }
+        if (Array.isArray(pending.newWordsTakenIn)) {
+          const m = new Map();
+          for (const e of pending.newWordsTakenIn) {
+            if (Array.isArray(e) && typeof e[0] === 'string') m.set(e[0], { how: typeof e[1] === 'string' ? e[1] : 'looked up', at: Number(e[2]) || Date.now() });
+          }
+          cortex._newWordsTakenIn = m;
         }
         // Restore the donor neuron-compute leaderboard (persists across restart/
         // resume; a fresh walk via force-fresh wipes brain-weights so it starts

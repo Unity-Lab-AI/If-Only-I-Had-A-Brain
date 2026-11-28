@@ -74,7 +74,7 @@ const L = (() => {
   l.G = o; return l;
 })();
 const K = { w1: 8, mean: 4, w2: 6, w3: 4, opener: 3, pos: 2, gist: 12, conj: 6, quad: 4, line: 6,
-  bag: 3, bi: 2, heardKey: 8, heardGist: 12, concept: 8, conceptMean: 8, about: 8, aboutMean: 8, live: 2 };
+  bag: 3, bi: 2, heardKey: 8, heardGist: 12, concept: 8, conceptMean: 8, about: 8, aboutMean: 8, live: 2, unsure: 6 };
 const HEARD_MAX = 16;                // words of a heard line that enter the bag / pairs
 
 /** The slot that means "the line is finished". Passed as `target` to teach(). */
@@ -120,6 +120,8 @@ const stepUp = (n) => Math.max(VOCAB_STEP, Math.ceil(n / VOCAB_STEP) * VOCAB_STE
 /** An exact unit stands for one particular run of words (a pair, triple, quad, a whole moment, a heard pair). */
 const isHeardPair = (u) => u >= L.heardBi && u < L.heardKey;
 const isExact = (u) => (u >= L.pair && u < L.heardBag) || isHeardPair(u);
+/** One "about" unit's part of the key for the word a line is about (summed over the units, so order does not matter). */
+const aboutMix = (u) => { let x = Math.imul(u + 0x7F4A7C15, 0x9E3779B1) >>> 0; x ^= x >>> 15; x = Math.imul(x, 0x85EBCA6B) >>> 0; return (x ^ (x >>> 13)) >>> 0; };
 
 export class SpeechReadout {
   constructor(embeddings, opts = {}) {
@@ -136,6 +138,15 @@ export class SpeechReadout {
     this.wd = new Array(L.G).fill(null);
     this.endW = new Float32Array(L.G);       // each unit's weight onto "the line is finished"
     this.use = new Uint32Array(L.G);         // times each unit has taken a correction
+    // "SAY THE THING I MEAN." Each unit's weight onto naming what the line is
+    // about, whatever that is. It is added to the score of the one word the
+    // line is about, so where in a line the thing gets said (and in what kind
+    // of line) is learned once, from every line, and holds for a thing she was
+    // taught no line about.
+    this.thingW = new Float32Array(L.G);
+    this.topicAt = new Map();                // the units that stand for "about <word>" → that word's slot
+    this._topicWords = null; this._topicN = 0;
+    this._thing = 0; this._topic = -1;       // the last read: the thing score, and the slot it was added to (−1: none)
     this._share = new Float64Array(128);
     this.entries = 0;                        // weights held (word weights; the end weights are apart)
     this.wide = 0;                           // rows that are plain arrays
@@ -226,11 +237,23 @@ export class SpeechReadout {
     if (n >= 3) hashUnits(p[n - 3], K.w3, ID, 3, L.w3Id, out);
     if (n >= 2) hashUnits(p[0], K.opener, ID, 23, L.opener, out);
     hashUnits('p' + Math.min(n, 12), K.pos, POS, 21, L.pos, out);
-    if (n >= 2) hashUnits(p[n - 2] + ' ' + p[n - 1], K.conj, CJ, 7, L.pair, out);
-    if (n >= 3) hashUnits(p[n - 3] + ' ' + p[n - 2] + ' ' + p[n - 1], K.conj, CJ, 9, L.triple, out);
-    if (n >= 4) hashUnits(p[n - 4] + ' ' + p[n - 3] + ' ' + p[n - 2] + ' ' + p[n - 1], K.quad, CJ, 10, L.quad, out);
+    // WHAT SHE SAYS DEPENDS ON WHAT SHE MEANS. In a line of her own about a
+    // named thing, the units for an exact run of her words (her last two /
+    // three / four, the whole line so far) are made from the run AND the thing.
+    // A taught line is then followed word for word only when she means the
+    // thing it was about; a line about anything else lights the shared units
+    // alone and is put together from them. Without this the run of words
+    // carried her down a taught sentence whatever she meant — measured, 79 of
+    // 79 lines she made were a taught sentence word for word. A reply (something
+    // was said to her) is keyed by what was said, as before.
+    const own = (!h.length && topic) ? topic + '|' : '';
+    // whether she has already said the thing in this line (a thing is named, then talked about — not named again and again)
+    if (own) hashUnits(p.includes(topic) ? 'thing-said' : 'thing-unsaid', 4, POS, 37, L.pos, out);
+    if (n >= 2) hashUnits(own + p[n - 2] + ' ' + p[n - 1], K.conj, CJ, 7, L.pair, out);
+    if (n >= 3) hashUnits(own + p[n - 3] + ' ' + p[n - 2] + ' ' + p[n - 1], K.conj, CJ, 9, L.triple, out);
+    if (n >= 4) hashUnits(own + p[n - 4] + ' ' + p[n - 3] + ' ' + p[n - 2] + ' ' + p[n - 1], K.quad, CJ, 10, L.quad, out);
     // this exact moment
-    hashUnits(h.join(' ') + '|' + p.join(' '), K.line, LINE, 25, L.line, out);
+    hashUnits(own + h.join(' ') + '|' + p.join(' '), K.line, LINE, 25, L.line, out);
     const g = this._gist(h.concat(p));
     if (g) this._meaningUnits(g, K.gist, L.gist, out);
     // what was said to her, in parts a differently worded line still shares
@@ -294,11 +317,15 @@ export class SpeechReadout {
    * five steps. Added to whatever state she speaks or is taught in, so a word
    * taught while she felt one way leans toward that feeling afterwards.
    */
-  liveUnits(valence, arousal) {
+  liveUnits(valence, arousal, unsure) {
     const out = [];
     const step = (x, lo, hi) => { const t = (Number(x) - lo) / (hi - lo); return Math.max(0, Math.min(4, Math.floor((Number.isFinite(t) ? t : 0.5) * 5))); };
     hashUnits('v' + step(valence, -1, 1), K.live, LIVE, 31, L.live, out);
     hashUnits('a' + step(arousal, 0, 1), K.live, LIVE, 33, L.live, out);
+    // NOT KNOWING is a feeling too: she is about to speak of something she
+    // does not hold. Lit while a question is taught and while she wonders, so
+    // what she learned to say when unsure (to ask) is what that feeling calls up.
+    if (unsure === true) hashUnits('not-knowing', K.unsure, LIVE, 35, L.live, out);
     return unique(out);
   }
 
@@ -368,9 +395,10 @@ export class SpeechReadout {
     const s = this._score, mark = this._mark; let T = this._touched;
     if (this._all) s.fill(0, 0, this._n); else for (let i = 0; i < this._nt; i++) s[T[i]] = 0;
     // plain-array rows first: once one is active every word is in play
-    let all = false, end = 0;
+    let all = false, end = 0, thing = 0, aKey = 0, aN = 0;
     for (let i = 0; i < units.length; i++) {
-      const u = units[i]; end += this.endW[u];
+      const u = units[i]; end += this.endW[u]; thing += this.thingW[u];
+      if (u >= L.about && u < L.aboutMean) { aKey += aboutMix(u); aN++; }
       const w = this.wd[u]; if (!w) continue;
       all = true;
       const m = nWords < w.length ? nWords : w.length;
@@ -390,8 +418,34 @@ export class SpeechReadout {
         } else s[key] += v[j];
       }
     }
-    this._all = all; this._n = nWords; this._nt = nt; this._end = end;
+    // the thing score goes to the word this line is about
+    let topic = -1;
+    if (aN > 0) { const t = this.topicAt.get(aKey); if (t !== undefined && t < nWords) topic = t; }
+    if (topic >= 0) {
+      if (!all && mark[topic] !== ep) {
+        mark[topic] = ep; s[topic] = 0;
+        if (nt === T.length) { const nT = new Int32Array(T.length * 2); nT.set(T); T = this._touched = nT; }
+        T[nt++] = topic;
+      }
+      s[topic] += thing;
+    }
+    this._all = all; this._n = nWords; this._nt = nt; this._end = end; this._thing = thing; this._topic = topic;
     return s;
+  }
+  /**
+   * Her word list (slot = position; it only grows). Lets a read find the slot
+   * of the word a line is about from the state's own "about" units.
+   */
+  knowWords(words) {
+    if (!Array.isArray(words)) return;
+    if (words !== this._topicWords || words.length < this._topicN) { this.topicAt.clear(); this._topicN = 0; this._topicWords = words; }
+    const tmp = [];
+    for (let i = this._topicN; i < words.length; i++) {
+      tmp.length = 0; hashUnits(String(words[i]), K.about, ID, 35, L.about, tmp);
+      let key = 0; for (let j = 0; j < tmp.length; j++) key += aboutMix(tmp[j]);
+      this.topicAt.set(key, i);
+    }
+    this._topicN = words.length;
   }
   /** Score of "the line is finished" in this state. */
   endScore(units) { let e = 0; for (let i = 0; i < units.length; i++) e += this.endW[units[i]]; return e; }
@@ -526,6 +580,25 @@ export class SpeechReadout {
     }
     return out;
   }
+  /**
+   * Her own line, part-way in, with every unit that stands for an EXACT run of
+   * her words left out: what is left is shared between lines — her last words
+   * one at a time, how far in she is, the drift of the line, what it is about.
+   * Null for a state that is not part-way through a line of her own.
+   */
+  _sharedOfOwnLine(units) {
+    let spoken = false, exact = false;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= L.heardBag && u < L.concept) return null;        // something was said to her: a reply, handled by `_general`
+      if (u >= L.w1Id && u < L.w1Mean) spoken = true;
+      else if (u >= L.pair && u < L.heardBag) exact = true;
+    }
+    if (!spoken || !exact) return null;
+    const out = [];
+    for (let i = 0; i < units.length; i++) { const u = units[i]; if (u >= L.pair && u < L.heardBag) continue; out.push(u); }
+    return out;
+  }
   /** One "teach until she says it" in one state. Returns { right, updates }. */
   _fit(units, target, nWords, also, marginPer, tries) {
     const isEnd = target === SPEECH_END;
@@ -537,6 +610,8 @@ export class SpeechReadout {
       this._touched[this._nt++] = target;
     }
     const alsoEnd = !!(also && also.includes(SPEECH_END));
+    const topic = this._topic;                       // the slot of the word this line is about (−1: none)
+    const thingLed = this._thing > 0;                // was "say the thing" pushing that word up in this state
     let updates = 0, right = false;
     for (let t = 0; t < tries; t++) {
       const e = this._end;
@@ -571,11 +646,18 @@ export class SpeechReadout {
       const down = (none || !(sumShared > 0)) ? 0 : loss / 2 + 1e-4 * n;
       for (let i = 0; i < n; i++) {
         const u = units[i]; const tu = up * share[i] / sumAll;
-        if (isEnd) this.endW[u] = clampW(this.endW[u] + tu); else this._add(u, target, tu);
+        // The word this line is about is taught, on what lines share, as "say
+        // the thing" — not as that one word — so it holds for any thing. A
+        // unit for an exact run of words keeps the word itself.
+        if (isEnd) this.endW[u] = clampW(this.endW[u] + tu);
+        else if (target === topic && !isExact(u)) this.thingW[u] = clampW(this.thingW[u] + tu);
+        else this._add(u, target, tu);
         if (use[u] < 0xFFFFFFFF) use[u]++;
         if (!down || isExact(u)) continue;
         const td = down * share[i] / sumShared;
-        if (rival === SPEECH_END) this.endW[u] = clampW(this.endW[u] - td); else this._add(u, rival, -td);
+        if (rival === SPEECH_END) this.endW[u] = clampW(this.endW[u] - td);
+        else if (rival === topic && thingLed) this.thingW[u] = clampW(this.thingW[u] - td);
+        else this._add(u, rival, -td);
       }
       if (isEnd) this._end += up; else s[target] += up;
       if (down) { if (rival === SPEECH_END) this._end -= down; else s[rival] -= down; }
@@ -608,7 +690,14 @@ export class SpeechReadout {
     if (opts.general !== false) {
       const wider = [];
       if (this._heardIn(units)) { wider.push(this._general(units, 1), this._general(units, 2)); }
-      else { const g = this._meaningOnly(units); if (g) wider.push(g); }
+      else {
+        const g = this._meaningOnly(units); if (g) wider.push(g);
+        // A step of her OWN line is also taught on what lines share. The exact
+        // units belong to this line about this thing; a line about something
+        // she was taught no line about lights only the shared ones, and this
+        // is what gives them something to say there.
+        const s = this._sharedOfOwnLine(units); if (s) wider.push(s);
+      }
       for (const g of wider) {
         if (g.length < 4 || g.length === units.length) continue;
         const ga = this._remember(g, target);
@@ -674,6 +763,7 @@ export class SpeechReadout {
     }
     for (let u = 0; u < this.G; u++) pf(this.endW[u]);
     for (let u = 0; u < this.G; u++) pi(this.use[u] | 0);
+    for (let u = 0; u < this.G; u++) pf(this.thingW[u]);
     let mU = 0, mT = 0;
     for (const m of this.mem) pi(m.units.length);
     for (const m of this.mem) pi(m.targets.length);
@@ -681,7 +771,11 @@ export class SpeechReadout {
     for (const m of this.mem) { for (const t of m.targets) pi(t); mT += m.targets.length; }
     flush();
     return {
-      header: { v: 2, G: this.G, nWords: this.nWords, units: nU, entries: total, moments: this.mem.length, momentUnits: mU, momentTargets: mT,
+      // v 3: in a line of her own the exact-run units are made from the run of
+      // words AND what the line is about. A file saved before that holds
+      // weights on units that no longer mean the same thing, and is refused.
+      // v 4: every unit's "say the thing" weight follows the correction counts.
+      header: { v: 4, G: this.G, nWords: this.nWords, units: nU, entries: total, moments: this.mem.length, momentUnits: mU, momentTargets: mT,
         memSeen: this.memSeen, bytes, mu: this.mu ? Array.from(this.mu) : null, muWords: this.muWords, stats: this.stats },
       buffers,
     };
@@ -696,9 +790,9 @@ export class SpeechReadout {
   restore(header, body) {
     const H = header;
     const int = (x) => Number.isInteger(x) && x >= 0;
-    if (!H || H.v !== 2 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
+    if (!H || H.v !== 4 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
     if (H.units > this.G) return false;
-    const need = (2 * H.units + 2 * H.entries + 2 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
+    const need = (2 * H.units + 2 * H.entries + 3 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
     let off = 0;
     const next = typeof body === 'function' ? body : (len) => { const b = body.subarray(off, off + len); off += len; return b; };
     const ints = (count) => {
@@ -710,7 +804,7 @@ export class SpeechReadout {
       }
       return out;
     };
-    let ids, counts, rows, endW, use, mLen, mTLen, mUnits, mTargets;
+    let ids, counts, rows, endW, use, thingW, mLen, mTLen, mUnits, mTargets;
     try {
       if (typeof body !== 'function' && (!body || body.length < need)) return false;
       ids = ints(H.units); counts = ints(H.units);
@@ -720,6 +814,7 @@ export class SpeechReadout {
       for (let i = 0; i < H.units; i++) { const k = ints(counts[i]); const v = new Float32Array(ints(counts[i]).buffer); rows[i] = [k, v]; }
       endW = new Float32Array(ints(this.G).buffer);
       use = new Uint32Array(ints(this.G).buffer);
+      thingW = new Float32Array(ints(this.G).buffer);
       mLen = ints(H.moments); mTLen = ints(H.moments);
       let su = 0, stt = 0; for (let i = 0; i < H.moments; i++) { su += mLen[i]; stt += mTLen[i]; }
       if (su !== H.momentUnits || stt !== H.momentTargets) return false;
@@ -737,7 +832,7 @@ export class SpeechReadout {
       if (n > LIST_SCAN) this._index(u);
     }
     for (let i = 0; i < H.units; i++) { const u = ids[i]; if (this.ln[u] >= WIDE_MIN && this.ln[u] * 3 > this.nWords) this._widen(u); }
-    this.endW.set(endW); this.use.set(use);
+    this.endW.set(endW); this.use.set(use); this.thingW.set(thingW);
     this.mem = []; this.memAt = new Map();
     let ou = 0, ot = 0;
     for (let i = 0; i < H.moments; i++) {

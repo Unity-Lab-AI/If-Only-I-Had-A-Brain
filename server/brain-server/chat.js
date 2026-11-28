@@ -1298,6 +1298,14 @@ const SERVER_CHAT_MIXIN = {
     }
     this._chatStamp('respond:curiosity');
 
+    // WORDS SHE WAS JUST GIVEN AND DOES NOT KNOW — noticed here, after the
+    // reply is on its way, and taken in on the lane that teaches between teach
+    // calls. Skipped when this line is the ANSWER to a question she asked: its
+    // words are the meaning she was told, handled just below.
+    if (!this._pendingQuestionConcept) {
+      try { this._noticeNewWords(text); } catch { /* noticing a word must never break a reply */ }
+    }
+
     // ── INTRO.2 — THE OUTWARD LANE. A relational gap needs a turn, so it is
     // armed here, right after one completes: the NEXT reply carries it.
     //
@@ -1323,6 +1331,14 @@ const SERVER_CHAT_MIXIN = {
         const curric = this.cortexCluster && this.cortexCluster._curriculum;
         const answerWords = text.toLowerCase().split(/\s+/)
           .filter(w => /^[a-z]{2,}$/.test(w)).slice(0, 8);
+        // SHE ASKED WHAT A WORD MEANS AND THIS IS THE ANSWER — it goes through
+        // the one door for a new word, told: the answer's words become what
+        // the word means to her, weighed first (`Curriculum._meetNewWord`).
+        const _askedAboutNewWord = this._pendingQuestionIsNewWord === true;
+        this._pendingQuestionIsNewWord = false;
+        if (_askedAboutNewWord) {
+          this._queueNewWord(concept, { told: answerWords });
+        } else
         if (curric && typeof curric._teachAssociationPairs === 'function' && answerWords.length > 0) {
           const pairs = answerWords.map(t => [concept, t]);
           // ONE TEACHER AT A TIME, HERE TOO (2026-08-20). This awaited
@@ -8057,12 +8073,20 @@ const SERVER_CHAT_MIXIN = {
     const cluster = this.cortexCluster;
     if (!cluster || typeof cluster.composeSentence !== 'function') return false;
     if (this._pendingQuestionConcept) return false;   // one open question at a time
-    // Base curiosity ~12%, lifted by arousal (engaged → more inquisitive).
-    const drive = 0.12 + 0.18 * Math.max(0, Math.min(1, this.arousal ?? 0.5));
-    if (this._rand('curious-question') > drive) return false;
-    const concept = this._pickEpistemicGap();
+    // A WORD SHE MET AND HAS NOTHING FOR comes first: she wonders about that
+    // word, by name. Otherwise she wonders now and then about something she
+    // only half holds — base curiosity ~12%, lifted by arousal.
+    const waiting = (Array.isArray(this._wordsToAskAbout) && this._wordsToAskAbout.length) ? this._wordsToAskAbout[0] : null;
+    if (!waiting) {
+      const drive = 0.12 + 0.18 * Math.max(0, Math.min(1, this.arousal ?? 0.5));
+      if (this._rand('curious-question') > drive) return false;
+    }
+    const concept = waiting || this._pickEpistemicGap();
     if (!concept) return false;
     let composed = null;
+    // She speaks of it in the feeling of not knowing — the feeling the
+    // questions in her own reading were taught in (`_unsureAbout`).
+    cluster._unsureAbout = true;
     try {
       composed = await cluster.composeSentence(concept, {
         questionMode: true,
@@ -8071,8 +8095,16 @@ const SERVER_CHAT_MIXIN = {
         ...this._affectDecoder(),   // temperature + topK from live affect/chemical state
       });
     } catch { composed = null; }
+    finally { cluster._unsureAbout = false; }
     const sentence = composed && composed.sentence ? composed.sentence.trim() : '';
-    if (!sentence) return false;
+    if (!sentence) {
+      // Nothing came: she does not ask this time, and the word goes to the
+      // back so one word cannot hold the others up.
+      if (waiting) { this._wordsToAskAbout.shift(); this._wordsToAskAbout.push(waiting); const st = this._newWordStats; if (st) st.askFailed = (st.askFailed || 0) + 1; }
+      return false;
+    }
+    if (waiting) this._wordsToAskAbout.shift();
+    this._pendingQuestionIsNewWord = !!waiting;
     // Record for the follow-up loop — the next user reply answers THIS.
     this._pendingQuestionConcept = concept;
     this._pendingQuestionAt = now;
@@ -8101,6 +8133,45 @@ const SERVER_CHAT_MIXIN = {
       }
     }
     return true;
+  },
+
+  /**
+   * Queue a word she met and does not know, to be taken in on the lane that
+   * teaches between teach calls (`kind: 'newWord'` → `Curriculum._meetNewWord`).
+   * `opts.told` — the words of an answer, when someone told her what it means.
+   * Bounded with the queue it rides; a word already waiting is not queued twice.
+   */
+  _queueNewWord(word, opts) {
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    if (!w || w.length < 2) return false;
+    if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+    const q = this._chatTeachJobQueue;
+    if (q.some((j) => j && j.kind === 'newWord' && j.word === w && !(opts && opts.told))) return false;
+    q.push({ kind: 'newWord', word: w, opts: opts || {} });
+    const st = this._newWordStats || (this._newWordStats = { met: 0, lookedUp: 0, asked: 0, toAsk: 0, noAnswer: 0, last: null });
+    st.queued = (st.queued || 0) + 1;
+    while (q.length > 32) { q.shift(); st.dropped = (st.dropped || 0) + 1; }
+    return true;
+  },
+
+  /**
+   * Notice the words of something said to her that she does not hold, and
+   * queue each to be taken in. At most a few a line, so one long message does
+   * not fill the lane.
+   */
+  _noticeNewWords(text) {
+    const cur = this.curriculum;
+    if (!cur || typeof cur._holdsWord !== 'function' || typeof text !== 'string') return 0;
+    const seen = new Set(); let n = 0;
+    for (const raw of text.toLowerCase().split(/[^a-z']+/)) {
+      const w = raw.replace(/^'+|'+$/g, '');
+      if (w.length < 2 || seen.has(w)) continue;
+      seen.add(w);
+      if (cur._holdsWord(w)) continue;
+      if (this._queueNewWord(w)) n++;
+      if (n >= 4) break;
+    }
+    return n;
   },
 
   /**
