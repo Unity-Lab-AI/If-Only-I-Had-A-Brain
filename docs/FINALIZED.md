@@ -61962,4 +61962,24 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** `1c91141f`, `bdf771ef`, `8f22bfb7`, `3695f4f2`, and the commit carrying this entry.
 - **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, WHOLE-BRAIN-DESIGN (reading row) · `wiki/` — stamped per page, local. Every other tree was brought current in the sixth entry's commits and is unaffected by this one.
 
+---
+
+## 2026-11-27 (night, eighth entry) — WHOLEBRAIN.8 closed; every WHOLEBRAIN row is now closed
+
+**Gee's words that govern this entry (verbatim):** "we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit" · "no we arent booting her up till everything is done and complete and finished".
+
+**WHOLEBRAIN.8 — the documents stop claiming what the code does not do. CLOSED.** Row text as filed stays on the board.
+- The claim "the brain equations ARE the language equations" is restated where it is made, to what an instrument shows: her speaking state is her own cells, the word is read from the cells that are lit, she is silent with them dark, and the weights that read runs over are on the server.
+- The equations map's contents table says, section by section, **measured** (with the number) or **not exercised**.
+- Every tree was written by hand; the list is in the row.
+
+**The board, at the end:** .1 instrument · .2 read and comprehend gates · .3 cell learning · .4 speech in her cells · .5 reading pathway · .6 firing in range · .7 · .8 documents · .9 first-start check-list · .11 reading as vocabulary grows · .12 the untaught figure · .13 letter sounds · .14 cells fire from wiring — **closed on measurements.** .10 speech wiring on the card — **dropped** on Gee's word.
+
+**The sentence lesson's three passes, measured after the seventh entry:** three runs of her real sentence lesson and its gate on grade-1 material — COMPREHEND **10 / 10, 10 / 10, 10 / 10**; TALK 59 / 59, 55 / 55, 56 / 56 next words; before the lesson 0 / 10 and 0 / 16 each time. At one pass the same gate had printed 7, 8, 9 and 10.
+
+**Not yet done, and not rows:** the card build 0.3.58 released and verified on the live site; the merge to `develop` and `main` on both remotes; one fresh start. She has not been booted.
+
+- **Commits:** the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger.
+
 
