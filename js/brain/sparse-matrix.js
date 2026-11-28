@@ -1187,6 +1187,83 @@ export class SparseMatrix {
   }
 
   /**
+   * Each word's own run of `bucketSize` target cells, averaged, for the lit
+   * source cells in `preIdx` (a list of column indices). The read a spoken
+   * word is taken from; the card's `propagate_bucket_means` is the same sum.
+   */
+  bucketMeans(preIdx, bucketSize, bucketCount) {
+    const { rows, cols, values, colIdx, rowPtr } = this;
+    const out = new Float32Array(bucketCount);
+    if (!values || !rowPtr || !colIdx || !(bucketSize > 0)) return out;
+    if (!this._litMark || this._litMark.length !== cols) this._litMark = new Uint8Array(cols);
+    const lit = this._litMark;
+    for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 1; }
+    for (let b = 0; b < bucketCount; b++) {
+      const r0 = b * bucketSize; if (r0 >= rows) break;
+      const r1 = Math.min(rows, r0 + bucketSize);
+      let s = 0;
+      for (let k = rowPtr[r0]; k < rowPtr[r1]; k++) if (lit[colIdx[k]]) s += values[k];
+      out[b] = s / (r1 - r0);
+    }
+    for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 0; }
+    return out;
+  }
+
+  /** Add `d` to every wire from a lit source cell into rows [rowStart, rowStart + rowCount). */
+  stepRows(preIdx, rowStart, rowCount, d) {
+    const { rows, cols, values, colIdx, rowPtr, wMin, wMax } = this;
+    if (!values || !rowPtr || !colIdx) return;
+    if (!this._litMark || this._litMark.length !== cols) this._litMark = new Uint8Array(cols);
+    const lit = this._litMark;
+    for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 1; }
+    const r1 = Math.min(rows, rowStart + rowCount);
+    for (let k = rowPtr[Math.max(0, rowStart)]; k < rowPtr[r1]; k++) {
+      if (!lit[colIdx[k]]) continue;
+      const v = values[k] + d;
+      values[k] = v > wMax ? wMax : v < wMin ? wMin : v;
+    }
+    for (let i = 0; i < preIdx.length; i++) { const c = preIdx[i]; if (c >= 0 && c < cols) lit[c] = 0; }
+  }
+
+  /**
+   * Teach one spoken word, the error read at the WORD.
+   *
+   * The lit state cells are driven through this pathway and each word's own
+   * run of target cells is averaged. If the taught word does not lead every
+   * other word by `margin`, the wires from the lit state cells into ITS cells
+   * are raised by `eta` and the wires into the cells of the word that wrongly
+   * led are lowered by `eta`; then it is looked at again, up to `tries` times.
+   * A word she would already say is left alone.
+   *
+   * Why the error is read here and not at each cell: the states of one
+   * sentence share most of their lit cells, and a single cell with a few
+   * hundred wires cannot tell them apart alone. Words competing can. Measured
+   * on 6,006 taught steps with the same wiring: per-cell rule 75 % after four
+   * passes, this rule 98 %. docs/WHOLE-BRAIN-DESIGN.md.
+   *
+   * Card twin: the donor's `speech_teach`. Same arithmetic, on bucket means.
+   * Returns { said, fixes }: the word she would have said BEFORE the lesson
+   * (-1 = nothing) and how many corrections were made.
+   */
+  speechTeach(preIdx, target, bucketSize, bucketCount, margin, tries, eta) {
+    let said = -1, fixes = 0;
+    if (!(bucketSize > 0) || !(target >= 0 && target < bucketCount)) return { said, fixes };
+    const n = Math.max(1, tries | 0);
+    for (let t = 0; t < n; t++) {
+      const means = this.bucketMeans(preIdx, bucketSize, bucketCount);
+      const tv = means[target];
+      let bi = -1, bv = -Infinity;
+      for (let i = 0; i < bucketCount; i++) if (i !== target && means[i] > bv) { bv = means[i]; bi = i; }
+      if (t === 0) said = (tv > 0 && tv >= bv) ? target : (bv > 0 ? bi : -1);
+      if (tv > 0 && tv - bv >= margin) break;
+      this.stepRows(preIdx, target * bucketSize, bucketSize, eta);
+      if (bi >= 0 && bv > 0) this.stepRows(preIdx, bi * bucketSize, bucketSize, -eta);
+      fixes++;
+    }
+    return { said, fixes };
+  }
+
+  /**
    * BCM plasticity rule (Bienenstock, Cooper, Munro 1982 — J Neurosci
    * 2:32) — sliding-threshold Hebbian where the sign of the update
    * depends on whether the post neuron's activity crosses a per-neuron
