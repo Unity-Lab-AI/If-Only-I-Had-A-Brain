@@ -101,6 +101,20 @@ The real cluster, the real teaching call, the new word code, the only-when-wrong
 
 *Instrument: `.scratch/brain-check2.mjs`.*
 
+### The wiring inside a region — where definitions and word order live
+
+A word's cells in the meaning region taught to call up another word's cells in the same region, through her real inside-wiring teach call. 100 pairs:
+
+| Wires per cell inside | Present code + present rule | New code + present rule | Present code + only-when-wrong | **New code + only-when-wrong** |
+|---|---|---|---|---|
+| **30** (what she is built with) | **8 / 100** | 31 | 27 | **100 / 100** |
+| 100 | 8 | 49 | 24 | **100 / 100** |
+| 300 | 17 | 70 | 33 | **100 / 100** |
+
+Inside wiring is local — 27 of a meaning cell's 30 inside wires come from other meaning cells — so it needs **no more wires than it has**. It needs the code and the rule.
+
+*Instrument: `.scratch/brain-intra-check.mjs`.*
+
 ---
 
 ## 3. How much wiring her vocabulary needs
