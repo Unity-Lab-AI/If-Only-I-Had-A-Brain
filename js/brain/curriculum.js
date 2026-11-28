@@ -18454,6 +18454,12 @@ export class Curriculum {
       return { trained: 0, skipped: qaList.length };
     }
     let trained = 0, skipped = 0, altTrained = 0, antiFires = 0;
+    // How many answers were ALSO taught with a memory in mind. Published in the
+    // lesson's own line, because "the feature is wired" and "it reached any answer
+    // at all" are different claims and only the count separates them: a cell whose
+    // questions are about things she holds no line about trains zero of these, and
+    // that must read as zero rather than as absence.
+    let memoryTrained = 0;
     const startMs = Date.now();
     this._hb(`[Curriculum][${label}] START — ${qaList.length} Q→A training pairs × ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} · keyWordTile=${keyWordTile} · anti-pairs=${antiPairs})`);
     // Dashboard popup — announce the Q-A phase START on the 3D brain
@@ -18554,6 +18560,37 @@ export class Curriculum {
         } catch (err) {
           skipped++;
         }
+
+        // ─── THE SAME ANSWER AGAIN, WITH A MEMORY IN MIND ───────────
+        //
+        // Gee, asked with options, chose "Yes — teach answers with a memory in
+        // mind": the same question may be answered differently depending on what
+        // she remembers. Measured before this existed: holding a remembered thing
+        // in mind while she answered was SAFE (taught answers still exact, 240 of
+        // 240) and changed NOTHING (0 of 180) — because no lesson had ever taught
+        // an answer with a memory present. This is that lesson.
+        //
+        // ⛔ Every word of the continuation is one she was taught: it comes from
+        // the line she already holds about the remembered thing, recorded by the
+        // lesson that taught it. Nothing is written here.
+        //
+        // ⚠ The plain pass above is UNTOUCHED and runs first, so the answer with
+        // nothing in mind stays exactly the answer she was taught. This pass only
+        // adds what she says when she also remembers something.
+        try {
+          const _mem = this._memoryForAnswer(entry.question, answerText);
+          if (_mem) {
+            this._clearSpikes();
+            this._writeSpeechState(entry.question, [], { clear: false, inMind: _mem.about, inMindLine: _mem.line });
+            this._writeTiledPattern(motorRegion, motorPattern, false);
+            this._writeAnswerToWordMotor(answerText, opts.subject);
+            await this._teachHebbian(lr, {
+              projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+              skipIntraSynapses: true,
+            });
+            memoryTrained++;
+          }
+        } catch { /* a memory lesson must never cost the answer that already landed */ }
 
         // ─── Direct-prompt alternative format positive pair ─────────
         if (directPromptAlt && keyWord) {
@@ -18932,7 +18969,8 @@ export class Curriculum {
 
     const altReport = directPromptAlt ? ` · alt-fires=${altTrained}` : '';
     const antiReport = antiPairs ? ` · anti-fires=${antiFires}` : '';
-    this._hb(`[Curriculum][${label}] DONE — ${trained} positive + ${altTrained} alt + ${antiFires} anti across ${qaList.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${altReport}${antiReport}${qaPruneReport}${qaNormReport}${qaRescaleReport}${qaSepReport}${weightReport}`);
+    const memReport = ` · with-a-memory-in-mind=${memoryTrained}/${qaList.length}`;
+    this._hb(`[Curriculum][${label}] DONE — ${trained} positive + ${altTrained} alt + ${antiFires} anti across ${qaList.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${altReport}${antiReport}${memReport}${qaPruneReport}${qaNormReport}${qaRescaleReport}${qaSepReport}${weightReport}`);
     try { this._pushBrainEvent?.('teach', 'motor', `Q-A DONE: ${label} · ${trained}/${antiFires}/${altTrained} +/−/alt`, { label, trained, antiFires, altTrained, elapsedSec }); } catch {}
     // once Q→A pairs land, advance subGrade to 'binding'.
     // Subject scope from opts.subject (every K-cell QA-train caller
@@ -18945,7 +18983,7 @@ export class Curriculum {
         this._hb(`[Curriculum] 📈 subGrade ${subj} advanced → 'binding' (${trained} Q→A bindings landed · live capability cap rises now)`);
       }
     }
-    return { trained, altTrained, antiFires, skipped };
+    return { trained, altTrained, antiFires, skipped, memoryTrained };
   }
 
   /**
@@ -20567,14 +20605,38 @@ export class Curriculum {
     // two frames to the card per word, which nothing on a speech-only path reads).
     // `opts.about` — what her own line is about (a word, or a meaning in mind
     // with no word attached). It stays in the state for the whole line.
-    const about = h ? null : (opts.about || null);
+    // ⭐⭐ A MEMORY IN MIND WHILE SHE ANSWERS — `opts.inMind`.
+    //
+    // This line used to read `h ? null : (opts.about || null)`: when something had
+    // been said to her, whatever was in her mind was thrown away. That is exactly
+    // why holding a remembered thing in mind while she answered was measured as
+    // changing nothing (0 of 180) — it never reached the state she answered in.
+    //
+    // Asked with options, Gee chose "Yes — teach answers with a memory in mind":
+    // the same question may be answered differently depending on what she
+    // remembers. So a memory rides the same slot her own line's subject rides,
+    // and the readout already supports it — `stateUnits` writes the about units
+    // whenever a topic is given, heard line or not.
+    //
+    // ⚠ What it deliberately does NOT do: the exact-run units stay keyed by what
+    // was SAID to her (`own` is empty whenever there is a heard line), so a memory
+    // colours the answer without carrying her down one of her own taught lines
+    // instead of answering. The memory is a thing in mind, not the subject of the
+    // line.
+    const about = h ? (opts.inMind || null) : (opts.about || null);
+    // The line she holds about the remembered thing, taught as the continuation of
+    // the answer (see `_speechTeachTargets`). Words she was taught — never
+    // invented here.
+    const inMindLine = Array.isArray(opts.inMindLine) && opts.inMindLine.length
+      ? opts.inMindLine.filter(Boolean).map((w) => String(w).toLowerCase())
+      : null;
     if (opts.unitsOnly) {
       if (!p.length && !h && !about) return false;
       cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p, about));
       // `opts.unsure` — this state is one of not knowing (a question being
       // taught, or her wondering). It rides in the state's own record, so it
       // is read with this state and no other.
-      cluster._speechCtx = { heard: h, prefix: p, about, unsure: opts.unsure === true };
+      cluster._speechCtx = { heard: h, prefix: p, about, unsure: opts.unsure === true, inMindLine };
       cluster._mindFeats = null;
       cluster._speechTargets = null;
       return true;
@@ -20599,8 +20661,8 @@ export class Curriculum {
     // in: the sparse unit list the speech readout builds from what was said and
     // her words so far. Set AFTER the sem writes above, which each mark sem as
     // holding a plain meaning; this is the explicit speaking state and wins.
-    cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p));
-    cluster._speechCtx = { heard: h, prefix: p };
+    cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p, about));
+    cluster._speechCtx = { heard: h, prefix: p, about, inMindLine };
     cluster._mindFeats = null;
     return true;
   }
@@ -20626,9 +20688,76 @@ export class Curriculum {
       this._speechTeach(w);
       said.push(w);
     }
+    // ⭐⭐ AND WHAT SHE REMEMBERS CONTINUES THE ANSWER. With a memory in mind, the
+    // answer does not stop at the taught answer: the line she already holds about
+    // the remembered thing is taught as its continuation, so the same question
+    // asked while she remembers something says more than the same question asked
+    // cold. Gee chose this shape: "remembering her mom -> 'My name is unity. My
+    // mom calls me that.'"
+    //
+    // ⛔ EVERY WORD HERE IS ONE SHE WAS TAUGHT. The continuation is a line out of
+    // her own lessons (`cluster._lineAboutWord`, recorded by the lesson that
+    // taught it), never a sentence written in this file — a written continuation
+    // would be the same bolt-on the pop-ups just had removed.
+    //
+    // ⚠ The end is taught AFTER the continuation, so the line finishes where the
+    // memory finishes. Without a memory in mind nothing changes at all: the loop
+    // below runs zero times and the end lands exactly where it used to.
+    const _extra = Array.isArray(ctx.inMindLine) ? ctx.inMindLine : [];
+    for (const w of _extra) {
+      if (!w || said[said.length - 1] === w) continue;      // never teach a word twice in a row
+      cluster.setSpeechUnits(rd.stateUnits(ctx.heard, said, ctx.about || null));
+      this._speechTeach(w);
+      said.push(w);
+    }
     cluster.setSpeechUnits(rd.stateUnits(ctx.heard, said, ctx.about || null));
     this._speechTeach(SPEECH_END);
     cluster.setSpeechUnits(keep);
+  }
+
+  /**
+   * ⭐ THE MEMORY AN ANSWER IS TAUGHT WITH — a thing she remembers, and the line
+   * she holds about it.
+   *
+   * Returns `{ about, line }` or null. `line` is a sentence out of her OWN
+   * lessons, recorded by the lesson that taught it (`cluster._lineAboutWord`);
+   * nothing here composes or invents a continuation.
+   *
+   * What it will accept, in order: the thing the QUESTION is about, then the thing
+   * the ANSWER is about, then any word of the question. The first one she actually
+   * holds a line about wins — so a cell whose questions are about things she has
+   * no line about trains none of these, and the lesson's count says so.
+   *
+   * ⛔ Three refusals, each for a measured reason:
+   *   · a line that is only the answer coming back adds nothing and would teach
+   *     her to say the answer twice;
+   *   · a line with a word she has no place to say is unspeakable, and teaching a
+   *     word with no slot is what made a held word unsayable before;
+   *   · a line under three words is not a memory, it is a fragment.
+   */
+  _memoryForAnswer(question, answerText) {
+    const cluster = this.cluster;
+    const idx = cluster && cluster._lineAboutWord;
+    if (!(idx instanceof Map) || idx.size === 0) return null;
+    const rd = (typeof cluster.speechReadout === 'function') ? cluster.speechReadout() : null;
+    if (!rd || typeof rd.aboutOf !== 'function') return null;
+    const _t = (s) => String(s || '').toLowerCase().replace(/[^a-z'\s]+/g, ' ').split(/\s+/).filter(Boolean);
+    const qw = _t(question), aw = _t(answerText);
+    if (!qw.length) return null;
+    const cands = [];
+    const _qa = rd.aboutOf(qw); if (_qa) cands.push(_qa);
+    const _aa = aw.length ? rd.aboutOf(aw) : null; if (_aa) cands.push(_aa);
+    for (const w of qw) if (w.length > 2) cands.push(w);
+    const answerSet = new Set(aw);
+    const map = cluster.wordBucketMap;
+    for (const about of cands) {
+      const line = idx.get(about);
+      if (!Array.isArray(line) || line.length < 3) continue;
+      if (line.every((x) => answerSet.has(x))) continue;
+      if (map && !line.every((x) => map.has(x))) continue;
+      return { about, line: line.slice(0, 10) };
+    }
+    return null;
   }
 
   /** A thing in mind, to be named ("this thing → its word"): the naming lesson
@@ -24777,6 +24906,21 @@ export class Curriculum {
         for (const [_w, _asks] of _lines) {
           if (_w.length < 2) continue;
           const _about = _rd.aboutOf(_w);
+          // ⭐ WHAT LINE SHE HOLDS ABOUT THIS THING. The memory path needs a real
+          // sentence of hers to continue an answer with, and this is the one place
+          // that knows both a line and what it is about — the lesson that teaches
+          // it. Recorded here rather than reconstructed later, because a line
+          // rebuilt from a corpus file afterwards is not necessarily a line she was
+          // taught. Statements only: a question is not something she remembers
+          // ABOUT a thing. Bounded, oldest dropped first (a Map keeps insertion
+          // order), and derived from lessons — so after a restart it refills as she
+          // is taught rather than being saved as if it were learning.
+          if (_about && !_asks && _w.length >= 3) {
+            let _idx = cluster._lineAboutWord;
+            if (!(_idx instanceof Map)) _idx = cluster._lineAboutWord = new Map();
+            _idx.set(_about, _w.slice());
+            if (_idx.size > 5000) { const _oldest = _idx.keys().next().value; _idx.delete(_oldest); }
+          }
           for (let i = 0; i <= _w.length; i++) {
             const _next = i < _w.length ? _w[i] : SPEECH_END;
             if (_next !== SPEECH_END && (!cluster.wordBucketMap || !cluster.wordBucketMap.has(_next))) break;   // a word she has no slot for ends what can be taught of this line

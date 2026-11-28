@@ -3050,6 +3050,21 @@ const SERVER_STATE_MIXIN = {
     else if (Array.isArray(d.sample) && d.sample.length) raw = String(d.sample[0] || '');
     else if (Array.isArray(d.missing) && d.missing.length) raw = String(d.missing[0] || '');
     if (!raw) return;
+    // ⚠ A walk fires thousands of these a minute and the composer only reads one
+    // every 25 s, so sampling more often than this buys nothing and costs a string
+    // match per event. 250 ms keeps the candidate fresh to a quarter second — far
+    // finer than the lane that consumes it — and drops most of the work on a busy
+    // walk. "Cheap per call" times "thousands of calls" is how a hot path gets
+    // expensive quietly.
+    //
+    // ⛔ THE GATE IS AFTER THE CONTENT CHECK, and my first version had it before:
+    // an event carrying nothing of hers would have claimed the quarter-second
+    // window and starved the content-bearing event behind it, so the pop-ups would
+    // have thinned out for a reason nothing reported. A rate gate must only ever
+    // be charged to work it actually did.
+    const _now = Date.now();
+    if (_now - (this._momentCandidateAt || 0) < 250) return;
+    this._momentCandidateAt = _now;
     // ONE word for her to have in mind. The speaking state takes a word, so a
     // sample that is a whole sentence contributes its first real word.
     const m = String(raw).toLowerCase().match(/[a-z][a-z']{1,}/);

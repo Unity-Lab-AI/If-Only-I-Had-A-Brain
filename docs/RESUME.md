@@ -1,6 +1,55 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-28 (latest, 58th) — A GUARD WRITTEN AS A NEURON COUNT INVERTED WHEN HER CORTEX WAS DELIBERATELY REBUILT SMALLER. IT WAS THE FREEZE, THE DEAD PAGE AND THE DONOR DROPS, ALL ONE CAUSE.
+> # 🛑 2026-11-28 (latest, 59th) — THE POP-UPS ARE COMPOSED BY HER NOW (72 WRITTEN SHAPES → 172 OF HER OWN LINES); A MEMORY CAN REACH THE STATE SHE ANSWERS IN; AND THREE OF MY OWN INSTRUMENTS FAILED THEIR CONTROLS
+>
+> **Branch: `feature/teach-on-every-card`.** Gee: *"and fix the brain pop ups they arent fully complete and varied and numerous it loooks like a half dozen scriped lines with like yes no variables that switch and is pathetic"* · *"not the dynamic auto generated ones from her equations and need to be that"* · *"dont start her agian until everything is finalized.md and todo is templeted as all would and shall be completed"* · *"is the todo all done?"* — **answer: no.** Board: `docs/TODO.md §MINDPOP`, `§SPEECHREAL.13`, `§SPEECHPATH.10`.
+>
+> ```
+>   CLOSED    MINDPOP — the pop-ups were 72 authored sentence shapes, 61 of them fixed
+>             strings with nothing of hers, feelings rotating through 2-3 phrasings by a
+>             counter. The server composes each line through composeSentence now, seeded
+>             with the word the moment is about: 172 DISTINCT lines of 196 produced from
+>             240 asked (44 silent → no pop-up), names the thing 94.9 %, ends the line
+>             91.3 %, 6.5 ms a compose. 172 is not a ceiling — it is what 775 taught
+>             sentences buy and it grows with every lesson, where 72 was fixed forever.
+>             Her moods seed lines too, so the twenty feelings the tables covered did not
+>             vanish with them. No fallback phrase anywhere. js/ui/mind-moments.js holds
+>             no English at all; js/ui/brain-event-detectors.js (519 lines) deleted as
+>             orphaned; bundle 20,531 bytes smaller
+>   BUILT     SPEECHREAL.13 on Gee's answer ("Yes — teach answers with a memory in
+>             mind"). ⛔ The old "changes nothing, 0/180" had ONE cause: a memory was
+>             thrown away whenever something had been said to her. A memory now rides
+>             the answering state, the remembered line is taught as the answer's
+>             continuation, the lesson that teaches her own lines records which line she
+>             holds about a thing, and the answer lesson teaches plain first then the
+>             memory pass. Every word of a continuation is one she was taught
+>   PRICED    +102 % teach on answers that have a memory (a step count, so valid)
+>   ⛔ VOID   three measurement attempts, three failed CONTROLS, all three mine:
+>             answers taught once (0/60 cold) · questions 60 % identical to each other so
+>             she answered them all the same (0/60 cold, every answer opening "i did i did
+>             it is") · pairs drawn from the whole corpus while only taught words had
+>             slots, so 0 pairs and a 0.0 % figure printed over an empty denominator
+>   LEARNED   about HER: the pre-K→grade-3 life corpus holds FIVE standalone question
+>             lines and ZERO question+next-line pairs — her questions live inside QUOTED
+>             speech: 517 of them, 414 with an answer after ("why are you crying" → "i
+>             miss my mommy"). Rebuilt on those: 40 pairs at 7.6 % mean word overlap
+>             against the ~60 % that broke it
+>   ALSO      SPEECHPATH.10's measurement half: the same word across the pair and prose
+>             lanes overlaps 9.4 % and 238 of 900 words share NOTHING, against 5.0-6.2 %
+>             for two unrelated words in one lane — one lane cannot read what another
+>             taught. Within-lane collisions are now 0/900, which CORRECTS this row's own
+>             "713 of 905" premise (that was before its first half landed). The fold is
+>             specified (one code = the dictionary pattern ranked by VALUE) and
+>             deliberately NOT built: it changes what every reading, recall and letter
+>             lesson teaches, so it owes a before/after recall and must land before a walk
+>   NOT       started. She is STOPPED and stays stopped on Gee's order
+> ```
+>
+> ⛔⛔ **THE ORDER HAS A CONTRADICTION ONLY GEE CAN SETTLE, and it is still open:** five of the seven open rows close ONLY on a live read — her boot and gates, a reply with no stall, a section pass with no pin, the pop-ups in a browser, a second card teaching. **The board cannot be fully closed before she starts.** Asked with options (close them read-owed and finalize → then start · start now and close them live · finish the two unfinished builds first); he said he wanted to clarify something before answering, and nothing is being guessed in the meantime.
+>
+> ⚠ **The lesson from the three void runs, kept because it cost three runs:** a measurement whose CONTROL fails measures nothing, and every one of those failures was visible in the output if read — 0/60 on the control, identical opening words across every answer, a denominator of zero. **Read the control before reading the result.**
+>
+> # 🛑 2026-11-28 (58th) — A GUARD WRITTEN AS A NEURON COUNT INVERTED WHEN HER CORTEX WAS DELIBERATELY REBUILT SMALLER. IT WAS THE FREEZE, THE DEAD PAGE AND THE DONOR DROPS, ALL ONE CAUSE.
 >
 > **Branch: `feature/teach-on-every-card`.** Gee: *"yeah brain page isnt working/loading"* · *"]website...."* · *"you have 3 moniters running"*. Board: `docs/TODO.md §SAVESTALL.1` (the row it was fixed inside).
 >
