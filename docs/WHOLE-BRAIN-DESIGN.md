@@ -111,7 +111,12 @@ A word's cells in the meaning region taught to call up another word's cells in t
 | 100 | 8 | 49 | 24 | **100 / 100** |
 | 300 | 17 | 70 | 33 | **100 / 100** |
 
-Inside wiring is local — 27 of a meaning cell's 30 inside wires come from other meaning cells — so it needs **no more wires than it has**. It needs the code and the rule.
+Inside wiring is local — 27 of a meaning cell's 30 inside wires come from other meaning cells — so at 100 pairs it needs only the code and the rule. **At her vocabulary's size it needs more wires as well:**
+
+| Pairs | Present code + present rule (30 wires) | New code + only-when-wrong, 30 wires | New code + only-when-wrong, 100 wires |
+|---|---|---|---|
+| 400 | 3 / 400 | 386 / 400 | **400 / 400** |
+| 1,000 | **0 / 1,000** | 841 / 1,000 | **1,000 / 1,000** |
 
 *Instrument: `.scratch/brain-intra-check.mjs`.*
 

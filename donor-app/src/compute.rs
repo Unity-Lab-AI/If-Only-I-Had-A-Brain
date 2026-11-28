@@ -2480,6 +2480,48 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         }
     }
 
+    // ── WHAT THE ERROR-DRIVEN RULE COSTS ON THIS CARD. Oja's kernel leaves a row
+    // at once when its cell is not lit; the error-driven kernel sums every row's
+    // active inputs, so its cost follows the whole matrix (rows × wires), not the
+    // lit cells. Timed here on a 1,000,000-cell bound matrix at 30 wires a cell
+    // (the shape of her inside wiring) with 2.7 % of cells lit, so the walk can
+    // be priced from a measurement instead of a guess.
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("self-test: plasticity cost — skipped, no CUDA engine here ({e})"),
+            Ok(mut ce) => {
+                let rows: u32 = 1_000_000; let fan: u32 = 30;
+                let mut regions = HashMap::new();
+                regions.insert("all".to_string(), (0u32, rows));
+                ce.init_cluster("costcluster", rows, &regions, 0.0, 0.0);
+                let lit: Vec<u32> = (0..rows).filter(|i| i.wrapping_mul(2654435761) % 1000 < 27).collect();
+                ce.write_spike_slice("costcluster", "all", &lit)?;
+                let nnz = (rows * fan) as usize;
+                let mut row_ptr = Vec::with_capacity(rows as usize + 1);
+                let mut col_idx = Vec::with_capacity(nnz);
+                let mut x: u32 = 0x9E3779B9;
+                for r in 0..rows { row_ptr.push(r * fan); for _ in 0..fan { x ^= x << 13; x ^= x >> 17; x ^= x << 5; col_idx.push(x % rows); } }
+                row_ptr.push(rows * fan);
+                let values = vec![0.01f32; nnz];
+                let bind = |c: &str| crate::frames::Binding { src_cluster: c.to_string(), dst_cluster: c.to_string(), src_start: 0, src_end: rows, dst_start: 0, dst_end: rows };
+                ce.upload_sparse("costmat", rows, rows, &row_ptr, &values, &col_idx, Some(bind("costcluster")));
+                ce.sync();
+                let reps = 50u32;
+                let t0 = std::time::Instant::now();
+                for _ in 0..reps { ce.hebbian_bound("costmat", 0.001)?; }
+                ce.sync();
+                let oja_ms = t0.elapsed().as_secs_f64() * 1000.0 / reps as f64;
+                ce.set_plasticity_mode("costmat", Some((0.05, 0.5, 0.25)));
+                let t1 = std::time::Instant::now();
+                for _ in 0..reps { ce.hebbian_bound("costmat", 0.001)?; }
+                ce.sync();
+                let err_ms = t1.elapsed().as_secs_f64() * 1000.0 / reps as f64;
+                println!("self-test: plasticity cost (CUDA, {rows} cells × {fan} wires = {} M wires, {} cells lit): Oja {oja_ms:.3} ms a call · only-when-wrong {err_ms:.3} ms a call ({:.2} ms per 100 M wires)", nnz / 1_000_000, lit.len(), err_ms * 100.0 / (nnz as f64 / 1e6));
+            }
+        }
+    }
+
     // ── v0.3.51 — the batched lesson write must leave exactly the spikes the
     // one-at-a-time write leaves (CUDA, which is where it differs).
     #[cfg(feature = "cuda")]
