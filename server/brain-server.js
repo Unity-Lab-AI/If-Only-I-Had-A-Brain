@@ -11406,7 +11406,7 @@ function _applyPoolPartition(reason, moveReason) {
     // planner does not split a matrix one card can hold).
     const _fullMB = Number(brain._cortexMatrixMB && brain._cortexMatrixMB[brain._SLICE_NAME]) || 0;
     const _targetHoldsAll = !!(_pm && _pm.to && _fullMB > 0 && typeof brain._donorCapacityMB === 'function'
-      && brain._donorCapacityMB(_pm.to) >= _fullMB * 1.1 && process.env.DREAM_SLICE_WHEN_FITS !== '1');
+      && brain._donorCapacityMB(_pm.to) >= _fullMB * 1.1 && process.env.DREAM_SLICE_WHEN_FITS === '0');
     const _canSlice = !_targetHoldsAll && process.env.DREAM_SLICE !== '0' && _pm && _pm.to && typeof brain._sliceCapable === 'function' && brain._sliceCapable(_pm.to);
     // Both triggers: the 60 s placement check AND a bigger card registering
     // (seen 03:23 — "a card with more room joined" moved 6 GB at boot).

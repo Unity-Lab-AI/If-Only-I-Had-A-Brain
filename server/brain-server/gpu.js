@@ -3347,8 +3347,12 @@ const SERVER_GPU_MIXIN = {
     // holder doubles that work, and the small card (also stepping her other
     // clusters every tick) paces every lesson. When the cortex owner has room for
     // the whole matrix, it holds all of it and every lesson runs once, on it; the
-    // other cards step their clusters. DREAM_SLICE_WHEN_FITS=1 slices anyway.
-    if (process.env.DREAM_SLICE_WHEN_FITS !== '1') {
+    // other cards step their clusters.
+    // ⭐ NOW THE DEFAULT IS TO SLICE EVEN WHEN IT FITS. Gee 2026-11-28: "we need
+    // all gpus connected doing teach ops silly or wtf is the point of having gpus
+    // connect if they arent doing anything" — asked, he chose to split the rows
+    // (one copy each below four cards). DREAM_SLICE_WHEN_FITS=0 keeps one card.
+    if (process.env.DREAM_SLICE_WHEN_FITS === '0') {
       const fullMB = Number(matrixMB) || Number(this._cortexMatrixMB && this._cortexMatrixMB[this._SLICE_NAME]) || 0;
       if (fullMB > 0 && room(owner) >= fullMB * 1.1) return null;
     }
@@ -3650,7 +3654,7 @@ const SERVER_GPU_MIXIN = {
     if (!cc || (!cc._gpuProxyReady && !this._sliceGracePaused)) return false;
     // The owner holds the whole matrix by choice (it fits): a newcomer does not
     // trigger a re-slice — one card per job.
-    if (this._intraWhole && !this._intraSliceActive() && process.env.DREAM_SLICE_WHEN_FITS !== '1') return false;
+    if (this._intraWhole && !this._intraSliceActive() && process.env.DREAM_SLICE_WHEN_FITS === '0') return false;
     const held = new Set(this._intraSliceActive() ? this._intraSlices.map((s) => s.ws) : [owner]);
     if (this._intraSliceActive() && this._intraSlices.some((s) => !s.ws || s.ws.readyState !== 1)) {
       // Remember who dropped: that card waits longer before it is trusted with rows again.
