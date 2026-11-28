@@ -924,6 +924,17 @@ const _gateEnvNum = (key, dflt) => {
 };
 const GATE_PROD_MIN = _gateEnvNum('DREAM_GATE_PROD_MIN', 0.80);
 const GATE_PATH_MIN = _gateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
+
+// A word's cells (`Curriculum._wordCells`): how many embedding dimensions carry
+// its meaning, and the hash that places each identity cell independently.
+const WORD_MEANING_DIMS = 4;
+const _NO_CELLS = new Int32Array(0);
+function _cellHash(text, salt) {
+  let h = (2166136261 ^ Math.imul(salt + 1, 0x9E3779B1)) >>> 0;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  h ^= h >>> 15; h = Math.imul(h, 0x85EBCA6B) >>> 0; h ^= h >>> 13;
+  return h >>> 0;
+}
 // How many cells' gate readings stay resident + persisted for the dashboard's
 // gate card. Counts only — the exam is held out, no question text is kept.
 const GATE_READINGS_MAX = Math.max(4, Math.round(_gateEnvNum('DREAM_GATE_READINGS_MAX', 24)));
@@ -15372,6 +15383,86 @@ export class Curriculum {
         }
       }
     }
+  }
+
+  /**
+   * THE CELLS A WORD LIGHTS in a region — one code for one word, everywhere.
+   *
+   * The region is used in two parts:
+   *   MEANING  (first half)  — the word's four strongest positive embedding
+   *            dimensions, each a run of cells. Words alike in meaning share
+   *            these, so what is learned about one reaches its neighbours.
+   *   IDENTITY (second half) — cells chosen for THIS word alone, each from its
+   *            own hash, spread over single cells. Two words share almost none.
+   * The total lit is what eight full dimensions used to light (8/300 of the
+   * region), so nothing downstream sees a denser or sparser pattern.
+   *
+   * Why not 300 slots of cells, as `_writeTiledPattern` writes: the identity
+   * part then lives in 50 slots and each slot lights for about one word in
+   * ten. Measured on the same projection, rule and wiring (400 pairs, 100
+   * wires a cell): that code recalled 41; this one 242 (400 with the
+   * only-when-wrong rule). docs/WHOLE-BRAIN-DESIGN.md.
+   *
+   * Returns region-relative cell indices (ascending, no repeats). Cached per
+   * (word, region size). A word with no embedding gets its identity cells only.
+   */
+  _wordCells(word, region) {
+    const w = typeof word === 'string' ? word.toLowerCase().trim() : '';
+    const n = region ? (region.end - region.start) : 0;
+    if (!w || !(n > 0)) return _NO_CELLS;
+    const cache = this._wordCellCache || (this._wordCellCache = new Map());
+    const key = n + '|' + w;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const active = Math.max(8, Math.round(n * (8 / 300)));
+    const half = Math.floor(n / 2);
+    const set = new Set();
+    // meaning — value-ranked, so only dimensions that can fire are chosen
+    const emb = (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') ? sharedEmbeddings.getEmbedding(w) : null;
+    if (emb && emb.length > 0 && half >= WORD_MEANING_DIMS) {
+      const dims = emb.length;
+      const g = Math.max(1, Math.floor(half / dims));
+      const per = Math.max(1, Math.min(g, Math.round(active * 0.5 / WORD_MEANING_DIMS)));
+      const best = []; // the WORD_MEANING_DIMS largest positive dims
+      for (let d = 0; d < dims; d++) {
+        const v = emb[d];
+        if (!(v > 0)) continue;
+        let j = best.length;
+        if (j < WORD_MEANING_DIMS) best.push(d); else if (v > emb[best[j - 1]]) best[j - 1] = d; else continue;
+        for (j = best.length - 1; j > 0 && emb[best[j]] > emb[best[j - 1]]; j--) { const t = best[j]; best[j] = best[j - 1]; best[j - 1] = t; }
+      }
+      for (const d of best) for (let k = 0; k < per; k++) { const i = d * g + k; if (i < half) set.add(i); }
+    }
+    // identity — each cell from its own hash of (word, k)
+    const span = n - half;
+    const want = Math.max(1, active - set.size);
+    const before = set.size;
+    for (let t = 0; set.size - before < want && t < want * 8; t++) set.add(half + (_cellHash(w, t) % span));
+    const out = Int32Array.from(set).sort();
+    if (cache.size > 60000) cache.clear();
+    cache.set(key, out);
+    return out;
+  }
+
+  /**
+   * Light a word's cells in a region (`_wordCells`) — on the host copy and on
+   * the card, the same cells on both. `opts.collectInto` receives the indices;
+   * `opts.noCpu` skips the host copy (the card-held lesson path). Returns the
+   * number of cells lit.
+   */
+  _writeWordPattern(region, word, opts = null) {
+    const cluster = this.cluster;
+    if (!cluster || !region) return 0;
+    const cells = this._wordCells(word, region);
+    if (!cells.length) return 0;
+    const collectInto = opts && opts.collectInto;
+    if (!(opts && opts.noCpu)) for (let i = 0; i < cells.length; i++) cluster.lastSpikes[region.start + cells[i]] = 1;
+    if (collectInto) for (let i = 0; i < cells.length; i++) collectInto.push(cells[i]);
+    if (cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice) {
+      const regionName = this._resolveRegionName(cluster, region);
+      if (regionName) { try { cluster._gpuProxy.writeSpikeSlice(regionName, Array.from(cells)); } catch { /* non-fatal */ } }
+    }
+    return cells.length;
   }
 
   // Reverse-lookup a region name from the {start,end} object. Cached

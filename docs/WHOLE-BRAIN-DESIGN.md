@@ -118,8 +118,8 @@ So about **276 weights per taught pair** holds 2,000 pairs perfectly and 3,000 p
 
 | Part | Change | Status |
 |---|---|---|
-| **Word code** | One function gives a word its cells: meaning (value-ranked embedding dimensions) in one part of a region, identity (cells chosen independently per word) in the other. Every lesson, every probe, every pathway uses it. | not built |
-| **Learning rule** | "Only when wrong" as a new mode of the existing plasticity kernel — on the card (WGSL and CUDA) and on the host. The kernel already holds everything the rule needs; it has to visit every target cell instead of only the lit ones. | not built — needs a donor release |
+| **Word code** | One function gives a word its cells: meaning (value-ranked embedding dimensions) in one part of a region, identity (cells chosen independently per word) in the other. Every lesson, every probe, every pathway uses it. | **the function exists** (`Curriculum._wordCells`, `_writeWordPattern`) and measures as the model did — 200 lit cells, overlap 7.2 % / 10.8 %, 400 / 400 with the new rule. **No lesson uses it yet.** |
+| **Learning rule** | "Only when wrong" as a new mode of the existing plasticity kernel — on the card (WGSL and CUDA) and on the host. The kernel already holds everything the rule needs; it has to visit every target cell instead of only the lit ones. | **on the host: built** (`SparseMatrix.errorUpdate`; through the real class 289 → 400 of 400). **On the card: not built** — needs a donor release. Nothing calls it yet. |
 | **Wiring** | 300 wires per target cell; language cortex sized from §3 instead of from free memory. | not built |
 | **Speech** | The state she speaks from is activity in her own cells; the word she says is her word-motor cells firing; the host-side table is removed. **Test: silence her cells and she goes silent.** | not built |
 | **Reading** | A pathway from letters to meaning that is taught and tested. | not designed yet |
