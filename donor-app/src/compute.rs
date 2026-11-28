@@ -2762,6 +2762,49 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         }
     }
 
+    // ── TEACHING A SPOKEN WORD. Three words, each owning two target cells, read
+    // from eight state cells. Two states that share a cell are taught different
+    // words. Before any lesson she says nothing; after, each state gives its own
+    // word; a lesson on a word she already says changes nothing.
+    println!("self-test: teaching a spoken word...");
+    let speech_check = |be: &mut Backend, label: &str| -> Result<(), String> {
+        let (rows, cols, bs, bc) = (6u32, 8u32, 2u32, 3u32);
+        let row_ptr: Vec<u32> = (0..=rows).map(|r| r * cols).collect();
+        let col_idx: Vec<u32> = (0..rows).flat_map(|_| 0..cols).collect();
+        let values = vec![0.0f32; (rows * cols) as usize];
+        be.upload_sparse("speechmat", rows, cols, &row_ptr, &values, &col_idx, None);
+        let (x, y): ([u32; 3], [u32; 3]) = ([0, 1, 2], [2, 3, 4]);
+        let (margin, tries, eta) = (0.1f32, 4u32, 0.05f32);
+        let (first, _) = be.speech_teach("speechmat", &x, 0, bs, bc, margin, tries, eta)?;
+        if first != -1 { return Err(format!("speech ({label}): an untaught pathway said word {first}, expected silence")); }
+        let mut rounds = 0;
+        loop {
+            let (_, fa) = be.speech_teach("speechmat", &x, 0, bs, bc, margin, tries, eta)?;
+            let (_, fb) = be.speech_teach("speechmat", &y, 1, bs, bc, margin, tries, eta)?;
+            rounds += 1;
+            if fa + fb == 0 { break; }
+            if rounds > 20 { return Err(format!("speech ({label}): the two lessons never settled")); }
+        }
+        let top = |m: &[f32]| -> i32 { let mut bi = -1i32; let mut bv = 0.0f32; for (i, &v) in m.iter().enumerate() { if v > bv { bv = v; bi = i as i32; } } bi };
+        let sx = top(&be.propagate_bucket_means("speechmat", &x, bs, bc)?);
+        let sy = top(&be.propagate_bucket_means("speechmat", &y, bs, bc)?);
+        if sx != 0 || sy != 1 { return Err(format!("speech ({label}): state X says word {sx} (want 0), state Y says word {sy} (want 1)")); }
+        let (said, fixes) = be.speech_teach("speechmat", &x, 0, bs, bc, margin, tries, eta)?;
+        if said != 0 || fixes != 0 { return Err(format!("speech ({label}): a word she already says was changed (said {said}, corrections {fixes})")); }
+        let quiet = top(&be.propagate_bucket_means("speechmat", &[], bs, bc)?);
+        if quiet != -1 { return Err(format!("speech ({label}): with no state cells lit she said word {quiet}")); }
+        println!("  {label} — silent before any lesson; two overlapping states each say their own word after {rounds} round(s); a word already said takes 0 corrections; no state lit → silent");
+        Ok(())
+    };
+    speech_check(&mut Backend::Wgpu(ComputeEngine::new(gpu_index).await?), "wgpu")?;
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("  CUDA skipped — no CUDA engine here ({e})"),
+            Ok(ce) => speech_check(&mut Backend::Cuda(ce), "cuda")?,
+        }
+    }
+
     // ── v0.3.51 — the batched lesson write must leave exactly the spikes the
     // one-at-a-time write leaves (CUDA, which is where it differs).
     #[cfg(feature = "cuda")]
