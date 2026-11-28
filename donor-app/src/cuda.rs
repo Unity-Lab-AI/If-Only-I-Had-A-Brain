@@ -116,6 +116,7 @@ struct CudaCluster {
     /// n — the wiring's input this step (see `ComputeEngine`'s `Cluster::syn`).
     syn: CudaSlice<f32>,
     syn_gain: f32,
+    rest_shift: f32,
     region_gates: CudaSlice<f32>, // 4 * numRegions
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>,
@@ -316,6 +317,7 @@ impl CudaEngine {
                 currents,
                 syn,
                 syn_gain: 0.0,
+                rest_shift: 0.0,
                 region_gates,
                 num_regions,
                 regions: regions.clone(),
@@ -334,6 +336,11 @@ impl CudaEngine {
     /// Set how strongly a cluster's cells feel their wiring (0 = not at all).
     pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
         match self.clusters.get_mut(cluster) { Some(c) => { c.syn_gain = gain; true } None => false }
+    }
+
+    /// Set how far below the map's default rest point this cluster's cells sit (0 = default).
+    pub fn set_rest_shift(&mut self, cluster: &str, shift: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.rest_shift = shift; true } None => false }
     }
 
     /// RHYTHM3S.2 (v0.3.34) — overwrite this cluster's `[start,end,gate,pad]`
@@ -405,7 +412,8 @@ impl CudaEngine {
             .arg(&q.entangle_rho)
             .arg(&q.refract_beta)
             .arg(&c.syn)
-            .arg(&c.syn_gain);
+            .arg(&c.syn_gain)
+            .arg(&c.rest_shift);
         unsafe { b.launch(launch_cfg) }.map_err(|e| format!("lif launch: {e}"))?;
 
         // Spike counts (left, right) into a fresh zeroed pair.

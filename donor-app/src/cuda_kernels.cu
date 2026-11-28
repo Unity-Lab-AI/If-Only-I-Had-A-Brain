@@ -52,7 +52,7 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
                     float* state, unsigned int* spikes,
                     const float* currents, const float* regionGates,
                     float tunnelA, float tunnelKappa, float entangleRho, float refractBeta,
-                    const float* syn, float synGain) {
+                    const float* syn, float synGain, float restShift) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   const float ALPHA = 4.5f;
@@ -60,7 +60,7 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
   float ed = (i < half) ? effectiveDrive : effectiveDriveR;
   float gate = region_gate(i, numRegions, regionGates);
   float drive = (ed + currents[i]) * gate;
-  float sigmaEff = -1.0f + fminf(fmaxf(drive / 40.0f, 0.0f), 1.0f) * 1.5f;
+  float sigmaEff = -1.0f - restShift + fminf(fmaxf(drive / 40.0f, 0.0f), 1.0f) * 1.5f;
   float xN = state[2u*i];
   float yN = state[2u*i + 1u];
   // Escaped/NaN state reseeds into the bursting-attractor basin — same guard

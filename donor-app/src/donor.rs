@@ -396,6 +396,8 @@ enum Work {
     FreeMatrices { names: Vec<String>, clusters: Vec<String> },
     /// Put matrices into (Some) or out of (None) error-driven learning: (eta, theta, margin).
     PlasticityMode { names: Vec<String>, mode: Option<(f32, f32, f32)>, spans: Vec<(u32, u32)> },
+    /// Per cluster: (name, gain on the wiring's input, rest shift).
+    Delivery { clusters: Vec<(String, f32, f32)> },
     // v0.3.48 — this card holds rows [base, base + rows) of a matrix, not all of
     // it. A lesson's `Masked` rows are full-matrix row numbers, so they are
     // shifted by `base` and dropped when they fall outside the slice. Queued in
@@ -1156,6 +1158,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::SetLineage { .. } => "set lineage".to_string(),
                 Work::FreeMatrices { names, clusters } => format!("free x{} + {} cluster(s)", names.len(), clusters.len()),
+                Work::Delivery { clusters } => format!("delivery x{}", clusters.len()),
                 Work::PlasticityMode { names, mode, .. } => format!("plasticity mode {} x{}", if mode.is_some() { "error-driven" } else { "default" }, names.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
                 Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
@@ -1582,6 +1585,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let reply = serde_json::json!({ "type": "plasticity_mode_ack", "names": names, "errorDriven": mode.is_some(), "held": held });
                     let _ = reply_tx.send(Out::Text(reply.to_string()));
                 }
+                Work::Delivery { clusters } => {
+                    // Queued, so it lands in order with the steps around it.
+                    let mut held: Vec<String> = Vec::new();
+                    for (c, gain, rest) in &clusters {
+                        if engine.set_delivery(c, *gain, *rest) { held.push(c.clone()); }
+                        println!("[donor] {c} — cells feel their wiring at gain {gain}, rest shift {rest}.");
+                    }
+                    let reply = serde_json::json!({ "type": "delivery_ack", "held": held });
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                }
                 Work::FreeMatrices { names, clusters } => {
                     for n in &names { slice_base.remove(n); }
                     let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
@@ -1820,7 +1833,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch") | Some("plasticity_mode")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch") | Some("plasticity_mode") | Some("delivery")));
                         if let Some(v) = ckpt_msg {
                             // v0.3.48 — build my slice from her published weights (on a
                             // thread: downloads take minutes), then queue the upload.
@@ -1889,6 +1902,20 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 if !name.is_empty() {
                                     pending.fetch_add(1, Ordering::Relaxed);
                                     workq.push(Work::SliceBase { name, base, count });
+                                }
+                                continue;
+                            }
+                            // {"type":"delivery","clusters":[{"name":…,"gain":…,"restShift":…}, …]}
+                            // — how strongly each cluster's cells feel their wiring, and
+                            // how far below the default rest point they sit (0 / 0 = off).
+                            if v.get("type").and_then(|x| x.as_str()) == Some("delivery") {
+                                let gf = |o: &serde_json::Value, k: &str| o.get(k).and_then(|x| x.as_f64()).filter(|x| x.is_finite()).map(|x| x as f32).unwrap_or(0.0);
+                                let clusters: Vec<(String, f32, f32)> = v.get("clusters").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().take(64).filter_map(|c| Some((c.get("name")?.as_str()?.to_string(), gf(c, "gain"), gf(c, "restShift")))).collect())
+                                    .unwrap_or_default();
+                                if !clusters.is_empty() {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::Delivery { clusters });
                                 }
                                 continue;
                             }

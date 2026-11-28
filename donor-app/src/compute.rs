@@ -52,7 +52,8 @@ struct LifParams {
     refract_beta: f32,
     /// Gain on the delivered wiring input (`syn`); 0 = delivery off.
     syn_gain: f32,
-    _pad2: u32,
+    /// How far below sigma = -1 an undriven cell rests (0 = the map's default).
+    rest_shift: f32,
 }
 
 #[repr(C)]
@@ -224,6 +225,7 @@ struct Cluster {
     /// step. Cleared and refilled at the top of each step while `syn_gain` ≠ 0.
     syn: wgpu::Buffer,
     syn_gain: f32,
+    rest_shift: f32,
     region_gates: wgpu::Buffer, // [start,end,gate,pad] f32 per region (≥1 dummy)
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>, // name → (start, end) for region ops
@@ -439,6 +441,7 @@ impl ComputeEngine {
                 currents,
                 syn,
                 syn_gain: 0.0,
+                rest_shift: 0.0,
                 region_gates,
                 num_regions,
                 regions: regions.clone(),
@@ -561,7 +564,7 @@ impl ComputeEngine {
             entangle_rho: q.entangle_rho,
             refract_beta: q.refract_beta,
             syn_gain: c.syn_gain,
-            _pad2: 0,
+            rest_shift: c.rest_shift,
         };
         let lif_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("lif-params"),
@@ -851,6 +854,11 @@ impl ComputeEngine {
     /// Returns whether the cluster is resident here.
     pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
         match self.clusters.get_mut(cluster) { Some(c) => { c.syn_gain = gain; true } None => false }
+    }
+
+    /// Set how far below the map's default rest point this cluster's cells sit (0 = default).
+    pub fn set_rest_shift(&mut self, cluster: &str, shift: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.rest_shift = shift; true } None => false }
     }
 
     /// Put a matrix into (Some) or out of (None) error-driven learning. Returns
@@ -1671,11 +1679,11 @@ impl Backend {
         }
     }
     /// How strongly a cluster's cells feel their wiring on this backend.
-    fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+    fn set_delivery(&mut self, cluster: &str, gain: f32, rest_shift: f32) -> bool {
         match self {
-            Backend::Wgpu(e) => e.set_delivery(cluster, gain),
+            Backend::Wgpu(e) => e.set_delivery(cluster, gain) && e.set_rest_shift(cluster, rest_shift),
             #[cfg(feature = "cuda")]
-            Backend::Cuda(e) => e.set_delivery(cluster, gain),
+            Backend::Cuda(e) => e.set_delivery(cluster, gain) && e.set_rest_shift(cluster, rest_shift),
         }
     }
     /// Put a matrix into / out of error-driven learning on this backend.
@@ -2202,10 +2210,12 @@ impl MultiEngine {
         self.engines[g].hebbian_bound(name, lr)
     }
 
-    /// Set how strongly a cluster's cells feel their wiring (0 = off) on the
-    /// engine holding the cluster. Returns whether it is resident.
-    pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
-        match self.cluster_gpu.get(cluster).copied() { Some(g) => self.engines[g].set_delivery(cluster, gain), None => false }
+    /// Set how strongly a cluster's cells feel their wiring (0 = off) and how far
+    /// below the default rest point they sit (0 = default), on the engine holding
+    /// the cluster. Returns whether it is resident. A cluster initialised again
+    /// starts back at 0 / 0 — the brain sends this after every init.
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32, rest_shift: f32) -> bool {
+        match self.cluster_gpu.get(cluster).copied() { Some(g) => self.engines[g].set_delivery(cluster, gain, rest_shift), None => false }
     }
 
     /// Put a matrix into / out of error-driven learning on EVERY engine (a row-sliced
@@ -2718,10 +2728,18 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             }
             let q = Quantum::default();
             let mut seed: u32 = 1;
-            println!("  {} — one step after the source pattern is lit (taught cells fired of {}, other cells fired of {}), mean over {} pairs:", $label, lit_n, half_n as usize - lit_n, pairs);
+            // rest shift 0 = the map's default rest point (cells burst on their own);
+            // 1 = an undriven cell sits below the firing point and is silent.
+            for &shift in &[0.0f32, 1.0] {
+            $eng.free_sparse("dlvin");
+            $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
+            $eng.set_rest_shift("dlv", shift);
+            $eng.set_delivery("dlv", 0.0);
+            for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, 0.0, seed, q)?; }
+            println!("  {} · rest shift {shift} — one step after the source pattern is lit (taught cells fired of {}, other cells fired of {}), mean over {} pairs:", $label, lit_n, half_n as usize - lit_n, pairs);
             for &ed in &[0.0f32, 10.0, 20.0] {
                 let mut line = format!("    drive {ed:>4}:");
-                for &g in &[0.0f32, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0] {
+                for &g in &[0.0f32, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0] {
                     let (mut hit, mut stray) = (0usize, 0usize);
                     for (s, d) in &lessons {
                         $eng.set_delivery("dlv", 0.0);
@@ -2742,19 +2760,23 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             let (rp2, vals2, ci2) = build(n, n);
             let inside = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: n, dst_start: 0, dst_end: n };
             $eng.upload_sparse("dlvin", n, n, &rp2, &vals2, &ci2, Some(inside));
-            println!("  {} — 400 free steps with pathway + inside wiring delivering, share of cells firing a step (min / mean / max %):", $label);
+            println!("  {} · rest shift {shift} — 400 steps with pathway + inside wiring delivering, a taught source pattern lit every 50th step, share of cells firing a step (min / mean / max %):", $label);
             for &ed in &[0.0f32, 10.0, 20.0] {
                 let mut line = format!("    drive {ed:>4}:");
-                for &g in &[0.0f32, 1.0, 2.0, 3.0, 4.0] {
+                for &g in &[0.0f32, 2.0, 4.0, 6.0] {
                     $eng.set_delivery("dlv", g);
                     let (mut lo, mut hi, mut sum) = (u32::MAX, 0u32, 0u64);
-                    for _ in 0..400 { seed += 1; let (l, r) = $eng.step("dlv", ed, ed, n, 0.0, seed, q)?; let c = l + r; lo = lo.min(c); hi = hi.max(c); sum += c as u64; }
+                    for t in 0..400usize {
+                        if t % 50 == 0 { $eng.write_spike_slice("dlv", "src", &lessons[(t / 50) % pairs].0)?; }
+                        seed += 1; let (l, r) = $eng.step("dlv", ed, ed, n, 0.0, seed, q)?; let c = l + r; lo = lo.min(c); hi = hi.max(c); sum += c as u64;
+                    }
                     let pct = |c: f64| c * 100.0 / n as f64;
                     line.push_str(&format!("  g{g}: {:.2}/{:.2}/{:.2}", pct(lo as f64), pct(sum as f64 / 400.0), pct(hi as f64)));
                 }
                 println!("{line}");
             }
             $eng.set_delivery("dlv", 0.0);
+            }
         }};
     }
     println!("self-test: wiring delivery...");

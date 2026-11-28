@@ -26,7 +26,9 @@ struct Params {
   // Wiring delivery: gain on syn[i], the summed weight of this cell's inputs
   // from cells that fired last step. 0 = off (the map steps on drive alone).
   synGain: f32,
-  _pad2: u32,
+  // How far below the map's default rest point (sigma = -1) a cell with no
+  // drive sits. 0 = today. Past ~0.87 a cell with no input is silent.
+  restShift: f32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -73,7 +75,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let sigma = -1.0 + clamp(ed / 40.0, 0.0, 1.0) * 1.5;
   let gate = lookupRegionGate(i, params.numRegions);
   let drive = (ed + currents[i]) * gate;
-  let sigmaEff = -1.0 + clamp(drive / 40.0, 0.0, 1.0) * 1.5;
+  let sigmaEff = -1.0 - params.restShift + clamp(drive / 40.0, 0.0, 1.0) * 1.5;
 
   let s = state[i];
   var xN = s.x;
