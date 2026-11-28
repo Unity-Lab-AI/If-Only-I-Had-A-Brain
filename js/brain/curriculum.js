@@ -15929,14 +15929,65 @@ export class Curriculum {
     const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
     const driven = (cand) => { const c = this._wordCells(cand, R.sem); if (!c.length) return 0; let k = 0; for (let i = 0; i < c.length; i++) if (out[c[i]] >= theta) k++; return k / c.length; };
     const own = driven(w);
+    // Under half of its own cells driven, it is not read whatever any other
+    // word does — no rival needs to be looked at.
+    if (!(own >= 0.5)) return { read: false, own, rival: 0, rivalWord: null };
     const list = Array.isArray(among) ? among : (Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : []);
     let rival = 0, rivalWord = null;
-    for (const cand of list) {
+    // ⛔ NOT BY WALKING EVERY WORD SHE KNOWS. Comparing against each of her
+    // words cell by cell cost 5.25 s a word at 10,500 words (measured), and a
+    // sentence gate reads ~35 words with no yield between: a 180 s freeze on
+    // the walk that took the site and both donors down. A rival can only beat
+    // this word with MORE than `own` of its cells driven, and at most half of
+    // a word's cells (its meaning half) are shared with other words — so it
+    // must have identity cells in the driven set. Those words are found from
+    // the driven cells through an index of identity cell → words
+    // (`_identityCellIndex`); only they are counted exactly. Same answer.
+    const idx = await this._identityCellIndex(list, R.sem);
+    const n = R.sem.end - R.sem.start, half = Math.floor(n / 2);
+    const hits = new Map();
+    for (let cell = half; cell < n; cell++) {
+      if (!(out[cell] >= theta)) continue;
+      const ws = idx.cellWords[cell - half];
+      for (let j = 0; j < ws.length; j++) { const k = ws[j]; hits.set(k, (hits.get(k) || 0) + 1); }
+    }
+    for (const [k, idHits] of hits) {
+      const cand = list[k];
       if (!cand || cand === w) continue;
+      const len = idx.len[k];
+      // its meaning half at most all driven: can it still pass `own`?
+      if (!((idHits + (len - idx.idLen[k])) / Math.max(1, len) > own)) continue;
       const d = driven(cand);
       if (d > rival) { rival = d; rivalWord = cand; }
     }
-    return { read: own >= 0.5 && own > rival, own, rival, rivalWord };
+    return { read: own > rival, own, rival, rivalWord };
+  }
+
+  /**
+   * Identity cell → the words that own it, over `list` (a word's identity
+   * cells are the upper half of its cells in `region`, `_wordCells`). Built
+   * once and extended as her word list grows (it only grows); rebuilt when a
+   * different list or region size is asked for. `cellWords[cell − half]` lists
+   * the word indices owning that identity cell; `len` / `idLen` are each
+   * word's cell count and identity-cell count.
+   */
+  async _identityCellIndex(list, region) {
+    const n = region.end - region.start, half = Math.floor(n / 2), span = n - half;
+    let c = this._idCellIdx;
+    if (!c || c.list !== list || c.n !== n || c.count > list.length) {
+      c = this._idCellIdx = { list, n, count: 0, cellWords: Array.from({ length: span }, () => []), len: [], idLen: [] };
+    }
+    // Only the words added since the last call are indexed (her list only
+    // grows), and the loop is handed back every ~20 ms: building it for
+    // 10,500 words at once is ~6 s of host work (measured).
+    let slice = Date.now();
+    for (let k = c.count; k < list.length; k++) {
+      const all = list[k] ? this._wordCells(list[k], region) : _NO_CELLS;
+      let m = 0; for (let i = 0; i < all.length; i++) if (all[i] >= half) { c.cellWords[all[i] - half].push(k); m++; }
+      c.len[k] = all.length; c.idLen[k] = m; c.count = k + 1;
+      if (Date.now() - slice > 20) { await new Promise((r) => setTimeout(r, 0)); slice = Date.now(); if (this._idCellIdx !== c) return this._identityCellIndex(list, region); }
+    }
+    return c;
   }
 
   /**
