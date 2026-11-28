@@ -2491,15 +2491,21 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 src_start: 0, src_end: 8, dst_start: 0, dst_end: 8,
             };
             $eng.upload_sparse("errmat", 8, 8, &row_ptr, &values, &col_idx, Some(binding));
-            let (eta, theta, margin) = (0.05f32, 0.5f32, 0.25f32);
+            // eta 0.5: half the gap, so the test also catches a kernel that ignores eta.
+            let (eta, theta, margin) = (0.5f32, 0.5f32, 0.25f32);
             let lit = [1u32, 1, 1, 0, 0, 0, 0, 0];
-            // the host rule
+            // the host rule: a wrong cell's lit wires share out eta × what it is short of (or over by)
+            let gap_step = |should_fire: bool, sum: f32, n: f32| -> f32 {
+                if n == 0.0 { return 0.0; }
+                let (hi, lo) = (theta + margin, theta - margin);
+                if should_fire { if sum < hi { eta * (hi - sum) / n } else { 0.0 } } else if sum > lo { eta * (lo - sum) / n } else { 0.0 }
+            };
             let mut want = values;
             for i in 0..8usize {
                 let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
-                let mut sum = 0.0f32;
-                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values[k]; } }
-                let d = if lit[i] != 0 { if sum < theta + margin { eta } else { 0.0 } } else if sum > theta - margin { -eta } else { 0.0 };
+                let (mut sum, mut n) = (0.0f32, 0.0f32);
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values[k]; n += 1.0; } }
+                let d = gap_step(lit[i] != 0, sum, n);
                 if d == 0.0 { continue; }
                 for k in s..e { if lit[col_idx[k] as usize] != 0 { want[k] = (want[k] + d).clamp(-2.0, 2.0); } }
             }
@@ -2555,9 +2561,9 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
             let mut full_sweep_would_change_row4 = false;
             for i in 0..8usize {
                 let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
-                let mut sum = 0.0f32;
-                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values3[k]; } }
-                let d = if lit[i] != 0 { if sum < theta + margin { eta } else { 0.0 } } else if sum > theta - margin { -eta } else { 0.0 };
+                let (mut sum, mut n) = (0.0f32, 0.0f32);
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values3[k]; n += 1.0; } }
+                let d = gap_step(lit[i] != 0, sum, n);
                 if d == 0.0 { continue; }
                 if i >= 4 { full_sweep_would_change_row4 = true; continue; }   // outside the lesson's span
                 for k in s..e { if lit[col_idx[k] as usize] != 0 { want3[k] = (want3[k] + d).clamp(-2.0, 2.0); } }
@@ -2619,7 +2625,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
                 for _ in 0..reps { ce.hebbian_bound("costmat", 0.001)?; }
                 ce.sync();
                 let oja_ms = t0.elapsed().as_secs_f64() * 1000.0 / reps as f64;
-                ce.set_plasticity_mode("costmat", Some((0.05, 0.5, 0.25)));
+                ce.set_plasticity_mode("costmat", Some((1.0, 0.5, 0.25)));
                 let t1 = std::time::Instant::now();
                 for _ in 0..reps { ce.hebbian_bound("costmat", 0.001)?; }
                 ce.sync();

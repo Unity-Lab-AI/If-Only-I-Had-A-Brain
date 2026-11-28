@@ -260,13 +260,17 @@ __global__ void plasticity_error(unsigned int rows, float eta, float theta, floa
   if (i >= rows) return;
   unsigned int start = rowPtr[i];
   unsigned int end   = rowPtr[i + 1u];
-  float s = 0.0f;
+  float s = 0.0f, lit = 0.0f;
   for (unsigned int k = start; k < end; k++) {
-    if (preSpikes[srcOffset + colIdx[k]] != 0u) s += values[k];
+    if (preSpikes[srcOffset + colIdx[k]] != 0u) { s += values[k]; lit += 1.0f; }
   }
+  if (lit == 0.0f) return;
+  // The step closes the gap: a wrong cell's lit wires share out what it is short
+  // of (or over by), times eta (1 = all of it in one teach).
+  float hi = theta + margin, lo = theta - margin;
   float d = 0.0f;
-  if (postSpikes[dstOffset + i] != 0u) { if (s < theta + margin) d = eta; }
-  else if (s > theta - margin) d = -eta;
+  if (postSpikes[dstOffset + i] != 0u) { if (s < hi) d = eta * (hi - s) / lit; }
+  else if (s > lo) d = eta * (lo - s) / lit;
   if (d == 0.0f) return;
   for (unsigned int k = start; k < end; k++) {
     if (preSpikes[srcOffset + colIdx[k]] != 0u) {

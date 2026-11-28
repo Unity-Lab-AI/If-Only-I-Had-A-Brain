@@ -607,7 +607,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         : (proj.errorDriven || null);
       if (_ed) {
         const eOpts = { theta: _ed.theta, margin: _ed.margin };
-        const eta = (typeof _ed.eta === 'number') ? _ed.eta : 0.05;
+        const eta = (typeof _ed.eta === 'number') ? _ed.eta : 1;
         const step = 200000;
         let sliceAt = Date.now();
         for (let rs = 0; rs < proj.rows; rs += step) {
@@ -1227,7 +1227,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     spans.sort((a, b) => a[0] - b[0]);
     const merged = [];
     for (const s of spans) { const m = merged[merged.length - 1]; if (m && s[0] <= m[1]) { if (s[1] > m[1]) m[1] = s[1]; } else merged.push([s[0], s[1]]); }
-    const eta = (typeof mode.eta === 'number') ? mode.eta : 0.05;
+    const eta = (typeof mode.eta === 'number') ? mode.eta : 1;
     const eOpts = { theta: mode.theta, margin: mode.margin };
     let sliceAt = Date.now();
     for (const [a, b] of merged) {

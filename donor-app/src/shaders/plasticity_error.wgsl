@@ -41,15 +41,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let end = rowPtr[i + 1u];
 
   var s: f32 = 0.0;
+  var lit: f32 = 0.0;
   for (var k: u32 = start; k < end; k = k + 1u) {
-    if (preSpikes[params.srcOffset + colIdx[k]] != 0u) { s = s + values[k]; }
+    if (preSpikes[params.srcOffset + colIdx[k]] != 0u) { s = s + values[k]; lit = lit + 1.0; }
   }
+  if (lit == 0.0) { return; }
 
+  // The step closes the gap: a wrong cell's lit wires share out what it is short
+  // of (or over by), times eta (1 = all of it in one teach).
   var d: f32 = 0.0;
+  let hi = params.theta + params.margin;
+  let lo = params.theta - params.margin;
   if (postSpikes[params.dstOffset + i] != 0u) {
-    if (s < params.theta + params.margin) { d = params.eta; }
+    if (s < hi) { d = params.eta * (hi - s) / lit; }
   } else {
-    if (s > params.theta - params.margin) { d = -params.eta; }
+    if (s > lo) { d = params.eta * (lo - s) / lit; }
   }
   if (d == 0.0) { return; }
 

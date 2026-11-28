@@ -1899,7 +1899,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                     .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
                                     .unwrap_or_default();
                                 let gf = |o: &serde_json::Value, k: &str, d: f32| o.get(k).and_then(|x| x.as_f64()).map(|x| x as f32).unwrap_or(d);
-                                let mode = v.get("mode").filter(|m| m.is_object()).map(|m| (gf(m, "eta", 0.05), gf(m, "theta", 0.5), gf(m, "margin", 0.25)));
+                                let mode = v.get("mode").filter(|m| m.is_object()).map(|m| (gf(m, "eta", 1.0), gf(m, "theta", 0.5), gf(m, "margin", 0.25)));
                                 // Optional "spans": [[firstRow, rowCount], …] — the row
                                 // spans these matrices' lessons lie in (bounded: a region table).
                                 let spans: Vec<(u32, u32)> = v.get("spans").and_then(|x| x.as_array())

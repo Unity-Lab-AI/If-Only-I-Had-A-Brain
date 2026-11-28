@@ -673,7 +673,7 @@ export class NeuronCluster {
     // where a cell gets that wrong. Off unless asked for.
     if (opts.errorDrivenIntra) {
       const m = opts.errorDrivenIntra;
-      this.synapses.errorDriven = { eta: m.eta ?? 0.05, theta: m.theta ?? 0.5, margin: m.margin ?? 0.25 };
+      this.synapses.errorDriven = { eta: m.eta ?? 1, theta: m.theta ?? 0.5, margin: m.margin ?? 0.25 };
     }
 
     // Per-region attention gain map. Posner attention
@@ -1434,9 +1434,13 @@ export class NeuronCluster {
         // cross-projection on the only-when-wrong rule; the flag rides on the
         // matrix so the host path and the card (one message per matrix) agree.
         const _edMode = opts.errorDrivenProjections
-          ? { eta: opts.errorDrivenProjections.eta ?? 0.05, theta: opts.errorDrivenProjections.theta ?? 0.5, margin: opts.errorDrivenProjections.margin ?? 0.25 }
+          ? { eta: opts.errorDrivenProjections.eta ?? 1, theta: opts.errorDrivenProjections.theta ?? 0.5, margin: opts.errorDrivenProjections.margin ?? 0.25 }
           : null;
-        if (_edMode) ab.errorDriven = _edMode;
+        // An error-driven pathway keeps the weight limits the CARD applies to it
+        // (±2 in the kernel's parameters), so the host copy and the card clamp
+        // alike. The 0.4 above was a ceiling for the old rule's runaway growth;
+        // this rule stops a cell at its margin by itself.
+        if (_edMode) { ab.errorDriven = _edMode; ab.wMin = -2; ab.wMax = 2; }
         this.crossProjections[`${a}_to_${b}`] = ab;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? ' [topographic]' : ''} (${bSize.toLocaleString()}×${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
@@ -1454,7 +1458,7 @@ export class NeuronCluster {
         } else {
           ba.initRandom(baDensity, baExcitatory, 0.2);
         }
-        if (_edMode) ba.errorDriven = { ..._edMode };
+        if (_edMode) { ba.errorDriven = { ..._edMode }; ba.wMin = -2; ba.wMax = 2; }
         this.crossProjections[`${b}_to_${a}`] = ba;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${b}_to_${a} (${aSize.toLocaleString()}×${bSize.toLocaleString()}, nnz=${ba.nnz.toLocaleString()}) in ${Date.now() - baTime}ms`);
