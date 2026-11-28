@@ -61775,4 +61775,24 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Verified by:** `.scratch/speech-wiring-check.mjs`, `speech-heldout-check.mjs`, `lane-read.mjs`, `threshold-check.mjs`, `sizing-calc.mjs`, the donor's `--self-test` on the card; `node --check` on every changed file.
 - **Docs in the same commit:** `docs/` — TODO (the three rows + two new), this ledger · `wiki/` — language-emission, cortex-cluster, curriculum, brain-server, neural-substrate, donor-lane and the gotcha pages, with the log (local, not tracked) · **NOT yet brought up to date, owed under WHOLEBRAIN.8 before any push:** `docs/NOW.md`, `ARCHITECTURE.md`, `EQUATIONS.md`, `WHOLE-BRAIN-DESIGN.md`, `RESUME.md`, `README.md`, `html/*`, `deploy/*` · `.claude/` — unaffected.
 
+## 2026-11-27 (late night, second entry) — WHOLEBRAIN.2 CLOSED: READ AND COMPREHEND MEASURE WHAT THEY NAME
+
+- **The row, as filed (verbatim):** **WHOLEBRAIN.2 — every figure a gate prints must measure something.** READ is counted as passed when its projection is missing (three gates); the comprehension gate returns "no letter_to_sem projection" for the same reason; TALK asks the table that was just taught those exact lines. Each figure is fixed to measure what it names on something she was not handed, or it is removed.
+- **READ** — `_gateVocabList`, `_gateSentenceList` and the concept-name gate call `_readsWord` / `_readsAll`: the whole written word through the letters→meaning pathway, passing only when its own meaning cells fire ahead of every other word's. Taught words **200 / 200**, untaught **0 / 200** (`.scratch/lane-read.mjs`).
+- **COMPREHEND** — `_gateComprehension` puts the prompt to her as something said and passes when the word she says is the answer (`_fillsTheGap`); the lesson `_teachFillTheGap` (called on a lesson's own sentences before its gate) teaches every word of a sentence as the missing one. Through the real curriculum (`.scratch/lane-gap-real.mjs`, 300 of her sentences, the same on the build with her speaking state in her own cells):
+
+  | | a word left out, she says it |
+  |---|---|
+  | sentences she was taught | **1,954 / 1,967 = 99.3 %** (11 wrong, 2 nothing) |
+  | the same, the other words reversed | 93.8 % |
+  | sentences she was not taught | **257 / 2,105 = 12.2 %** (1,336 wrong, 512 nothing) |
+  | the gate on a taught set | **PASS 10 / 10** |
+  | the gate on an untaught set | **FAIL 1 / 10** |
+
+- **Deleted:** the first-letter probes, the 300-number read-back and its cosine, the bag-of-letters comprehension probe, `"no letter_to_sem projection"`, and the branch that counted a word as read when the pathway was missing. A first try at comprehension through the wiring inside her meaning region scored 16.1 % and was not kept.
+- **Where this stops short of the row's own words:** it asked for each figure "on something she was not handed". Both figures now tell taught from untaught — which the old ones could not — but neither passes on untaught material, because she answers 12 % of it. The gate certifies what she was taught. Printing the untaught figure beside every gate, and whether it should ever gate, is the live row **WHOLEBRAIN.12** (the second half is Gee's decision). TALK was not changed.
+- **Cost, re-priced:** 0.19 ms a taught gap (0.37 ms with the state in her cells) → 1,000 sentences of 7 words ≈ 1.3–2.6 s a pass.
+- **Commits:** `ea382bfb`, `199a7a11`, `21f5309b`.
+- **Docs in the same commit:** `docs/` — TODO (the row + WHOLEBRAIN.12), this ledger · `wiki/` — curriculum, language-emission, instruments-that-lie + log (local) · owed under WHOLEBRAIN.8 as listed in the entry above.
+
 
