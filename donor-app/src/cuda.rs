@@ -170,6 +170,7 @@ pub struct CudaEngine {
     f_volt: Option<CudaFunction>,
     f_prop: CudaFunction,
     f_hebb: CudaFunction,
+    f_hebb_err: CudaFunction,
     // Device-side pattern ops: zero a span / scatter sparse indices in-place. These replace
     // the host-side dense-vector + full-span memcpy per teach frame (up to megabytes of
     // mostly-zeros over PCIe, synchronously, per frame) with a ~KB index upload + async
@@ -228,6 +229,7 @@ impl CudaEngine {
         };
         let f_prop = module.load_function("synapse_propagate").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'synapse_propagate' load failed on '{name}': {e}"); format!("load propagate: {e}") })?;
         let f_hebb = module.load_function("plasticity").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity' load failed on '{name}': {e}"); format!("load plasticity: {e}") })?;
+        let f_hebb_err = module.load_function("plasticity_error").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity_error' load failed on '{name}': {e}"); format!("load plasticity_error: {e}") })?;
         let f_fill_u32 = module.load_function("fill_zero_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_u32' load failed on '{name}': {e}"); format!("load fill_zero_u32: {e}") })?;
         let f_fill_f32 = module.load_function("fill_zero_f32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_f32' load failed on '{name}': {e}"); format!("load fill_zero_f32: {e}") })?;
         let f_scatter_u32 = module.load_function("scatter_ones_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'scatter_ones_u32' load failed on '{name}': {e}"); format!("load scatter_ones_u32: {e}") })?;
@@ -244,6 +246,7 @@ impl CudaEngine {
             f_volt,
             f_prop,
             f_hebb,
+            f_hebb_err,
             f_fill_u32,
             f_fill_f32,
             f_scatter_u32,
@@ -631,6 +634,40 @@ impl CudaEngine {
             .arg(&src.spikes)
             .arg(&dst.spikes);
         unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| format!("bound hebbian launch: {e}"))?;
+        Ok(true)
+    }
+
+    /// Error-driven bound plasticity (kernel `plasticity_error`): same resident
+    /// windows as `hebbian_bound`, but a wire changes only where its target cell is
+    /// wrong. Every row is visited. Ok(false) = skipped, never a crash.
+    pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.spikes.len() as u64) { return Ok(false); }
+        let rows = m.rows;
+        let (w_min, w_max) = (-2.0f32, 2.0f32);
+        let (src_off, dst_off) = (b.src_start, b.dst_start);
+        let mut bld = self.stream.launch_builder(&self.f_hebb_err);
+        bld.arg(&rows)
+            .arg(&eta)
+            .arg(&theta)
+            .arg(&margin)
+            .arg(&w_min)
+            .arg(&w_max)
+            .arg(&src_off)
+            .arg(&dst_off)
+            .arg(&m.values)
+            .arg(&m.col_idx)
+            .arg(&m.row_ptr)
+            .arg(&src.spikes)
+            .arg(&dst.spikes);
+        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| format!("bound error-plasticity launch: {e}"))?;
         Ok(true)
     }
 

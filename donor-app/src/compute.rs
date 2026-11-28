@@ -1554,6 +1554,14 @@ impl Backend {
             Backend::Cuda(e) => e.hebbian_bound(name, lr),
         }
     }
+    /// Error-driven bound plasticity (a wire changes only when its cell is wrong).
+    fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.error_bound(name, eta, theta, margin),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.error_bound(name, eta, theta, margin),
+        }
+    }
     /// v0.3.26 — masked bound plasticity (resident pre, explicit sparse post mask).
     fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
         match self {
@@ -2053,6 +2061,12 @@ impl MultiEngine {
     pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
         self.engines[g].hebbian_bound(name, lr)
+    }
+
+    /// Error-driven bound plasticity on the engine holding the matrix; Ok(false) = skipped.
+    pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
+        self.engines[g].error_bound(name, eta, theta, margin)
     }
 
     /// v0.3.26 — masked bound plasticity for a type-13 frame. Routes to the engine
