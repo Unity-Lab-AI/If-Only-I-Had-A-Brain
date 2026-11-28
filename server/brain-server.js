@@ -3270,6 +3270,23 @@ class ServerBrain {
       // with the hardware available, eventually to millions of GPUs
       // in a distributed compute fabric.
 
+      // ⭐ THE WIRING COMES FIRST; THE CELL COUNT IS WHAT THIS SYSTEM AFFORDS AT
+      // THAT WIRING. How many wires a language cell has is fixed by what her
+      // lessons were measured to need, and everything below derives the number
+      // of cells from the machine she is running on at that wiring — never
+      // the other way round (fewer wires to fit more cells is how she came to
+      // have cells that could not learn).
+      //   inside a region : 100 wires a cell. Measured through her own
+      //     teaching call, 1,000 taught pairs: 841 right at 30 wires, 1,000 at 100.
+      //   between regions : 100 wires a cell. Measured on all 14 pathways: 100
+      //     of 100 and 400 of 400 taught pairs at 100 wires; at the 3–10 wires
+      //     she had, 6–54 of 100.
+      // docs/WHOLE-BRAIN-DESIGN.md holds the tables. Both must equal what
+      // `js/brain/cluster.js` builds (`targetFanout`, `crossTargetFanout`),
+      // which this method passes below.
+      const CORTEX_TARGET_FANOUT = 100;
+      const CROSS_TARGET_FANOUT = 100;
+
       // Prior commit had LANG_CLUSTER_BYTES_PER_NEURON=8192 which was
       // wrong — ignored that cross-projection sparse matrices scale
       // with post_region_size × fanout, not just total neuron count.
@@ -3319,7 +3336,15 @@ class ServerBrain {
       // lands at ~13M — the WORD_MOTOR target below still controls landing size.
       // If boot-time free RAM dips and the floor skips, DREAM_LANG_CORTEX=12000000
       // overrides outright (logged either way).
-      const LANG_CLUSTER_BYTES_PER_NEURON = 1000;
+      // ⭐ FOLLOWS THE WIRING NOW. The 1,000 above was sized (1.7 × the ~590
+      // bytes measured) for a cell with 30 wires inside and 10 between regions
+      // — and a cell carries about 1.92 between-region wires per unit of that
+      // fan-out (230 M between-region weights over 12 M cells at fan-out 10),
+      // so 49.2 wires a cell in all. A cell's memory is its wires, so the same
+      // allowance scales with them:
+      //   1,000 × (inside + 1.92 × between) ÷ 49.2
+      // = 1,000 at 30 / 10, and 5,935 at 100 / 100.
+      const LANG_CLUSTER_BYTES_PER_NEURON = Math.ceil(1000 * (CORTEX_TARGET_FANOUT + 1.92 * CROSS_TARGET_FANOUT) / 49.2);
       const freeRamBytes = os.freemem();
       // LANGRAM (2026-08-19) — the free-RAM fraction was 0.5 and it cost the 12M
       // language cortex by 2.4%. Live boot line from the box:
@@ -3402,7 +3427,8 @@ class ServerBrain {
       // (was 0.08%). Still not Master's 25% target but 100× up —
       // 25% needs architecture redesign (topographic sparse, hierarchy,
       // or streaming from CPU). Must match cluster.js values exactly.
-      const CORTEX_TARGET_FANOUT = 30;          // matches cortexCluster opts.targetFanout
+      // (CORTEX_TARGET_FANOUT is declared at the top of this sizing block now:
+      // the wiring is fixed first and the cell count derived from it.)
       // iter14-F per operator 2026-05-04 ("MAKE THE LANGUAGE CORTEX
       // BIG ENOUGH"): cut CROSS_TARGET_FANOUT 20→10 to halve cross-
       // projection nnz storage. Each cross-projection at fanout 20
@@ -3416,7 +3442,8 @@ class ServerBrain {
       // fix; further cut to 10 is more aggressive. If sep-probe results
       // pin in OVERLOAD band, can be tuned back up to 14-16 in next
       // iteration. Must match cluster.js crossTargetFanout exactly.
-      const CROSS_TARGET_FANOUT = 10;
+      // (That cut to 10 is what the measurements reversed — CROSS_TARGET_FANOUT
+      // is declared with the inside fan-out at the top of this sizing block.)
       // ⛔⛔ WEIGHTPREC (2026-09-05) — THIS CONSTANT WAS A LIE FOR ITS ENTIRE LIFE,
       // AND IT IS THE REASON THE BOX'S MEMORY COULD NOT BE ACCOUNTED FOR.
       //
@@ -3798,7 +3825,17 @@ class ServerBrain {
       try {
         if (fs.existsSync(LANG_GEOM_FILE)) {
           const _p = JSON.parse(fs.readFileSync(LANG_GEOM_FILE, 'utf8'));
-          if (_p && Number.isFinite(Number(_p.langCortexSize)) && Number(_p.langCortexSize) > 0) _pinnedGeom = _p;
+          if (_p && Number.isFinite(Number(_p.langCortexSize)) && Number(_p.langCortexSize) > 0) {
+            // A pin holds a cell count that was derived AT A WIRING. At a
+            // different wiring that count is a different amount of memory —
+            // the pin written at 30 / 10 wires says 20,000,000 cells, which at
+            // 100 / 100 is six times what this machine was sized for. Such a
+            // pin is not a size this build has ever run: it is set aside and
+            // this boot derives afresh.
+            const _w = _p.wiring || {};
+            if (Number(_w.inside) === CORTEX_TARGET_FANOUT && Number(_w.between) === CROSS_TARGET_FANOUT) _pinnedGeom = _p;
+            else console.warn(`[Brain] LANGRAM.6 — the geometry pin (${Math.floor(Number(_p.langCortexSize)).toLocaleString()} cells, written ${_p.writtenAt || 'unknown date'}) was derived at ${_w.inside != null ? `${_w.inside} wires inside / ${_w.between} between` : 'an older wiring it does not record'}; this build wires ${CORTEX_TARGET_FANOUT} inside / ${CROSS_TARGET_FANOUT} between. The pin is SET ASIDE and this boot derives the cell count for this machine at this wiring.`);
+          }
         }
       } catch (e) {
         console.warn(`[Brain] LANGRAM.6 — lang-geometry.json unreadable (${e.message}); the pin is treated as absent and this boot re-derives.`);
@@ -3919,6 +3956,7 @@ class ServerBrain {
             : (_pinnedGeom && _weightsOnDisk) ? 'held existing pin'
             : 'derived from live bounds',
           derivedThisBoot: _autoDerivedSize,
+          wiring: { inside: CORTEX_TARGET_FANOUT, between: CROSS_TARGET_FANOUT },
           freeRamGB: Number((freeRamBytes / 1e9).toFixed(2)),
           ramFraction: LANG_RAM_FRACTION,
           weightsOnDisk: _weightsOnDisk,
@@ -4248,7 +4286,19 @@ class ServerBrain {
         // Language cortex settles around ~17M neurons at this tuning —
         // 4% of brain, 56× the pre-T37 baseline, plenty of substrate
         // for K-level cognition even if below Master's 25% target.
-        targetFanout: 30,
+        // ⭐ The wiring her lessons were measured to need (the two constants at
+        // the top of the sizing block — the cell count above was derived AT
+        // this wiring, so these two lines and that derivation cannot disagree).
+        targetFanout: CORTEX_TARGET_FANOUT,
+        crossTargetFanout: CROSS_TARGET_FANOUT,
+        // Every pathway, and the wiring inside her cortex, changes a wire only
+        // where a cell is wrong (`SparseMatrix.errorUpdate`); the card is told
+        // the same by `_sendPlasticityModes` once it holds her.
+        errorDrivenProjections: true,
+        errorDrivenIntra: true,
+        // A cell of her cortex for every unit of the speaking state: what she
+        // is about to say is read from the cells that are lit.
+        speechUnitCells: true,
         excitatoryRatio: 0.85,
         learningRate: 0.002,
         gpuProxy, // T17.3.d — proxy used for cross-region ops when GPU ready
@@ -4383,6 +4433,11 @@ class ServerBrain {
         this.dictionary,
         this.languageCortex,
       );
+      // ⭐ A word lights ITS OWN cells wherever a lesson writes it (a few cells
+      // for what it means, the rest hashed from the word itself), so two words
+      // that mean nearly the same are still two different patterns. Measured
+      // with the wiring and rule above: her pair lesson 3 of 100 → 100 of 100.
+      this.curriculum.setWordCellCode(true);
       // TEACHVIEW RETENTION — restore the teach view from the last boot, then
       // snapshot it on a timer. The walk runs for WEEKS and every reboot used to
       // reset the totals to zero and drop the 400-row reading ring, so the
