@@ -779,9 +779,19 @@ export class SpeechReadout {
     for (const m of this.mem) { for (let i = 0; i < m.units.length; i++) pi(m.units[i]); mU += m.units.length; }
     for (const m of this.mem) { for (const t of m.targets) pi(t); mT += m.targets.length; }
     flush();
+    // What she says, when it is held in her cells: the pathway itself goes last
+    // — its wiring (row starts, source cell of every wire) and every weight.
+    let path = null;
+    if (this.path) {
+      const m = this.path.m; const nnz = m.rowPtr[m.rows];
+      for (const a of [m.rowPtr, m.colIdx.subarray(0, nnz), m.values.subarray(0, nnz)]) {
+        buffers.push(Buffer.from(a.buffer, a.byteOffset, a.byteLength)); bytes += a.byteLength;
+      }
+      path = { rows: m.rows, cols: m.cols, nnz, cell: this.path.cell };
+    }
     return {
       header: { v: 2, G: this.G, nWords: this.nWords, units: nU, entries: total, moments: this.mem.length, momentUnits: mU, momentTargets: mT,
-        memSeen: this.memSeen, bytes, mu: this.mu ? Array.from(this.mu) : null, muWords: this.muWords, stats: this.stats },
+        memSeen: this.memSeen, bytes, mu: this.mu ? Array.from(this.mu) : null, muWords: this.muWords, stats: this.stats, path },
       buffers,
     };
   }
@@ -797,7 +807,12 @@ export class SpeechReadout {
     const int = (x) => Number.isInteger(x) && x >= 0;
     if (!H || H.v !== 2 || H.G !== this.G || !int(H.units) || !int(H.entries) || !int(H.moments) || !int(H.momentUnits) || !int(H.momentTargets)) return false;
     if (H.units > this.G) return false;
-    const need = (2 * H.units + 2 * H.entries + 2 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets) * 4;
+    // A file written with her speech in cells restores only into a build with
+    // the same pathway shape, and a table file only into a build without one.
+    const HP_ = H.path || null; const P_ = this.path;
+    if (!!HP_ !== !!P_) return false;
+    if (HP_ && (HP_.rows !== P_.m.rows || HP_.cols !== P_.m.cols || HP_.cell !== P_.cell || !int(HP_.nnz))) return false;
+    const need = (2 * H.units + 2 * H.entries + 2 * this.G + 2 * H.moments + H.momentUnits + H.momentTargets + (HP_ ? HP_.rows + 1 + 2 * HP_.nnz : 0)) * 4;
     let off = 0;
     const next = typeof body === 'function' ? body : (len) => { const b = body.subarray(off, off + len); off += len; return b; };
     const ints = (count) => {
@@ -809,7 +824,7 @@ export class SpeechReadout {
       }
       return out;
     };
-    let ids, counts, rows, endW, use, mLen, mTLen, mUnits, mTargets;
+    let ids, counts, rows, endW, use, mLen, mTLen, mUnits, mTargets, pRowPtr, pColIdx, pValues;
     try {
       if (typeof body !== 'function' && (!body || body.length < need)) return false;
       ids = ints(H.units); counts = ints(H.units);
@@ -823,7 +838,19 @@ export class SpeechReadout {
       let su = 0, stt = 0; for (let i = 0; i < H.moments; i++) { su += mLen[i]; stt += mTLen[i]; }
       if (su !== H.momentUnits || stt !== H.momentTargets) return false;
       mUnits = ints(H.momentUnits); mTargets = ints(H.momentTargets);
+      if (HP_) {
+        pRowPtr = new Uint32Array(ints(HP_.rows + 1).buffer);
+        if (pRowPtr[0] !== 0 || pRowPtr[HP_.rows] !== HP_.nnz) return false;
+        pColIdx = new Uint32Array(ints(HP_.nnz).buffer);
+        pValues = new Float32Array(ints(HP_.nnz).buffer);
+      }
     } catch { return false; }
+    if (HP_) {
+      const m = P_.m;
+      m.rowPtr = pRowPtr; m.colIdx = pColIdx; m.values = pValues; m.nnz = HP_.nnz;
+      m._colIndex = null;                                  // the by-source listing is rebuilt from the restored wiring
+      P_.fan = m.rows > 0 ? m.nnz / m.rows : 0;
+    }
     this.lk.fill(null); this.lv.fill(null); this.lx.fill(null); this.wd.fill(null); this.ln.fill(0);
     this.entries = 0; this.wide = 0;
     this.nWords = int(H.nWords) ? H.nWords : 0;
