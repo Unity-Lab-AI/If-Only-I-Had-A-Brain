@@ -29833,12 +29833,30 @@ export class Curriculum {
         // Sem: word embedding
         if (semRegion && wordEmb && wordEmb.length > 0) {
           const semSize = semRegion.end - semRegion.start;
-          // Sparsified to the same top-K the pair lane has always used — see
-          // `_semTeachEmbedding`. Dense here meant ~50% of sem alight per word.
-          const semPat = buildPattern(semSize, this._semTeachEmbedding(wordEmb, opts));
-          for (let j = 0; j < semSize; j++) {
-            cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
-          }
+          // ⭐⭐ ONE CODE FOR A WORD — THROUGH THE CHOKEPOINT, NOT PAST IT.
+          //
+          // This used to tile a GloVe top-K through the LOCAL `buildPattern`, which
+          // bypasses `_writeTiledPattern` — and with it both the word-cell code and
+          // the `untaggedVectorWrites` counter that exists to catch exactly this
+          // ("a lesson that loses the word … shows up as a number instead of
+          // silently teaching a second code for the same word"). So these lanes
+          // were invisible to the one instrument built to find them, which is why
+          // it went unseen: every lane that passes a `_word`-carrying vector
+          // already shares ONE code — the word's own cells — and this lane alone
+          // wrote a GloVe pattern, making a word it taught unreadable to the rest.
+          //
+          // Measured cross-lane before this: the same word's codes overlapped
+          // 9.4 %, with 238 of 900 words sharing nothing at all, against 5.0-6.2 %
+          // for two UNRELATED words inside one lane.
+          //
+          // The write now goes through the chokepoint with a vector that knows its
+          // word: her own cells where the word-cell code is on, the same pattern
+          // the pair lane uses where it is off, and counted in both cases. The
+          // region is cleared first because the old write assigned every cell
+          // (`= semPat[j] > 0 ? 1 : 0`) while the chokepoint only sets the cells it
+          // lights.
+          for (let j = 0; j < semSize; j++) cluster.lastSpikes[semRegion.start + j] = 0;
+          this._writeTiledPattern(semRegion, this._dictionaryPatternFor(word));
         }
 
         await cluster._crossRegionHebbian(lr);
@@ -29929,10 +29947,10 @@ export class Curriculum {
             const semSize = semRegion.end - semRegion.start;
             // Sparsified to the same top-K the pair lane has always used — see
           // `_semTeachEmbedding`. Dense here meant ~50% of sem alight per word.
-          const semPat = buildPattern(semSize, this._semTeachEmbedding(wordEmb, opts));
-            for (let j = 0; j < semSize; j++) {
-              cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
-            }
+          // One code for a word, through the chokepoint — see the note on the
+          // first of these writes above.
+            for (let j = 0; j < semSize; j++) cluster.lastSpikes[semRegion.start + j] = 0;
+            this._writeTiledPattern(semRegion, this._dictionaryPatternFor(word));
           }
           await cluster._crossRegionHebbian(lr);
         }
@@ -34262,8 +34280,10 @@ export class Curriculum {
               }
               if (semRegion && wEmb && wEmb.length > 0) {
                 const semSize = semRegion.end - semRegion.start;
-                const semPat = buildPattern(semSize, wEmb);
-                for (let j = 0; j < semSize; j++) cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
+                // One code for a word, through the chokepoint — see the note on
+                // the first of these writes.
+                for (let j = 0; j < semSize; j++) cluster.lastSpikes[semRegion.start + j] = 0;
+                this._writeTiledPattern(semRegion, this._dictionaryPatternFor(word.split(/\s+/)[0]));
               }
               await cluster._crossRegionHebbian(lr);
               if (prevLetterOneHot) {
@@ -34315,10 +34335,10 @@ export class Curriculum {
           }
           if (semRegion && wEmb && wEmb.length > 0) {
             const semSize = semRegion.end - semRegion.start;
-            const semPat = buildPattern(semSize, wEmb);
-            for (let j = 0; j < semSize; j++) {
-              cluster.lastSpikes[semRegion.start + j] = semPat[j] > 0 ? 1 : 0;
-            }
+            // One code for a word, through the chokepoint — see the note on the
+            // first of these writes.
+            for (let j = 0; j < semSize; j++) cluster.lastSpikes[semRegion.start + j] = 0;
+            this._writeTiledPattern(semRegion, this._dictionaryPatternFor(word.split(/\s+/)[0]));
           }
 
           await cluster._crossRegionHebbian(lr);
