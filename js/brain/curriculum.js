@@ -15629,6 +15629,79 @@ export class Curriculum {
     return { read: own >= 0.5 && own > rival, own, rival, rivalWord };
   }
 
+  /**
+   * WHAT GOES WITH WHAT — the lesson. For a sentence, each of its words in turn
+   * is the one to bring up: the meanings of the OTHER words are lit in `sem`,
+   * and the wiring inside `sem` learns (only where a cell is wrong) that this
+   * word's own cells fire for them. After it, holding the rest of a sentence
+   * in mind brings its missing word to mind — which is what understanding a
+   * sentence with a gap in it is, and what the comprehension gate asks.
+   * Needs the word-cell code and an error-driven inside wiring; returns the
+   * number of words taught (0 without them).
+   * `opts.only` — teach just these words of the sentence as the one to bring up.
+   */
+  async _teachWhatGoesWith(words, opts = {}) {
+    const cluster = this.cluster;
+    const sem = cluster && cluster.regions && cluster.regions.sem;
+    if (!sem || cluster.wordCellCode !== true || !cluster.synapses || !cluster.synapses.errorDriven) return 0;
+    const list = (Array.isArray(words) ? words : String(words || '').split(/\s+/))
+      .map((w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '')).filter(Boolean);
+    const uniq = [...new Set(list)].filter((w) => this._wordCells(w, sem).length > 0);
+    if (uniq.length < 2) return 0;
+    const only = Array.isArray(opts.only) ? new Set(opts.only.map((w) => String(w).toLowerCase())) : null;
+    const size = cluster.size;
+    if (!this._goesWithPre || this._goesWithPre.length !== size) { this._goesWithPre = new Float32Array(size); this._goesWithPost = new Float32Array(size); }
+    const pre = this._goesWithPre, post = this._goesWithPost;
+    let taught = 0;
+    for (const target of uniq) {
+      if (only && !only.has(target)) continue;
+      const tc = this._wordCells(target, sem);
+      const lit = [];
+      for (const w of uniq) { if (w === target) continue; const c = this._wordCells(w, sem); for (let i = 0; i < c.length; i++) { const k = sem.start + c[i]; if (!pre[k]) { pre[k] = 1; lit.push(k); } } }
+      for (let i = 0; i < tc.length; i++) post[sem.start + tc[i]] = 1;
+      try { await cluster.intraSynapsesHebbian(pre, post, cluster.learningRate); taught++; }
+      finally { for (const k of lit) pre[k] = 0; for (let i = 0; i < tc.length; i++) post[sem.start + tc[i]] = 0; }
+    }
+    return taught;
+  }
+
+  /**
+   * COMPREHEND — with these words in mind, does `answer` come to mind? The
+   * words' meanings are lit in `sem` and sent through the wiring inside it.
+   * `answer` comes to mind when at least half of its own cells are driven past
+   * threshold AND no word outside the prompt is driven as fully. Returns
+   * { got, own, rival, rivalWord }; `reason` when it cannot run.
+   * `among` — the words to compare against (default: every word she has a slot for).
+   */
+  _bringsToMind(promptWords, answer, among = null) {
+    const cluster = this.cluster;
+    const sem = cluster && cluster.regions && cluster.regions.sem;
+    const S = cluster && cluster.synapses;
+    if (!sem || !S) return { got: false, own: 0, rival: 0, rivalWord: null, reason: 'no meaning region' };
+    if (cluster.wordCellCode !== true) return { got: false, own: 0, rival: 0, rivalWord: null, reason: 'words have no cells of their own in this build' };
+    const clean = (w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '');
+    const prompt = [...new Set((Array.isArray(promptWords) ? promptWords : String(promptWords || '').split(/\s+/)).map(clean).filter(Boolean))];
+    const ans = clean(answer);
+    const lit = new Set();
+    for (const w of prompt) { const c = this._wordCells(w, sem); for (let i = 0; i < c.length; i++) lit.add(sem.start + c[i]); }
+    if (!lit.size || !ans) return { got: false, own: 0, rival: 0, rivalWord: null, reason: 'nothing in mind' };
+    // input each sem cell receives from the lit cells, through the inside wiring
+    const n = sem.end - sem.start; const out = new Float32Array(n);
+    const { rowPtr, colIdx, values } = S;
+    if (!this._bringMark || this._bringMark.length !== cluster.size) this._bringMark = new Uint8Array(cluster.size);
+    const mark = this._bringMark; for (const k of lit) mark[k] = 1;
+    for (let r = 0; r < n; r++) { let s = 0; for (let k = rowPtr[sem.start + r]; k < rowPtr[sem.start + r + 1]; k++) if (mark[colIdx[k]]) s += values[k]; out[r] = s; }
+    for (const k of lit) mark[k] = 0;
+    const theta = (S.errorDriven && typeof S.errorDriven.theta === 'number') ? S.errorDriven.theta : 0.5;
+    const driven = (w) => { const c = this._wordCells(w, sem); if (!c.length) return 0; let k = 0; for (let i = 0; i < c.length; i++) if (out[c[i]] >= theta) k++; return k / c.length; };
+    const own = driven(ans);
+    const inPrompt = new Set(prompt);
+    const list = Array.isArray(among) ? among : (Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : []);
+    let rival = 0, rivalWord = null;
+    for (const cand of list) { if (!cand || cand === ans || inPrompt.has(cand)) continue; const d = driven(cand); if (d > rival) { rival = d; rivalWord = cand; } }
+    return { got: own >= 0.5 && own > rival, own, rival, rivalWord };
+  }
+
   /** READ, for a line: does she read every word of it? (False for an empty line.) */
   async _readsAll(words) {
     const list = (Array.isArray(words) ? words : String(words || '').split(/\s+/))
