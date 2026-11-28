@@ -1217,7 +1217,17 @@ export class SparseMatrix {
    * CPU CSR free — normalization on those projections happens GPU-
    * side via the shader pipeline, not here).
    */
+  // ⛔ A MATRIX THAT LEARNS ONLY-WHEN-WRONG IS NOT RE-SHAPED AFTERWARDS.
+  // `normalizeRows`, `prune`, `scale` and `pruneTopKPerRow` exist to keep Oja
+  // weights from saturating or blurring. Under the error-driven rule each weight
+  // is what its cell needs to be right: scaling or normalising moves it off the
+  // threshold it was fitted to, and pruning removes WIRES — measured, a lesson's
+  // wrap-up cut a projection from 60 wires a cell to 10, for good, after one
+  // lesson. So on such a matrix these four change nothing and say so in what
+  // they return. The check is here, at the four methods, so every caller is
+  // covered.
   normalizeRows(targetNorm = 1.0) {
+    if (this.errorDriven) return 0;
     const { rows, rowPtr, wMin, wMax } = this;
     const values = this.values;
     if (!values || values.length === 0) return 0;
@@ -1338,6 +1348,7 @@ export class SparseMatrix {
    * @returns {number} — number of connections removed
    */
   prune(threshold = 0.01) {
+    if (this.errorDriven) return 0;
     const { rows, values, colIdx, rowPtr } = this;
     const oldNnz = this.nnz;
 
@@ -1391,7 +1402,7 @@ export class SparseMatrix {
    * @returns {{ before: {mean, max}, after: {mean, max} }} — weight stats
    */
   scale(factor) {
-    if (!Number.isFinite(factor) || factor === 1) {
+    if (this.errorDriven || !Number.isFinite(factor) || factor === 1) {
       return { before: null, after: null };
     }
     let beforeSum = 0, beforeMax = 0;
@@ -1428,7 +1439,7 @@ export class SparseMatrix {
    * @returns {number} — number of connections removed
    */
   pruneTopKPerRow(k) {
-    if (!Number.isFinite(k) || k <= 0) return 0;
+    if (this.errorDriven || !Number.isFinite(k) || k <= 0) return 0;
     const { rows, values, colIdx, rowPtr } = this;
     const oldNnz = this.nnz;
 

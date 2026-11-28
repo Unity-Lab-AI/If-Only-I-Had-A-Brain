@@ -929,6 +929,16 @@ const GATE_PATH_MIN = _gateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
 // its meaning, and the hash that places each identity cell independently.
 const WORD_MEANING_DIMS = 4;
 const _NO_CELLS = new Int32Array(0);
+// "The vector knows its word": when a curriculum has the word-cell code on
+// (`setWordCellCode`), every writer that is handed a vector carrying `_word`
+// lights that word's own cells instead of tiling the numbers. Off → null →
+// every writer behaves exactly as before.
+let _wordCellCurriculum = null;
+function _taggedWordCells(feat, regionSize) {
+  if (!_wordCellCurriculum || !feat || typeof feat._word !== 'string' || !feat._word) return null;
+  const c = _wordCellCurriculum._wordCells(feat._word, { start: 0, end: regionSize });
+  return c.length ? c : null;
+}
 function _cellHash(text, salt) {
   let h = (2166136261 ^ Math.imul(salt + 1, 0x9E3779B1)) >>> 0;
   for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
@@ -6849,6 +6859,7 @@ export class Curriculum {
       : 300;
     const out = new Float64Array(dim);
     if (typeof word !== 'string' || word.length === 0) return out;
+    out._word = word.toLowerCase().trim();   // the vector knows its word
 
     // Stripe layout: 200 GloVe / 50 identity-hash / 50 cortex-snapshot.
     const gloveDims = 200;
@@ -15296,11 +15307,31 @@ export class Curriculum {
     if (m.length > 4) m.shift();
   }
 
+  /**
+   * Turn the word-cell code on or off for this curriculum (and its cluster).
+   * ON: every writer handed a vector that knows its word (`feat._word`) lights
+   * that word's own cells (`_wordCells`) — one code for one word in every
+   * lesson. OFF (default): every writer tiles the numbers as before.
+   */
+  setWordCellCode(on) {
+    const cluster = this.cluster;
+    if (cluster) cluster.wordCellCode = !!on;
+    _wordCellCurriculum = on ? this : (_wordCellCurriculum === this ? null : _wordCellCurriculum);
+    return !!on;
+  }
+
   _writeTiledPattern(region, feat, binarize = true, opts = null) {
     const cluster = this.cluster;
     const collectInto = opts && opts.collectInto;
     if (!cluster || !region || !feat || feat.length === 0) return;
     this._noteSemMeaning(region, feat);
+    if (cluster.wordCellCode === true) {
+      if (typeof feat._word === 'string' && feat._word) { this._writeWordPattern(region, feat._word, opts); return; }
+      // A 300-number vector with no word on it is written the old way. Counted,
+      // so a lesson that loses the word (a copy drops it) shows up as a number
+      // instead of silently teaching a second code for the same word.
+      if (feat.length === 300) this.stats.untaggedVectorWrites = (this.stats.untaggedVectorWrites | 0) + 1;
+    }
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
@@ -21346,6 +21377,7 @@ export class Curriculum {
     idx.sort((a, b) => emb[b] - emb[a]);
     const out = emb.constructor ? new emb.constructor(emb.length) : new Float64Array(emb.length);
     for (let i = 0; i < K; i++) out[idx[i]] = emb[idx[i]];
+    if (emb._word) out._word = emb._word;   // the vector still knows its word
     return out;
   }
 
@@ -21366,6 +21398,7 @@ export class Curriculum {
     for (let i = 0; i < feat.length; i++) {
       if (keep[i]) out[i] = feat[i];
     }
+    if (feat._word) out._word = feat._word;   // the vector still knows its word
     return out;
   }
 
@@ -21451,6 +21484,10 @@ export class Curriculum {
     const cluster = this.cluster;
     if (!cluster || !region || !feat || feat.length === 0) return;
     this._noteSemMeaning(region, feat);
+    // With the word-cell code on, a word laid over a region "at an offset" is
+    // simply that word's own cells — they do not collide with whatever else is
+    // lit, which is all the offset was for.
+    if (cluster.wordCellCode === true && typeof feat._word === 'string' && feat._word) { this._writeWordPattern(region, feat._word); return; }
     const size = region.end - region.start;
     const slideStart = region.start + Math.floor(size * (offset || 0));
     const slideSize = region.end - slideStart;
@@ -21464,15 +21501,21 @@ export class Curriculum {
           const idx = slideStart + d * gSize + n;
           if (idx < region.end) {
             cluster.lastSpikes[idx] = 1;
-            if (sparseIndices) sparseIndices.push(idx);
+            if (sparseIndices) sparseIndices.push(idx - region.start);
           }
         }
       }
     }
+    // ⛔ This used to call `writeSpikeSlice(sparseIndices)` — ONE argument, with
+    // cluster-absolute indices — while the card write takes (regionName,
+    // region-relative indices). So an offset pattern (the key word laid beside a
+    // question, the sentence-so-far beside her last word) was written on the
+    // host and never reached the card: lessons taught on the card without it.
     if (haveProxy && sparseIndices.length > 0) {
-      try {
-        cluster._gpuProxy.writeSpikeSlice(sparseIndices);
-      } catch { /* non-fatal — CPU shadow already written */ }
+      const regionName = this._resolveRegionName(cluster, region);
+      if (regionName) {
+        try { cluster._gpuProxy.writeSpikeSlice(regionName, sparseIndices); } catch { /* non-fatal — host copy already written */ }
+      }
     }
   }
 
@@ -28876,6 +28919,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -29754,6 +29799,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -31534,6 +31581,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -31653,6 +31702,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -33300,6 +33351,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
