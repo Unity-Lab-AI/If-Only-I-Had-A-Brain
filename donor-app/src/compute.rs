@@ -16,7 +16,7 @@ use crate::frames::Binding;
 /// `group == 0` → `list` is cell indices; `group > 0` → `list` is dims and the
 /// cells are each dim's tile (`frames::tile_indices`), clipped to `size`.
 pub type SpikeWrite = (String, String, Vec<u32>, bool, u32, u32);
-use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER, VOLTAGE_MEAN_SHADER};
+use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_ERROR_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER, VOLTAGE_MEAN_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -129,6 +129,24 @@ struct BucketParams {
     grid_x: u32,
 }
 
+/// Uniform block for plasticity_error.wgsl — field order and padding match its `Params` (48 bytes).
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct ErrParams {
+    rows: u32,
+    nnz: u32,
+    eta: f32,
+    theta: f32,
+    margin: f32,
+    w_min: f32,
+    w_max: f32,
+    src_offset: u32,
+    dst_offset: u32,
+    pad0: u32,
+    pad1: u32,
+    pad2: u32,
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct HebbParams {
@@ -192,6 +210,8 @@ pub struct ComputeEngine {
     spike_pipeline: wgpu::ComputePipeline,
     propagate_pipeline: wgpu::ComputePipeline,
     plasticity_pipeline: wgpu::ComputePipeline,
+    /// Error-driven plasticity (a wire changes only when its cell is wrong).
+    plasticity_error_pipeline: wgpu::ComputePipeline,
     scatter_pipeline: wgpu::ComputePipeline,
     /// GATEGPU.2 (v0.3.28) — reduces post currents to per-word-bucket means on the card.
     bucket_mean_pipeline: wgpu::ComputePipeline,
@@ -255,6 +275,7 @@ impl ComputeEngine {
         let spike_pipeline = build_pipeline(&device, "spike_count", SPIKE_COUNT_SHADER);
         let propagate_pipeline = build_pipeline(&device, "synapse_propagate", SYNAPSE_PROPAGATE_SHADER);
         let plasticity_pipeline = build_pipeline(&device, "plasticity", PLASTICITY_SHADER);
+        let plasticity_error_pipeline = build_pipeline(&device, "plasticity_error", PLASTICITY_ERROR_SHADER);
         let scatter_pipeline = build_pipeline(&device, "scatter_ones", SCATTER_ONES_SHADER);
         let bucket_mean_pipeline = build_pipeline(&device, "bucket_mean", BUCKET_MEAN_SHADER);
         let current_max_pipeline = build_pipeline(&device, "current_max", CURRENT_MAX_SHADER);
@@ -282,6 +303,7 @@ impl ComputeEngine {
             spike_pipeline,
             propagate_pipeline,
             plasticity_pipeline,
+            plasticity_error_pipeline,
             scatter_pipeline,
             bucket_mean_pipeline,
             current_max_pipeline,
@@ -746,6 +768,48 @@ impl ComputeEngine {
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // No blocking readback — same fire-and-forget contract as standalone hebbian.
+        Ok(true)
+    }
+
+    /// Error-driven bound plasticity: like `hebbian_bound` (resident spike buffers
+    /// at the bound offsets), but a wire changes only where its target cell is
+    /// WRONG — should fire and its summed input is under theta + margin, or should
+    /// rest and it is over theta − margin. Every row is visited. Same
+    /// fire-and-forget contract; Ok(false) when the matrix is unbound or a window
+    /// does not fit.
+    pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
+        let params = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start, pad0: 0, pad1: 0, pad2: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("err-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("err-bound-bg"),
+            layout: &self.plasticity_error_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: dst.spikes.as_entire_binding() },
+            ],
+        });
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("error-bound") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("error-bound"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_error_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
         Ok(true)
     }
 

@@ -242,4 +242,31 @@ __global__ void plasticity(unsigned int rows, float lr, float reward, float wMin
   }
 }
 
+// Error-driven plasticity (port of plasticity_error.wgsl) — a wire changes only
+// when its cell is WRONG. Every row is visited. postSpikes is the teaching
+// pattern. Host twin: SparseMatrix.errorUpdate; the three must agree.
+__global__ void plasticity_error(unsigned int rows, float eta, float theta, float margin,
+                                 float wMin, float wMax,
+                                 unsigned int srcOffset, unsigned int dstOffset,
+                                 float* values, const unsigned int* colIdx, const unsigned int* rowPtr,
+                                 const unsigned int* preSpikes, const unsigned int* postSpikes) {
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= rows) return;
+  unsigned int start = rowPtr[i];
+  unsigned int end   = rowPtr[i + 1u];
+  float s = 0.0f;
+  for (unsigned int k = start; k < end; k++) {
+    if (preSpikes[srcOffset + colIdx[k]] != 0u) s += values[k];
+  }
+  float d = 0.0f;
+  if (postSpikes[dstOffset + i] != 0u) { if (s < theta + margin) d = eta; }
+  else if (s > theta - margin) d = -eta;
+  if (d == 0.0f) return;
+  for (unsigned int k = start; k < end; k++) {
+    if (preSpikes[srcOffset + colIdx[k]] != 0u) {
+      values[k] = fminf(fmaxf(values[k] + d, wMin), wMax);
+    }
+  }
+}
+
 } // extern "C"

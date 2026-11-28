@@ -89,6 +89,20 @@ Fan-out was halved (20 → 10) in May to fit more cells. That trade went the wro
 
 ---
 
+### All three together, on her real code
+
+The real cluster, the real teaching call, the new word code, the only-when-wrong rule, four passes:
+
+| Wires per target cell | 100 pairs — all fourteen pathways | 400 pairs — the five finished so far |
+|---|---|---|
+| 300 | **100 / 100 on every one** | 400 / 400 on every one |
+| 100 | **100 / 100 on every one** | 400 / 400 on every one |
+| 3–10 (today), old code and rule | 6–54 / 100 | — |
+
+*Instrument: `.scratch/brain-check2.mjs`.*
+
+---
+
 ## 3. How much wiring her vocabulary needs
 
 Split code, only-when-wrong, 300 wires per cell, 6 passes:
@@ -119,7 +133,7 @@ So about **276 weights per taught pair** holds 2,000 pairs perfectly and 3,000 p
 | Part | Change | Status |
 |---|---|---|
 | **Word code** | One function gives a word its cells: meaning (value-ranked embedding dimensions) in one part of a region, identity (cells chosen independently per word) in the other. Every lesson, every probe, every pathway uses it. | **the function exists** (`Curriculum._wordCells`, `_writeWordPattern`) and measures as the model did — 200 lit cells, overlap 7.2 % / 10.8 %, 400 / 400 with the new rule. **No lesson uses it yet.** |
-| **Learning rule** | "Only when wrong" as a new mode of the existing plasticity kernel — on the card (WGSL and CUDA) and on the host. The kernel already holds everything the rule needs; it has to visit every target cell instead of only the lit ones. | **on the host: built** (`SparseMatrix.errorUpdate`; through the real class 289 → 400 of 400). **On the card: not built** — needs a donor release. Nothing calls it yet. |
+| **Learning rule** | "Only when wrong" as a new mode of the existing plasticity kernel — on the card (WGSL and CUDA) and on the host. The kernel already holds everything the rule needs; it has to visit every target cell instead of only the lit ones. | **on the host: built** (`SparseMatrix.errorUpdate`; through the real class 289 → 400 of 400). **In her teaching path on the host: built** (`_crossRegionHebbian`'s `errorDriven`). **On the card: the kernel is written for both backends and the WebGPU engine method compiles** (`error_bound`); the CUDA launch, the wire verb and the card-vs-host parity check are not done, and it needs a donor release. No lesson calls it yet. |
 | **Wiring** | 300 wires per target cell; language cortex sized from §3 instead of from free memory. | not built |
 | **Speech** | The state she speaks from is activity in her own cells; the word she says is her word-motor cells firing; the host-side table is removed. **Test: silence her cells and she goes silent.** | not built |
 | **Reading** | A pathway from letters to meaning that is taught and tested. | not designed yet |
