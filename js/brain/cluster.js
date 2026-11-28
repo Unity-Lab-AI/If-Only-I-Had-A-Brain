@@ -653,6 +653,8 @@ export class NeuronCluster {
       this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1.0, {
         radiusLocal: this.smallWorldRadiusLocal,
         radiusMed: this.smallWorldRadiusMed,
+        // the speaking-state cells at the end of the cortex take no inside wires
+        wired: (name === 'cortex' && opts.speechUnitCells) ? size - SPEECH_LAYOUT.G : 0,
       });
     } else {
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}×${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
@@ -760,7 +762,16 @@ export class NeuronCluster {
     // clusters get an empty regions object for API symmetry.
     this.regions = {};
     if (name === 'cortex') {
-      const s = size;
+      // With a cell for every unit of the speaking state (`opts.speechUnitCells`)
+      // those cells are a FIXED run at the end of the cortex: the regions below
+      // are laid out over the cells before it, by the same shares as always. So
+      // the speaking state costs its own cells and nothing else, however small
+      // the rest of the cortex has to be on a given machine.
+      const _speechRun = opts.speechUnitCells ? SPEECH_LAYOUT.G : 0;
+      if (_speechRun && size - _speechRun < 10000) {
+        throw new Error(`[Cluster ${name}] ${size.toLocaleString()} cells cannot hold the ${_speechRun.toLocaleString()} speaking-state cells and a language cortex beside them.`);
+      }
+      const s = size - _speechRun;
       // Fractions per T14.4 spec PLUS iter21 architectural redesign per
       // operator 2026-05-05 "motor argmax is fucked if it ever just relplies
       // with letters and not words" — added word_motor as PRIMARY emission
@@ -880,17 +891,12 @@ export class NeuronCluster {
       // far, the thing in mind, how she feels — is a set of units; here each
       // unit IS a cell of her cortex, so the state is cells lit in her spike
       // sheet and what she says is read from the cells that are lit. Clear
-      // them and she has nothing to say. Taken whole from the head of `free`;
-      // a cortex too small to hold it is not built this way.
+      // them and she has nothing to say. They are the fixed run after every
+      // other region (see `_speechRun` above); `wiredCells` is where it starts.
       this._speechUnitCells = false;
-      if (opts.speechUnitCells) {
-        const G = SPEECH_LAYOUT.G;
-        const fr = this.regions.free;
-        if (fr.end - fr.start < G) {
-          throw new Error(`[Cluster ${name}] speechUnitCells needs ${G.toLocaleString()} free cells for the speaking state; this build has ${(fr.end - fr.start).toLocaleString()}.`);
-        }
-        this.regions.speech = { start: fr.start, end: fr.start + G };
-        this.regions.free = { start: fr.start + G, end: fr.end };
+      this.wiredCells = s;
+      if (_speechRun) {
+        this.regions.speech = { start: s, end: size };
         this._speechUnitCells = true;
       }
 

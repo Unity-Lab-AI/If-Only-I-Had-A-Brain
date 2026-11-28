@@ -417,8 +417,14 @@ export class SparseMatrix {
       this.nnz = 0;
       return;
     }
-    const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(cols / 4));
-    const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(cols / 2));
+    // `opts.wired` — only the first `wired` cells take part: rows past it get no
+    // wires and no wire comes FROM a cell past it. (A cluster can end in a run
+    // of cells that are wired some other way, and they must not cost inside
+    // wires they never use.) Default: every cell.
+    const wired = (opts.wired > 0 && opts.wired < rows && rows === cols) ? Math.floor(opts.wired) : rows;
+    const ring = wired < rows ? wired : cols;
+    const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(ring / 4));
+    const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(ring / 2));
     const localFrac = opts.localFrac ?? 0.70;
     const medFrac = opts.medFrac ?? 0.25;
     // longFrac = 1 - localFrac - medFrac (5% Watts-Strogatz rewire)
@@ -426,7 +432,7 @@ export class SparseMatrix {
     const medCount = Math.max(0, Math.round(effFanout * medFrac));
     const longCount = Math.max(0, effFanout - localCount - medCount);
 
-    const totalPre = rows * effFanout;
+    const totalPre = wired * effFanout;
     this.values = new WEIGHT_ARRAY(totalPre);
     this.colIdx = new Uint32Array(totalPre);
     this.rowPtr = new Uint32Array(rows + 1);
@@ -440,6 +446,7 @@ export class SparseMatrix {
     let idx = 0;
     this.rowPtr[0] = 0;
     for (let i = 0; i < rows; i++) {
+      if (i >= wired) { this.rowPtr[i + 1] = idx; continue; }
       picks.clear();
       let filled = 0;
 
@@ -449,8 +456,8 @@ export class SparseMatrix {
       while (filled < localCount && attempts < maxAttempts) {
         const offset = Math.floor((_initRand() * 2 - 1) * radiusLocal);
         let col = i + offset;
-        if (col < 0) col += cols;
-        else if (col >= cols) col -= cols;
+        if (col < 0) col += ring;
+        else if (col >= ring) col -= ring;
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
@@ -466,8 +473,8 @@ export class SparseMatrix {
       while (filled < localCount + medCount && attempts < maxAttempts) {
         const offset = Math.floor((_initRand() * 2 - 1) * radiusMed);
         let col = i + offset;
-        if (col < 0) col += cols;
-        else if (col >= cols) col -= cols;
+        if (col < 0) col += ring;
+        else if (col >= ring) col -= ring;
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
@@ -478,10 +485,10 @@ export class SparseMatrix {
         attempts++;
       }
 
-      // Tier 3: long-range — uniform from full [0, cols) (Watts-Strogatz)
+      // Tier 3: long-range — uniform from the wired cells (Watts-Strogatz)
       attempts = 0;
       while (filled < effFanout && attempts < maxAttempts) {
-        const col = Math.floor(_initRand() * cols);
+        const col = Math.floor(_initRand() * ring);
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
