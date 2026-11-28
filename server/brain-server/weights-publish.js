@@ -1,7 +1,7 @@
 'use strict';
 /**
  * WEIGHTS SNAPSHOT — donors pull her trained intra matrix from a GitHub release
- * instead of over the operator's home upload (Gee's choice: public GitHub
+ * instead of over the operator's home upload (his choice: public GitHub
  * release assets).
  *
  * Shape: the intra matrix is cut into ROW BLOCKS (≤ BLOCK_BYTES each — GitHub

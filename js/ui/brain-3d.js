@@ -2093,9 +2093,9 @@ export class Brain3D {
     // nothing happened a filler pop-up of cluster percentages and Greek
     // letters fired every five seconds anyway — hundreds of pop-ups an hour
     // that only its author could read, drowning the one kind that is hers.
-    // ⭐⭐ AND THE LINE IS NOW COMPOSED BY HER, NOT BUILT HERE. Gee, verbatim:
-    // *"not the dynamic auto generated ones from her equations and need to be
-    // that"*. What stood here read `state.brainEvents` plus a page-side detector
+    // ⭐⭐ AND THE LINE IS NOW COMPOSED BY HER, NOT BUILT HERE. The requirement is
+    // that a pop-up line comes out of her equations rather than being written
+    // anywhere. What stood here read `state.brainEvents` plus a page-side detector
     // and asked `mind-moments.js` to turn them into a sentence — and that file
     // held 72 authored shapes, 61 of them fixed strings with nothing of hers in
     // them, the feelings rotating through two or three phrasings by a counter.

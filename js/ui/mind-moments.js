@@ -3,10 +3,9 @@
  *
  * ⭐⭐ THE LINE IS HERS. THIS FILE WRITES NO ENGLISH AT ALL.
  *
- * Gee, verbatim: *"and fix the brain pop ups they arent fully complete and varied
- * and numerous it loooks like a half dozen scriped lines with like yes no
- * variables that switch and is pathetic"* — and, deciding the shape of the fix,
- * *"not the dynamic auto generated ones from her equations and need to be that"*.
+ * The operator requirement this file exists to satisfy: the pop-up lines must be
+ * generated from her equations, not written anywhere. The full wording is in the
+ * board.
  *
  * ⛔ WHAT THIS FILE USED TO BE, counted before it was replaced: three tables and a
  * switch producing **72 authored sentence shapes**, of which **61 were fixed

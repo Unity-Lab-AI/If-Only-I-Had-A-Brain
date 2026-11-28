@@ -1645,9 +1645,9 @@ const SERVER_STATE_MIXIN = {
       // events newer than `_brainEventTTL` for popup rendering. The
       // seq field lets the dashboard dedupe across poll intervals.
       brainEvents: _lap('brainEvents', () => this._recentBrainEvents()),
-      // ⭐⭐ THE POP-UP LINE IS HERS, COMPOSED, NOT WRITTEN. Gee, verbatim:
-      // *"not the dynamic auto generated ones from her equations and need to be
-      // that"*. What stood before: the page built every pop-up sentence itself
+      // ⭐⭐ THE POP-UP LINE IS HERS, COMPOSED, NOT WRITTEN. The operator
+      // requirement is that these lines come out of her equations rather than
+      // being written anywhere. What stood before: the page built every sentence
       // from three tables in `js/ui/mind-moments.js` — 72 authored shapes, and 61
       // of them fixed strings with nothing of hers in them, the feelings rotating
       // through 2-3 variants by a counter. That is a bolt-on wearing her voice.

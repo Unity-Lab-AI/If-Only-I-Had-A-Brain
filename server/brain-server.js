@@ -11786,8 +11786,9 @@ setInterval(() => {
 }, READBACK_TICK_MS);
 
 // ⭐ LOW-BALANCE HANDOFF — her weights come home BEFORE the pod's money runs out.
-// Gee 2026-11-25: "it needs safe load back on my GPu when the pod runs out of
-// money" · "liek befoire it does when 1$ is left". Every 5 min: if a Runpod key is
+// Operator requirement 2026-11-25: her weights must land back safely on his own
+// GPU before a pod runs out of money, as it did before at the one-dollar mark.
+// Every 5 min: if a Runpod key is
 // saved and one of OUR donor pods is running, read the balance. At or below the
 // threshold — $1, or 30 minutes of the running pods' spend if that is larger, so
 // the pull has time to finish — ONCE: pull her trained weights off the card

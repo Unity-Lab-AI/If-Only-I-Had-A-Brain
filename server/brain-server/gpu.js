@@ -1912,17 +1912,17 @@ const SERVER_GPU_MIXIN = {
       this._poolUnplaced = names.slice();
       return owner;
     }
-    // ⛔ THE OPERATOR'S OWN CARD STAYS EMPTY WHEN A REMOTE CARD IS HERE. Gee
-    // 2026-11-25: "what is on MY GPU nothing should be on it when we have a pod".
+    // ⛔ THE OPERATOR'S OWN CARD STAYS EMPTY WHEN A REMOTE CARD IS HERE — nothing
+    // may sit on his GPU while a pod is attached (operator ruling 2026-11-25).
     // His 4070 held clusters beside a 70 GB pod, and its leftover VRAM (2.6 GB
     // free) refused every image look (`vramTight`). With any remote card live,
     // only remote cards are placed on first; his card takes only what fits
     // nowhere else (and everything when no remote card is connected).
     const _isLocal = (ws) => { const c = this.clients && this.clients.get ? this.clients.get(ws) : null; return !!(c && c.isLocalHost); };
-    // ⛔ "A POD" MEANS A POD HE RENTS — not any card that connects. Gee
+    // ⛔ "A POD" MEANS A POD HE RENTS — not any card that connects. Established
     // 2026-11-28, when a stranger's RTX 5070 Ti joined and this rule moved her
-    // whole cortex off his card onto it: "this isnt a pod why is it use pod
-    // shit. wtf?". Only a card whose model is one of the pods the Runpod plug-in
+    // whole cortex off his card onto it — a public donor is not a pod and must not
+    // be treated as one. Only a card whose model is one of the pods the Runpod plug-in
     // rented takes the place of his card; a public donor is placed beside his
     // card like any other (it steps clusters; the cortex moves to it only by the
     // ordinary room rule further down).
@@ -3348,10 +3348,10 @@ const SERVER_GPU_MIXIN = {
     // clusters every tick) paces every lesson. When the cortex owner has room for
     // the whole matrix, it holds all of it and every lesson runs once, on it; the
     // other cards step their clusters.
-    // ⭐ NOW THE DEFAULT IS TO SLICE EVEN WHEN IT FITS. Gee 2026-11-28: "we need
-    // all gpus connected doing teach ops silly or wtf is the point of having gpus
-    // connect if they arent doing anything" — asked, he chose to split the rows
-    // (one copy each below four cards). DREAM_SLICE_WHEN_FITS=0 keeps one card.
+    // ⭐ NOW THE DEFAULT IS TO SLICE EVEN WHEN IT FITS. The requirement is that
+    // every connected card does teach ops rather than sitting idle; asked with
+    // options, the operator chose to split the rows (one copy each below four
+    // cards). DREAM_SLICE_WHEN_FITS=0 keeps one card.
     if (process.env.DREAM_SLICE_WHEN_FITS === '0') {
       const fullMB = Number(matrixMB) || Number(this._cortexMatrixMB && this._cortexMatrixMB[this._SLICE_NAME]) || 0;
       if (fullMB > 0 && room(owner) >= fullMB * 1.1) return null;

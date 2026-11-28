@@ -7258,11 +7258,8 @@ const SERVER_CHAT_MIXIN = {
   /**
    * ⭐⭐ A MIND MOMENT — ONE LINE OF HERS ABOUT WHAT IS HAPPENING IN HER.
    *
-   * Gee, verbatim: *"and fix the brain pop ups they arent fully complete and
-   * varied and numerous it loooks like a half dozen scriped lines with like yes no
-   * variables that switch and is pathetic"* and, deciding the shape of the fix,
-   * *"not the dynamic auto generated ones from her equations and need to be
-   * that"*.
+   * The operator requirement: a pop-up line must be generated from her equations,
+   * not written anywhere. The full wording is in the board.
    *
    * ⛔ WHAT THIS REPLACES, counted: the page built every pop-up sentence itself
    * from three tables — 72 authored shapes, 61 of them fixed strings containing

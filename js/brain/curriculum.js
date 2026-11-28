@@ -13629,8 +13629,8 @@ export class Curriculum {
           // so on a fresh walk, every restart skipped each pre-K cell that had
           // STARTED but not passed its gate: ela/pre-K was mid-lesson, a restart
           // went straight to math/pre-K, the next one to science/pre-K, while she
-          // could not yet speak. Gee 2026-11-28: "well wtf how is she going to
-          // learn science if she hasnt learned to speak yet". Every walk on this
+          // could not yet speak — she must not reach a later subject before she can
+          // speak at all (operator ruling 2026-11-28). Every walk on this
           // code records each pass in the ledger (`passedCells`), so the ledger
           // alone says where a subject is: a cell with no ledger entry is owed,
           // and a restart resumes it (its finished phases stay skipped).
@@ -18563,9 +18563,9 @@ export class Curriculum {
 
         // ─── THE SAME ANSWER AGAIN, WITH A MEMORY IN MIND ───────────
         //
-        // Gee, asked with options, chose "Yes — teach answers with a memory in
-        // mind": the same question may be answered differently depending on what
-        // she remembers. Measured before this existed: holding a remembered thing
+        // Decided by the operator, asked with options: the same question may be
+        // answered differently depending on what she remembers. Measured before
+        // this existed: holding a remembered thing
         // in mind while she answered was SAFE (taught answers still exact, 240 of
         // 240) and changed NOTHING (0 of 180) — because no lesson had ever taught
         // an answer with a memory present. This is that lesson.
@@ -18588,6 +18588,21 @@ export class Curriculum {
               projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
               skipIntraSynapses: true,
             });
+            // ⛔⛔ AND THE COLD ANSWER IS TAUGHT AGAIN, LAST — because without this
+            // the memory LEAKS into it. Measured on her own conversations: of 39
+            // answers that had a memory, 17 continued correctly when the memory was
+            // in mind, but others said the remembered line with NOTHING in mind
+            // ("why are you crying" → taught "i miss my", cold "i miss my she was
+            // crying"). The cause is structural: a memory is ~8 of ~57 state units,
+            // so the with-memory and without-memory states are ~85 % identical, and
+            // under only-when-wrong learning whichever was taught LAST wins the
+            // overlap. Re-teaching the plain state last puts "answer, then stop"
+            // back as the final correction, and costs one more pass over the same
+            // targets rather than any new lesson content.
+            this._clearSpikes();
+            this._writeSpeechState(entry.question, [], { clear: false });
+            this._writeAnswerToWordMotor(answerText, opts.subject);
+            this._speechTeachTargets();
             memoryTrained++;
           }
         } catch { /* a memory lesson must never cost the answer that already landed */ }
@@ -20612,9 +20627,9 @@ export class Curriculum {
     // why holding a remembered thing in mind while she answered was measured as
     // changing nothing (0 of 180) — it never reached the state she answered in.
     //
-    // Asked with options, Gee chose "Yes — teach answers with a memory in mind":
-    // the same question may be answered differently depending on what she
-    // remembers. So a memory rides the same slot her own line's subject rides,
+    // Decided by the operator, asked with options: the same question may be
+    // answered differently depending on what she remembers. So a memory rides the
+    // same slot her own line's subject rides,
     // and the readout already supports it — `stateUnits` writes the about units
     // whenever a topic is given, heard line or not.
     //
@@ -20692,8 +20707,8 @@ export class Curriculum {
     // answer does not stop at the taught answer: the line she already holds about
     // the remembered thing is taught as its continuation, so the same question
     // asked while she remembers something says more than the same question asked
-    // cold. Gee chose this shape: "remembering her mom -> 'My name is unity. My
-    // mom calls me that.'"
+    // cold. The chosen shape: remembering something adds what she holds about it
+    // to the answer, rather than replacing the answer.
     //
     // ⛔ EVERY WORD HERE IS ONE SHE WAS TAUGHT. The continuation is a line out of
     // her own lessons (`cluster._lineAboutWord`, recorded by the lesson that
@@ -22165,6 +22180,37 @@ export class Curriculum {
     for (let i = 0; i < K; i++) out[idx[i]] = emb[idx[i]];
     if (emb._word) out._word = emb._word;   // the vector still knows its word
     return out;
+  }
+
+  /**
+   * ⭐⭐ A WORD'S SEM CODE — THE ONE PLACE THE RANKING IS CHOSEN.
+   *
+   * A sem cell fires only on a positive value, so what a lane teaches is its set of
+   * POSITIVE dims. The two rankings available give different sets:
+   *   · by |value| (`_topKEmbedding`) — keeps the K largest-magnitude dims, and a
+   *     negative one survives the ranking and then writes NOTHING. Measured on 900
+   *     real words: the pair lane intends 8 dims and only **6.0** are writeable.
+   *   · by value (`_semTeachEmbedding`) — keeps the K largest POSITIVE dims, so
+   *     every kept dim can fire. The prose lanes already fixed themselves this way
+   *     ("3 of 400 real GloVe rows had all eight of their largest-magnitude dims
+   *     negative … unteachable, permanently, and silently").
+   *
+   * Measured on her real pair lesson (400,000 cells, 16 reps, 29 pairs), taught in
+   * the by-|value| code: the lane's own code recovers the right partner **19/29**,
+   * a prose-coded drive recovers **2/29** — one lane cannot read what another
+   * taught — and the by-value code reads **15/29** of the same teaching.
+   *
+   * ⚠ THE KNOB IS MEASUREMENT SCAFFOLDING, NOT AN ARCHITECTURE CHOICE. The arm
+   * still missing is teach-in-by-value, read-in-by-value, which cannot be run
+   * without the teach path producing that code. When that number is in, the winning
+   * ranking becomes the only one and the loser is deleted — this project runs one
+   * correct path, not a switch between two.
+   */
+  _semCodeFor(rawEmb, K) {
+    if (!rawEmb || !rawEmb.length) return rawEmb;
+    const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
+    if (_env.DREAM_SEM_CODE_VALUE === '1') return this._semTeachEmbedding(rawEmb, { semTopK: K });
+    return this._topKEmbedding(rawEmb, K);
   }
 
   _topKEmbedding(feat, K) {
@@ -23739,7 +23785,7 @@ export class Curriculum {
           if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) { sk++; continue; }
           const outEmbMotor = motorWTA ? this._topKEmbedding(outEmb, motorTopK) : outEmb;
           if (motorWTA && outEmbMotor !== outEmb) wa++;
-          const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
+          const inEmbSem = semWTA ? this._semCodeFor(inEmb, semTopK) : inEmb;
           if (semWTA && inEmbSem !== inEmb) swa++;
           const gS = Math.max(1, Math.floor(_lessonBase.semSize / inEmbSem.length));
           const gM = Math.max(1, Math.floor(_lessonBase.motorSize / outEmbMotor.length));
@@ -23824,7 +23870,7 @@ export class Curriculum {
         // SEM-side sparse code — top-K on the input embedding so similar
         // K-grade content words produce more-orthogonal sem patterns than
         // raw GloVe would. Fires the same _topKEmbedding helper as motor.
-        const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
+        const inEmbSem = semWTA ? this._semCodeFor(inEmb, semTopK) : inEmb;
         if (semWTA && inEmbSem !== inEmb) semWtaApplied++;
         const _ps2 = Date.now();
         // ⭐ ACTIVE-DIM COUNT, RECORDED WHERE IT IS ACTUALLY DECIDED. `semTopK`
@@ -26944,7 +26990,9 @@ export class Curriculum {
       if (!Array.isArray(pair) || pair.length < 2) continue;
       const rawEmb = this._dictionaryPatternFor(pair[0]);
       if (!rawEmb || rawEmb.length === 0) continue;
-      const inEmb = semWTA ? this._topKEmbedding(rawEmb, semTopK) : rawEmb;
+      // The probe MUST use the same ranking the teach used, or it measures the
+      // mismatch instead of the learning.
+      const inEmb = semWTA ? this._semCodeFor(rawEmb, semTopK) : rawEmb;
       const active = [];
       const gSize = Math.max(1, Math.floor(semSize / inEmb.length));
       for (let d = 0; d < inEmb.length; d++) {
