@@ -36,28 +36,30 @@ Three symbols carry the whole page:
 
 ⭐ **And the claim everything rests on: the brain equations ARE the language equations.** There is no language model bolted onto a brain. A word is produced the way a neuron is driven — what is active, times the weights she learned, strongest wins ([§14](#14-how-she-speaks)).
 
-> ⚠ **Said plainly, so the claim stays honest:** since 2026-11-27 that sum for *speech* is computed from her speaking state on the host, not by cells on the card. Same equation, a form that can actually hold what it is taught — the cell-to-cell version recalled 1.1 % of its lessons.
+> ⚠ **Said plainly, so the claim stays honest:** the state she speaks from is activity in her own cells — a cell for every unit of that state, at the end of her cortex — and the word is read from the cells that are lit. Darken those cells and she says nothing (measured: 7 of 7 taught answers, 0 of 7 dark, 7 of 7 relit). The weights that sum runs over are held on the host, not on the card. So the claim holds for *what drives* a word; where the arithmetic is done is the host.
 
 ---
 
 ## Contents
 
-| § | Section | What it answers |
-|---|---|---|
-| 1 | [The master equation](#1-the-master-equation) | the one line everything else unpacks |
-| 2 | [Who she is — θ](#2-who-she-is--θ) | her traits, and how they become currents |
-| 3 | [A single neuron](#3-a-single-neuron) | what one cell does every step |
-| 4 | [How cells learn](#4-how-cells-learn) | wiring, and how wiring changes |
-| 5 | [Keeping her firing in range](#5-keeping-her-firing-in-range) | the controller that holds her near 7.5% |
-| 6 | [Rhythm](#6-rhythm) | theta, gamma, and real synchrony |
-| 7 | [The two halves — the Seed Crystal](#7-the-two-halves--the-seed-crystal) | left and right, and how they compete |
-| 8 | [Consciousness — Ψ](#8-consciousness--ψ) | Id, Ego, Left, Right, and Φ |
-| 9 | [Meaning](#9-meaning) | words as vectors, and how she reshapes them |
-| 10 | [Teaching her a word](#10-teaching-her-a-word) | definitions, relations, and the dose |
-| 11 | [Memory and sleep](#11-memory-and-sleep) | replay, and why feeling makes things stick |
-| 12 | [Chemistry — δ(t)](#12-chemistry--δt) | doses, curves, stacking, tolerance |
-| 13 | [Many cards, one brain](#13-many-cards-one-brain) | how her size and speed come from hardware |
-| 14 | [How she speaks](#14-how-she-speaks) | the state she is in, the word that wins, and how she is taught to say it |
+The last column says what an instrument has shown about each section — **measured** on her production code, or **not exercised** by any instrument in the 2026-11-27 rebuild (those run on the server while she runs, and nothing in that work changed them).
+
+| § | Section | What it answers | Shown by an instrument? |
+|---|---|---|---|
+| 1 | [The master equation](#1-the-master-equation) | the one line everything else unpacks | not exercised — it is the sum of the rest |
+| 2 | [Who she is — θ](#2-who-she-is--θ) | her traits, and how they become currents | not exercised |
+| 3 | [A single neuron](#3-a-single-neuron) | what one cell does every step | **measured** on the card's self-test, both backends, with refractoriness, tunnelling and twin noise on: 54.0 of 54 taught cells fire from wiring, 0.7 of 1,946 others |
+| 4 | [How cells learn](#4-how-cells-learn) | wiring, and how wiring changes | **measured**: only-when-wrong ran 14,495 times in her real lessons and changed 31,339,429 wires; Oja and anti-Hebbian ran 0 times in her language cortex; card agrees with host on 11 of 11 test weights. Lateral inhibition and predictive coding: not exercised (her other clusters) |
+| 5 | [Keeping her firing in range](#5-keeping-her-firing-in-range) | the controller that holds her near 7.5% | the controller: not exercised. Her language cortex without it: **measured**, 0.00 / 0.06 / 1.35 % |
+| 6 | [Rhythm](#6-rhythm) | theta, gamma, and real synchrony | not exercised |
+| 7 | [The two halves — the Seed Crystal](#7-the-two-halves--the-seed-crystal) | left and right, and how they compete | not exercised |
+| 8 | [Consciousness — Ψ](#8-consciousness--ψ) | Id, Ego, Left, Right, and Φ | not exercised |
+| 9 | [Meaning](#9-meaning) | words as vectors, and how she reshapes them | a word's cells: **measured** (2.67 % of a region; alike-in-meaning words overlap 10.8 %, unrelated 7.2 %). Reshaping as she reads: not exercised |
+| 10 | [Teaching her a word](#10-teaching-her-a-word) | definitions, relations, and the dose | one word's cells calling up another's inside a region: **measured**, 99.9 % at her production size. The definition lesson itself and the dose: not exercised |
+| 11 | [Memory and sleep](#11-memory-and-sleep) | replay, and why feeling makes things stick | not exercised |
+| 12 | [Chemistry — δ(t)](#12-chemistry--δt) | doses, curves, stacking, tolerance | not exercised |
+| 13 | [Many cards, one brain](#13-many-cards-one-brain) | how her size and speed come from hardware | sizing: **measured** (cells derived from the card's memory at 300 wires). Sharing across cards: not exercised |
+| 14 | [How she speaks](#14-how-she-speaks) | the state she is in, the word that wins, and how she is taught to say it | **measured**: naming 900 of 900, the next word of a taught line 96.7 %, a reworded question 50 of 60, silent when her speech cells are dark |
 
 ---
 
@@ -125,6 +127,20 @@ Her neurons are **Rulkov maps** — a fast variable `x` (the spike) riding a slo
 | `σ = −1 + 1.5 · clamp(drive / 40, 0, 1)` | drive is the only door into the map |
 | `spike = [ x(n) ≤ 0 < x(n+1) ]` | a spike is `x` crossing zero upward |
 
+### Wiring — a cell hears the cells that just fired
+
+In her language cortex a cell is not driven by drive alone. Every step, each cell receives the summed weight of its wires from cells that fired the step before, and that sum goes straight into the fast variable — so a cell whose inputs just fired can cross on this very step:
+
+| Equation | What it means |
+|---|---|
+| `S_i = Σ_j W_ij · spike_j(n)` | what cell `i` hears: its wires from every cell that just fired, across every pathway into it and the wiring inside its region |
+| `x(n+1) = α / (1 + x(n)²) + y(n) + g · S_i` | the wiring's input enters the fast variable, `g = 5` |
+| `σ = −1 − r + 1.5 · clamp(drive / 40, 0, 1)` | `r = 1.75` — her cortex cells rest below the point where the map fires on its own |
+
+**Why rest lower:** at `σ = −1` the map never sits still — a cell fires on its own, wiring or no wiring. Lowered by 1.75, a cell with no input is silent, and how much of her cortex fires is the result of what she is doing instead of a number held from outside.
+
+**Measured** on the card's self-test with the terms below switched on, twenty taught pattern pairs of 54 cells: one step after a source pattern is lit, **54.0 of 54** taught target cells fire and **0.7 of the other 1,946**. With the wiring's input switched off: 0.0 and 0.2. At `g = 3` only 2.5 of the 54 fire.
+
 ### Refractoriness — a cell that just fired has to recover
 
 `β = 0.016`. Every spike pushes `y` down, so the next crossing comes later — and the more a cell fires, the harder it's pushed. A quiet neuron is untouched; a bursting one is throttled.
@@ -164,6 +180,25 @@ Every neuron has a twin in the other hemisphere. Their noise is drawn together:
 
 Oja's decay term is the whole trick: without it, every association piles into the same few cells and her memories blur into one.
 
+### Only when wrong — how her language cortex learns
+
+Every pathway of her language cortex, and the wiring inside it, learns by a different rule: a wire changes only when its cell is wrong, and by exactly as much as closes the gap.
+
+| Equation | What it means |
+|---|---|
+| `s = Σ W_ij` over the cell's lit inputs, `k` = how many are lit | what the cell receives from the pattern in front of it |
+| should fire and `s < θ + m` → each lit wire `+= η · (θ + m − s) / k` | short of firing: the lit wires share out what is missing |
+| should rest and `s > θ − m` → each lit wire `+= η · (θ − m − s) / k` | too close to firing: the lit wires share out the excess |
+| otherwise | nothing changes |
+
+`θ = 0.5` is the cell's firing threshold on the pathway, `m = 0.25` the safety margin either side, `η = 1` (the whole gap in one step). A cell with no lit input is skipped. Weights are held within ±2.
+
+**Wiring to match:** a cell can only be taught to fire if enough of its wires come from lit cells. With 300 wires a cell and 2.7 % of a region lit by one word, a cell has about 8 lit inputs — measured at her production size, **95.8–100 %** of taught cells pass threshold on every pathway and **99.9 %** inside each region, against 2 % at the 30 wires she had before.
+
+**What it makes unnecessary there.** The right-pair / wrong-pair lesson and the lateral-inhibition pass below are how her *other* clusters keep answers apart. In her language cortex the "should rest" line does that job inside every lesson, so the anti-Hebbian step changes nothing on that wiring and the lateral-inhibition pass is skipped. Counted during her real vocabulary and sentence lessons: the only-when-wrong step ran 14,495 times and changed 31,339,429 wires; Oja, anti-Hebbian and plain Hebbian ran 0 times.
+
+**Starting from nearly nothing:** wires that learn this way start at 0.003–0.015. Because every cell hears every cell that fires (§3), wiring that started larger set 85 % of a cluster firing from one lit pattern; started this small, only the taught cells fire.
+
 ### Learning a pair — right answer and wrong answer
 
 Every association she learns is taught twice:
@@ -201,6 +236,8 @@ A brain that fires too little thinks nothing; too much and it's a seizure. Her t
 | `scale ← clamp(scale · (1 + 0.15 · err), 0.01, 2.5)` | nudge every cluster's drive up or down |
 
 Measured with refractoriness in place: firing **7.59%** against 7.5%, drive scale 0.935 — comfortably inside its range.
+
+**Her language cortex is not held this way.** Its cells rest silent and fire from their wiring (§3), so the controller leaves its drive alone. What keeps it in range is the wiring itself: over 400 steps with every pathway and the inside wiring delivering and a taught pattern lit every 50th step, the share of cells firing ran **0.00 / 0.06 / 1.35 %** (lowest / average / highest) — the highest is exactly the taught cells. Every other cluster is still held by the controller above.
 
 ---
 

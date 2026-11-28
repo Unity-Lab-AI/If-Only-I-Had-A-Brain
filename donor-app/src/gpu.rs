@@ -10,6 +10,8 @@ pub const LIF_SHADER: &str = include_str!("shaders/lif.wgsl");
 pub const SPIKE_COUNT_SHADER: &str = include_str!("shaders/spike_count.wgsl");
 pub const SYNAPSE_PROPAGATE_SHADER: &str = include_str!("shaders/synapse_propagate.wgsl");
 pub const PLASTICITY_SHADER: &str = include_str!("shaders/plasticity.wgsl");
+/// Error-driven plasticity: a wire changes only when its cell is wrong.
+pub const PLASTICITY_ERROR_SHADER: &str = include_str!("shaders/plasticity_error.wgsl");
 /// v0.3.26 — device-side sparse scatter for the masked bound-plasticity verb.
 pub const SCATTER_ONES_SHADER: &str = include_str!("shaders/scatter_ones.wgsl");
 /// GOTCHA.3b (v0.3.32) — mean of the Rulkov FAST variable (`state[i].x`), the

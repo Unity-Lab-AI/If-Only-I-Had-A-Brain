@@ -23,8 +23,12 @@ struct Params {
   entangleRho: f32,
   // v0.3.50 — refractoriness: each spike lowers y by refractBeta (0 = off).
   refractBeta: f32,
-  _pad1: u32,
-  _pad2: u32,
+  // Wiring delivery: gain on syn[i], the summed weight of this cell's inputs
+  // from cells that fired last step. 0 = off (the map steps on drive alone).
+  synGain: f32,
+  // How far below the map's default rest point (sigma = -1) a cell with no
+  // drive sits. 0 = today. Past ~0.87 a cell with no input is silent.
+  restShift: f32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -32,6 +36,7 @@ struct Params {
 @group(0) @binding(2) var<storage, read_write> spikes: array<u32>;
 @group(0) @binding(3) var<storage, read> currents: array<f32>;
 @group(0) @binding(4) var<storage, read> regionGates: array<f32>;
+@group(0) @binding(5) var<storage, read> syn: array<f32>;
 
 const ALPHA: f32 = 4.5;
 const MU: f32 = 0.001;
@@ -70,7 +75,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let sigma = -1.0 + clamp(ed / 40.0, 0.0, 1.0) * 1.5;
   let gate = lookupRegionGate(i, params.numRegions);
   let drive = (ed + currents[i]) * gate;
-  let sigmaEff = -1.0 + clamp(drive / 40.0, 0.0, 1.0) * 1.5;
+  let sigmaEff = -1.0 - params.restShift + clamp(drive / 40.0, 0.0, 1.0) * 1.5;
 
   let s = state[i];
   var xN = s.x;
@@ -100,6 +105,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let jitter = r * 0.5 * params.noiseAmp * 0.0001;
 
   var xNext = ALPHA / (1.0 + xN * xN) + yN;
+  // SYNAPTIC INPUT — the wiring's input enters the FAST variable, so a cell
+  // whose inputs just fired can cross this step; through sigma it could only
+  // shift the rate over ~1/MU steps. Gated like the drive.
+  if (params.synGain != 0.0) { xNext = xNext + params.synGain * syn[i] * gate; }
   var yNext = yN - MU * (xN - sigmaEff) + jitter;
 
   var spk = xN <= 0.0 && xNext > 0.0;

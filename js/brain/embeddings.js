@@ -529,9 +529,16 @@ export class SemanticEmbeddings {
       for (let i = 0; i < EMBED_DIM; i++) norm += refined[i] * refined[i];
       norm = Math.sqrt(norm) || 1;
       for (let i = 0; i < EMBED_DIM; i++) refined[i] /= norm;
+      refined._word = word;
       return refined;
     }
 
+    // THE VECTOR KNOWS ITS WORD. A word's vector carries the word it stands
+    // for, so whatever writes it into her cells can give that word ITS cells
+    // (one code for one word, in every lesson) instead of re-deriving a code
+    // from the numbers — three lessons sparsified the same vector three ways.
+    // A plain property on the array; nothing that reads the numbers sees it.
+    if (vec && vec._word !== word) vec._word = word;
     return vec;
   }
 

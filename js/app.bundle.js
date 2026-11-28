@@ -276,14 +276,16 @@ var init_sparse_matrix = __esm({
           this.nnz = 0;
           return;
         }
-        const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(cols / 4));
-        const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(cols / 2));
+        const wired = opts.wired > 0 && opts.wired < rows && rows === cols ? Math.floor(opts.wired) : rows;
+        const ring = wired < rows ? wired : cols;
+        const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(ring / 4));
+        const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(ring / 2));
         const localFrac = opts.localFrac ?? 0.7;
         const medFrac = opts.medFrac ?? 0.25;
         const localCount = Math.max(1, Math.round(effFanout * localFrac));
         const medCount = Math.max(0, Math.round(effFanout * medFrac));
         const longCount = Math.max(0, effFanout - localCount - medCount);
-        const totalPre = rows * effFanout;
+        const totalPre = wired * effFanout;
         this.values = new WEIGHT_ARRAY(totalPre);
         this.colIdx = new Uint32Array(totalPre);
         this.rowPtr = new Uint32Array(rows + 1);
@@ -291,18 +293,54 @@ var init_sparse_matrix = __esm({
         const picks = /* @__PURE__ */ new Set();
         const rowBufCol = new Uint32Array(effFanout);
         const rowBufVal = new WEIGHT_ARRAY(effFanout);
+        const spans = Array.isArray(opts.spans) ? opts.spans : null;
+        const spanFrac = opts.spanFrac ?? 0.95;
+        let spanAt = 0;
         let idx = 0;
         this.rowPtr[0] = 0;
         for (let i = 0; i < rows; i++) {
+          if (i >= wired) {
+            this.rowPtr[i + 1] = idx;
+            continue;
+          }
           picks.clear();
           let filled = 0;
+          if (spans) {
+            while (spanAt < spans.length && i >= spans[spanAt][1]) spanAt++;
+            const sp = spanAt < spans.length && i >= spans[spanAt][0] ? spans[spanAt] : null;
+            const len = sp ? sp[1] - sp[0] : 0;
+            if (sp && len > effFanout * 2) {
+              const inSpan = Math.round(effFanout * spanFrac);
+              let tries = 0;
+              const maxTries = effFanout * 6;
+              while (filled < inSpan && tries < maxTries) {
+                const col = sp[0] + Math.floor(_initRand() * len);
+                tries++;
+                if (col === i && noSelfConnect || picks.has(col)) continue;
+                picks.add(col);
+                rowBufCol[filled] = col;
+                rowBufVal[filled] = (_initRand() < excitatoryRatio ? 1 : -1) * (0.1 + _initRand() * 0.4) * strength;
+                filled++;
+              }
+              tries = 0;
+              while (filled < effFanout && tries < maxTries) {
+                const col = Math.floor(_initRand() * ring);
+                tries++;
+                if (col === i && noSelfConnect || picks.has(col)) continue;
+                picks.add(col);
+                rowBufCol[filled] = col;
+                rowBufVal[filled] = (_initRand() < excitatoryRatio ? 1 : -1) * (0.1 + _initRand() * 0.4) * strength;
+                filled++;
+              }
+            }
+          }
           let attempts = 0;
           const maxAttempts = effFanout * 6;
           while (filled < localCount && attempts < maxAttempts) {
             const offset = Math.floor((_initRand() * 2 - 1) * radiusLocal);
             let col = i + offset;
-            if (col < 0) col += cols;
-            else if (col >= cols) col -= cols;
+            if (col < 0) col += ring;
+            else if (col >= ring) col -= ring;
             if (col === i && noSelfConnect) {
               attempts++;
               continue;
@@ -322,8 +360,8 @@ var init_sparse_matrix = __esm({
           while (filled < localCount + medCount && attempts < maxAttempts) {
             const offset = Math.floor((_initRand() * 2 - 1) * radiusMed);
             let col = i + offset;
-            if (col < 0) col += cols;
-            else if (col >= cols) col -= cols;
+            if (col < 0) col += ring;
+            else if (col >= ring) col -= ring;
             if (col === i && noSelfConnect) {
               attempts++;
               continue;
@@ -341,7 +379,7 @@ var init_sparse_matrix = __esm({
           }
           attempts = 0;
           while (filled < effFanout && attempts < maxAttempts) {
-            const col = Math.floor(_initRand() * cols);
+            const col = Math.floor(_initRand() * ring);
             if (col === i && noSelfConnect) {
               attempts++;
               continue;
@@ -666,7 +704,31 @@ var init_sparse_matrix = __esm({
       /**
        * Hebbian: ΔW = η · post · pre
        */
+      /**
+       * A matrix that carries `errorDriven` learns by ONE rule whichever teaching
+       * call reaches it — the same contract the card keeps by matrix name. A
+       * strengthening call becomes `errorUpdate` with the matrix's own numbers
+       * (every row in the caller's row range: a resting cell can be wrong, so a
+       * list of lit rows is not enough); a weakening call does nothing, because
+       * the rule already lowers a cell that fires for the wrong input.
+       * Returns undefined when the matrix is not in the mode.
+       */
+      _errorDrivenInstead(preSpikes, postSpikes, lr, opts) {
+        const m = this.errorDriven;
+        if (!m) return void 0;
+        if (!(lr > 0)) return 0;
+        return this.errorUpdate(preSpikes, postSpikes, m.eta, {
+          theta: m.theta,
+          margin: m.margin,
+          rowStart: opts && opts.rowStart,
+          rowEnd: opts && opts.rowEnd
+        });
+      }
       hebbianUpdate(preSpikes, postSpikes, lr, opts) {
+        if (this.errorDriven) {
+          this._errorDrivenInstead(preSpikes, postSpikes, lr, opts);
+          return;
+        }
         const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
         if (!values || !rowPtr || !colIdx) return;
         const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
@@ -708,6 +770,10 @@ var init_sparse_matrix = __esm({
        * replacement for the per-projection Hebbian call in the teach paths.
        */
       ojaUpdate(preSpikes, postSpikes, lr, opts) {
+        if (this.errorDriven) {
+          const changed = this._errorDrivenInstead(preSpikes, postSpikes, lr, opts);
+          return opts && opts.trackDelta ? changed * this.errorDriven.eta : void 0;
+        }
         const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
         if (!values || !rowPtr || !colIdx) return;
         const kScales = opts && opts.kScales;
@@ -774,6 +840,7 @@ var init_sparse_matrix = __esm({
        * together — push-pull discrimination instead of passive superposition.
        */
       antiHebbianUpdate(preSpikes, postSpikes, lr, opts) {
+        if (this.errorDriven) return opts && opts.trackDelta ? 0 : void 0;
         const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
         if (!values || !rowPtr || !colIdx) return;
         const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
@@ -801,6 +868,76 @@ var init_sparse_matrix = __esm({
           }
         }
         return trackDelta ? deltaAbs : void 0;
+      }
+      /**
+       * Error-driven update — a wire changes only when its cell is WRONG.
+       *
+       *   s[i] = Σ_j w[i,j] · x[j]                      the cell's summed input
+       *   k[i] = how many of its inputs are lit
+       *   should fire  and s[i] < θ + m  →  each lit wire += η · (θ + m − s[i]) ÷ k[i]
+       *   should rest  and s[i] > θ − m  →  each lit wire += η · (θ − m − s[i]) ÷ k[i]
+       *   otherwise                      →  nothing changes
+       *
+       * THE STEP CLOSES THE GAP. A wrong cell's lit wires share out exactly what it
+       * is short of (or over by), so with η = 1 it is right after one teach,
+       * whatever number of lit inputs it has. (A fixed step per wire needed 15 ÷ k
+       * teaches at η 0.05; measured at 8 lit inputs a cell, 4 passes: fixed step
+       * 85.6 % of taught cells past threshold, this step 99.4 %.) A cell with no
+       * lit input cannot be changed by this input and is left alone.
+       *
+       * `postSpikes` is the TEACHING pattern (which target cells should fire for
+       * this input), not what the cells did. The rule is local to a cell: its own
+       * inputs, its own summed input, and whether it should be firing.
+       *
+       * Why this and not Oja for taught associations: Oja pulls every wire of a
+       * lit cell toward the current input each time, so each lesson partly
+       * overwrites the last and a cell that is already right keeps moving. Here a
+       * cell that is already right is left alone, and a cell that fires for the
+       * wrong input is pushed down — the part Oja has no term for. Measured on
+       * the same projection, codes and wiring (400 pairs, 100 wires per cell):
+       * Oja 242 recalled, this rule 400. docs/WHOLE-BRAIN-DESIGN.md.
+       *
+       * Unlike `ojaUpdate`, every row is visited (a resting cell can be wrong).
+       * `opts.rowStart` / `opts.rowEnd` slice the pass, as in `ojaUpdate`.
+       * Returns the number of cells that were changed.
+       *
+       * @param {ArrayLike<number>} preSpikes   source activity (0/1)
+       * @param {ArrayLike<number>} postSpikes  which target cells should fire (0/1)
+       * @param {number} eta                    share of the gap closed in one teach (1 = all of it)
+       * @param {object} [opts]  theta (0.5), margin (0.25), rowStart, rowEnd
+       */
+      errorUpdate(preSpikes, postSpikes, eta, opts) {
+        const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
+        if (!values || !rowPtr || !colIdx) return 0;
+        const theta = opts && typeof opts.theta === "number" ? opts.theta : 0.5;
+        const margin = opts && typeof opts.margin === "number" ? opts.margin : 0.25;
+        const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
+        const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
+        const hi = theta + margin, lo = theta - margin;
+        let changed = 0;
+        for (let i = rowStart; i < rowEnd; i++) {
+          const start = rowPtr[i], end = rowPtr[i + 1];
+          let s = 0, lit = 0;
+          for (let k = start; k < end; k++) if (preSpikes[colIdx[k]]) {
+            s += values[k];
+            lit++;
+          }
+          if (lit === 0) continue;
+          let d = 0;
+          if (postSpikes[i]) {
+            if (s < hi) d = eta * (hi - s) / lit;
+          } else if (s > lo) d = eta * (lo - s) / lit;
+          if (d === 0) continue;
+          let touched = false;
+          for (let k = start; k < end; k++) {
+            if (!preSpikes[colIdx[k]]) continue;
+            const v = values[k] + d;
+            values[k] = v > wMax ? wMax : v < wMin ? wMin : v;
+            touched = true;
+          }
+          if (touched) changed++;
+        }
+        return changed;
       }
       /**
        * BCM plasticity rule (Bienenstock, Cooper, Munro 1982 — J Neurosci
@@ -856,7 +993,17 @@ var init_sparse_matrix = __esm({
        * CPU CSR free — normalization on those projections happens GPU-
        * side via the shader pipeline, not here).
        */
+      // ⛔ A MATRIX THAT LEARNS ONLY-WHEN-WRONG IS NOT RE-SHAPED AFTERWARDS.
+      // `normalizeRows`, `prune`, `scale` and `pruneTopKPerRow` exist to keep Oja
+      // weights from saturating or blurring. Under the error-driven rule each weight
+      // is what its cell needs to be right: scaling or normalising moves it off the
+      // threshold it was fitted to, and pruning removes WIRES — measured, a lesson's
+      // wrap-up cut a projection from 60 wires a cell to 10, for good, after one
+      // lesson. So on such a matrix these four change nothing and say so in what
+      // they return. The check is here, at the four methods, so every caller is
+      // covered.
       normalizeRows(targetNorm = 1) {
+        if (this.errorDriven) return 0;
         const { rows, rowPtr, wMin, wMax } = this;
         const values = this.values;
         if (!values || values.length === 0) return 0;
@@ -921,6 +1068,7 @@ var init_sparse_matrix = __esm({
        * @returns {number} — number of connections removed
        */
       prune(threshold = 0.01) {
+        if (this.errorDriven) return 0;
         const { rows, values, colIdx, rowPtr } = this;
         const oldNnz = this.nnz;
         let newNnz = 0;
@@ -966,7 +1114,7 @@ var init_sparse_matrix = __esm({
        * @returns {{ before: {mean, max}, after: {mean, max} }} — weight stats
        */
       scale(factor) {
-        if (!Number.isFinite(factor) || factor === 1) {
+        if (this.errorDriven || !Number.isFinite(factor) || factor === 1) {
           return { before: null, after: null };
         }
         let beforeSum = 0, beforeMax = 0;
@@ -1002,7 +1150,7 @@ var init_sparse_matrix = __esm({
        * @returns {number} — number of connections removed
        */
       pruneTopKPerRow(k) {
-        if (!Number.isFinite(k) || k <= 0) return 0;
+        if (this.errorDriven || !Number.isFinite(k) || k <= 0) return 0;
         const { rows, values, colIdx, rowPtr } = this;
         const oldNnz = this.nnz;
         let newNnz = 0;
@@ -10014,8 +10162,10 @@ var SemanticEmbeddings = class {
       for (let i = 0; i < EMBED_DIM; i++) norm += refined[i] * refined[i];
       norm = Math.sqrt(norm) || 1;
       for (let i = 0; i < EMBED_DIM; i++) refined[i] /= norm;
+      refined._word = word;
       return refined;
     }
+    if (vec && vec._word !== word) vec._word = word;
     return vec;
   }
   /**
@@ -13908,1360 +14058,6 @@ var LIFPopulation = class {
 // ../js/brain/cluster.js
 init_sparse_matrix();
 
-// ../js/brain/letter-input.js
-var LETTER_INVENTORY = /* @__PURE__ */ new Set();
-var DEFAULT_ALPHABET = [
-  // Lowercase English (26)
-  "a",
-  "b",
-  "c",
-  "d",
-  "e",
-  "f",
-  "g",
-  "h",
-  "i",
-  "j",
-  "k",
-  "l",
-  "m",
-  "n",
-  "o",
-  "p",
-  "q",
-  "r",
-  "s",
-  "t",
-  "u",
-  "v",
-  "w",
-  "x",
-  "y",
-  "z",
-  // Digits (10)
-  "0",
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  // Whitespace + basic punctuation (4)
-  " ",
-  ".",
-  ",",
-  "'"
-];
-for (const ch of DEFAULT_ALPHABET) LETTER_INVENTORY.add(ch);
-var _inventoryLocked = true;
-var _oneHotCache = /* @__PURE__ */ new Map();
-var _cachedInventorySize = 0;
-function inventorySize() {
-  return LETTER_INVENTORY.size;
-}
-function inventorySnapshot() {
-  return Array.from(LETTER_INVENTORY);
-}
-function ensureLetter(letter) {
-  if (!letter) return;
-  const key = String(letter).toLowerCase();
-  if (!LETTER_INVENTORY.has(key)) {
-    if (_inventoryLocked) return;
-    LETTER_INVENTORY.add(key);
-    _oneHotCache.clear();
-    _cachedInventorySize = 0;
-  }
-}
-function encodeLetter(letter) {
-  if (!letter) return new Float32Array(0);
-  const key = String(letter).toLowerCase();
-  ensureLetter(key);
-  if (_cachedInventorySize !== LETTER_INVENTORY.size) {
-    _oneHotCache.clear();
-    _cachedInventorySize = LETTER_INVENTORY.size;
-  }
-  const cached = _oneHotCache.get(key);
-  if (cached) {
-    const out2 = new Float32Array(cached.length);
-    out2.set(cached);
-    return out2;
-  }
-  const size = LETTER_INVENTORY.size;
-  const vec = new Float32Array(size);
-  let idx = 0;
-  for (const l of LETTER_INVENTORY) {
-    if (l === key) {
-      vec[idx] = 1;
-      break;
-    }
-    idx++;
-  }
-  _oneHotCache.set(key, vec);
-  const out = new Float32Array(size);
-  out.set(vec);
-  return out;
-}
-function decodeLetterAlpha(vec) {
-  if (!vec || vec.length === 0 || LETTER_INVENTORY.size === 0) return null;
-  const limit = Math.min(vec.length, LETTER_INVENTORY.size);
-  let best = -Infinity;
-  let bestIdx = -1;
-  let idx = 0;
-  for (const l of LETTER_INVENTORY) {
-    if (idx >= limit) break;
-    if (l && /^[a-z]$/.test(l)) {
-      const v = vec[idx];
-      if (v > best) {
-        best = v;
-        bestIdx = idx;
-      }
-    }
-    idx++;
-  }
-  if (bestIdx < 0) return null;
-  let i = 0;
-  for (const l of LETTER_INVENTORY) {
-    if (i === bestIdx) return l;
-    i++;
-  }
-  return null;
-}
-
-// ../js/brain/subjects.js
-var SUBJECT_NORMALIZE = Object.freeze({
-  ela: "ela",
-  english: "ela",
-  math: "math",
-  mathematics: "math",
-  sci: "sci",
-  science: "sci",
-  soc: "soc",
-  social: "soc",
-  "social-studies": "soc",
-  art: "art",
-  arts: "art",
-  life: "life",
-  "life-skills": "life"
-});
-var SUBJECTS = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
-function normalizeSubject(subject) {
-  if (!subject || typeof subject !== "string") return null;
-  return SUBJECT_NORMALIZE[subject.toLowerCase()] || null;
-}
-
-// ../js/brain/cluster/telemetry.js
-var CLUSTER_TELEMETRY_MIXIN = {
-  trackRecentEmission(word) {
-    if (typeof word !== "string" || word.length === 0) return;
-    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
-    this._recentEmissions.push(word);
-    while (this._recentEmissions.length > 8) {
-      this._recentEmissions.shift();
-    }
-  },
-  /**
-   * Compositional emergence telemetry — install the trained-sentence
-   * corpus + derived word-transition set so subsequent emissions can be
-   * classified as verbatim / novel-recombination / partial-match.
-   * Called from curriculum side (`_teachConcreteSentences`) once the
-   * corpus is locked in. Safe to call multiple times — last call wins
-   * and counters are NOT reset (so trained-corpus updates between
-   * sessions still aggregate against a coherent denominator).
-   *
-   * @param {string[]} corpus — trained K-grade sentences
-   */
-  initCompositionalTelemetry(corpus) {
-    if (!Array.isArray(corpus) || corpus.length === 0) return;
-    const corpusHash = corpus.length + ":" + corpus.slice(0, 8).join("|").slice(0, 200);
-    const corpusChanged = this._compositionalCorpusHash !== corpusHash;
-    if (!this._compositionalCounters || corpusChanged) {
-      if (corpusChanged && this._compositionalCounters) {
-        console.log(`[Cluster ${this.name}] compositional-telemetry corpus changed (was ${this._compositionalCorpusHash || "unset"}, now ${corpusHash}). Counters RESET.`);
-      }
-      this._compositionalCounters = {
-        totalClassified: 0,
-        verbatimCount: 0,
-        novelCount: 0,
-        partialCount: 0,
-        novelVocabCount: 0,
-        // Audit B.2 — separate vocab-axis counter
-        novelCompositionalCount: 0,
-        // Audit B.2 — separate compositional-axis counter
-        firstNovelTs: null,
-        maxNovelty: 0,
-        maxNoveltySentence: "",
-        bootTs: Date.now(),
-        recentEmissions: []
-      };
-      this._compositionalCorpusHash = corpusHash;
-    }
-    this._trainedSentencesNormalized = /* @__PURE__ */ new Set();
-    this._trainedTransitions = /* @__PURE__ */ new Set();
-    this._trainedVocab = /* @__PURE__ */ new Set();
-    for (const s of corpus) {
-      if (typeof s !== "string") continue;
-      const norm = s.toLowerCase().trim();
-      if (norm.length === 0) continue;
-      this._trainedSentencesNormalized.add(norm);
-      const words = norm.split(/\s+/).filter((w) => w.length > 0);
-      for (const w of words) this._trainedVocab.add(w);
-      for (let i = 0; i < words.length - 1; i++) {
-        this._trainedTransitions.add(`${words[i]}|${words[i + 1]}`);
-      }
-    }
-  },
-  /**
-   * Classify a composed sentence as verbatim / novel / partial. Updates
-   * counters + appends to recent-emissions ring (cap 100). Returns the
-   * classification result. No-op when telemetry hasn't been initialized
-   * (returns null) — caller can ignore the missing-init case since
-   * `_teachConcreteSentences` initializes during K curriculum.
-   *
-   * Novelty metric: fraction of word-transition pairs (n-1 per
-   * n-word sentence) that are NOT present in the trained-transitions
-   * set. A wholly-original recombination scores 1.0 novelty; an exact
-   * trained sentence scores 0.0. Threshold 0.5 separates novel from
-   * partial.
-   *
-   * @param {string} sentence
-   * @returns {{kind:string,novelty:number}|null}
-   */
-  classifyCompositionalEmission(sentence) {
-    if (!this._trainedSentencesNormalized || !this._compositionalCounters) return null;
-    if (typeof sentence !== "string" || sentence.length === 0) return null;
-    const c = this._compositionalCounters;
-    const norm = sentence.toLowerCase().replace(/[.!?]+$/, "").trim();
-    if (norm.length === 0) return null;
-    c.totalClassified++;
-    let kind;
-    let novelty;
-    let compositionalNovelty = 0;
-    let vocabNovelty = 0;
-    if (this._trainedSentencesNormalized.has(norm)) {
-      kind = "verbatim";
-      novelty = 0;
-      c.verbatimCount++;
-    } else {
-      const words = norm.split(/\s+/).filter((w) => w.length > 0);
-      const transitionCount = Math.max(1, words.length - 1);
-      let novelTransitions = 0;
-      for (let i = 0; i < words.length - 1; i++) {
-        const key = `${words[i]}|${words[i + 1]}`;
-        if (!this._trainedTransitions.has(key)) novelTransitions++;
-      }
-      compositionalNovelty = novelTransitions / transitionCount;
-      if (this._trainedVocab && words.length > 0) {
-        let untrained = 0;
-        for (const w of words) {
-          if (!this._trainedVocab.has(w)) untrained++;
-        }
-        vocabNovelty = untrained / words.length;
-      }
-      novelty = Math.max(compositionalNovelty, vocabNovelty);
-      const compositionalHigh = compositionalNovelty > 0.5;
-      const vocabHigh = vocabNovelty > 0.5;
-      if (compositionalHigh && vocabHigh) kind = "novel";
-      else if (compositionalHigh && !vocabHigh) kind = "novel-compositional";
-      else if (!compositionalHigh && vocabHigh) kind = "novel-vocab";
-      else kind = "partial";
-      if (kind !== "partial") {
-        c.novelCount++;
-        if (c.firstNovelTs === null) c.firstNovelTs = Date.now();
-        if (novelty > c.maxNovelty) {
-          c.maxNovelty = novelty;
-          c.maxNoveltySentence = sentence;
-        }
-        if (kind === "novel-compositional" || kind === "novel") c.novelCompositionalCount = (c.novelCompositionalCount || 0) + 1;
-        if (kind === "novel-vocab" || kind === "novel") c.novelVocabCount = (c.novelVocabCount || 0) + 1;
-      } else {
-        c.partialCount++;
-      }
-    }
-    c.recentEmissions.push({
-      sentence,
-      kind,
-      novelty: +novelty.toFixed(3),
-      compositionalNovelty: +compositionalNovelty.toFixed(3),
-      vocabNovelty: +vocabNovelty.toFixed(3),
-      ts: Date.now()
-    });
-    if (c.recentEmissions.length > 100) c.recentEmissions.shift();
-    return { kind, novelty, compositionalNovelty, vocabNovelty };
-  },
-  /**
-   * Word-creation candidate gate. When emitWordDirect rejects an emission
-   * but the top-2 candidates both carry meaningful (above-noise) activation,
-   * the brain is in a "tip-of-the-tongue" co-activation state. Record the
-   * candidate pair so a future schema-coherence check OR operator review
-   * can decide whether to promote the compound (e.g. "moon" + "light" →
-   * "moonlight") to the vocab. Doesn't auto-commit — pure surface.
-   *
-   * Tracks co-occurrence count per compound so the candidate gate only
-   * surfaces compounds that fired repeatedly (single fires are likely
-   * noise; recurring co-activation is a real candidate).
-   *
-   * @param {{word:string,mean:number}} top1
-   * @param {{word:string,mean:number}} top2
-   * @param {number} floor
-   */
-  _recordWordCreationCandidate(top1, top2, floor) {
-    if (!top1 || !top2) return;
-    if (top1.word === top2.word) return;
-    if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 8) {
-      const counts = /* @__PURE__ */ new Map();
-      for (const e of this._metaRegister) {
-        if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1);
-      }
-      let topN = 0;
-      for (const n of counts.values()) if (n > topN) topN = n;
-      if (topN / this._metaRegister.length > 0.45) return;
-    }
-    try {
-      const se = typeof globalThis !== "undefined" && globalThis.__sharedEmbeddings ? globalThis.__sharedEmbeddings : null;
-      if (se && typeof se.getEmbedding === "function") {
-        const e1 = se.getEmbedding(top1.word);
-        const e2 = se.getEmbedding(top2.word);
-        if (e1 && e2 && e1.length === e2.length && e1.length > 0) {
-          let dot = 0, n1 = 0, n2 = 0;
-          for (let i = 0; i < e1.length; i++) {
-            dot += e1[i] * e2[i];
-            n1 += e1[i] * e1[i];
-            n2 += e2[i] * e2[i];
-          }
-          const cos = n1 > 0 && n2 > 0 ? dot / (Math.sqrt(n1) * Math.sqrt(n2)) : 0;
-          let cohMin = 0.2;
-          try {
-            const v = parseFloat(process?.env?.DREAM_BC_COMPOUND_COH_MIN);
-            if (Number.isFinite(v) && v >= 0) cohMin = v;
-          } catch {
-          }
-          if (cos < cohMin) return;
-        }
-      }
-    } catch {
-    }
-    if (!this._wordCreationCandidates) {
-      this._wordCreationCandidates = /* @__PURE__ */ new Map();
-    }
-    const [a, b] = [top1.word, top2.word].sort();
-    const compound = `${a}_${b}`;
-    const combined = top1.mean + top2.mean;
-    const entry = this._wordCreationCandidates.get(compound) || {
-      count: 0,
-      components: [a, b],
-      firstTs: Date.now(),
-      lastTs: Date.now(),
-      sumMean: 0,
-      maxMean: 0,
-      lastFloor: floor
-    };
-    entry.count++;
-    entry.lastTs = Date.now();
-    entry.sumMean += combined;
-    if (combined > entry.maxMean) entry.maxMean = combined;
-    entry.lastFloor = floor;
-    this._wordCreationCandidates.set(compound, entry);
-    if (this._wordCreationCandidates.size > 200) {
-      let leastKey = null;
-      let leastCount = Infinity;
-      for (const [k, v] of this._wordCreationCandidates) {
-        if (v.count < leastCount) {
-          leastCount = v.count;
-          leastKey = k;
-        }
-      }
-      if (leastKey) this._wordCreationCandidates.delete(leastKey);
-    }
-  },
-  /**
-   * Read top-N word-creation candidates sorted by occurrence count
-   * descending (most-frequently co-activated first). Returns array of
-   * `{compound, components, count, avgMean, maxMean, firstTs, lastTs}`.
-   * Filters out candidates below `minCount` (default 3) so single-shot
-   * noise doesn't surface.
-   *
-   * @param {object} [opts]
-   * @param {number} [opts.limit=20]
-   * @param {number} [opts.minCount=3]
-   * @returns {Array}
-   */
-  getWordCreationCandidates(opts = {}) {
-    const limit = opts.limit ?? 20;
-    const minCount = opts.minCount ?? 3;
-    if (!this._wordCreationCandidates) return [];
-    const out = [];
-    for (const [compound, e] of this._wordCreationCandidates) {
-      if (e.count < minCount) continue;
-      out.push({
-        compound,
-        components: e.components,
-        count: e.count,
-        avgMean: e.sumMean / e.count,
-        maxMean: e.maxMean,
-        firstTs: e.firstTs,
-        lastTs: e.lastTs
-      });
-    }
-    out.sort((a, b) => b.count - a.count);
-    return out.slice(0, limit);
-  },
-  /**
-   * Read aggregated compositional-emergence stats for dashboard / state
-   * broadcast. Returns null when telemetry hasn't been initialized.
-   *
-   * @returns {object|null}
-   */
-  getCompositionalStats() {
-    const c = this._compositionalCounters;
-    if (!c) return null;
-    const total = c.totalClassified;
-    const novelComp = c.novelCompositionalCount || 0;
-    const novelVoc = c.novelVocabCount || 0;
-    return {
-      totalClassified: total,
-      verbatimCount: c.verbatimCount,
-      novelCount: c.novelCount,
-      partialCount: c.partialCount,
-      // Audit B.2 — two-axis novelty rates
-      novelCompositionalCount: novelComp,
-      novelVocabCount: novelVoc,
-      novelCompositionalRate: total > 0 ? novelComp / total : 0,
-      novelVocabRate: total > 0 ? novelVoc / total : 0,
-      verbatimRate: total > 0 ? c.verbatimCount / total : 0,
-      novelRate: total > 0 ? c.novelCount / total : 0,
-      partialRate: total > 0 ? c.partialCount / total : 0,
-      firstNovelMsAfterBoot: c.firstNovelTs !== null ? Math.max(0, c.firstNovelTs - c.bootTs) : null,
-      maxNovelty: +c.maxNovelty.toFixed(3),
-      maxNoveltySentence: c.maxNoveltySentence,
-      recentTail: c.recentEmissions.slice(-10)
-    };
-  }
-};
-
-// ../js/brain/cluster/hebbian.js
-var RANGE_MAX_RUNS = Math.max(1, typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 16);
-var RANGE_MAX_TOTAL = 2e6;
-var rangeFail = { reason: null, runs: 0, total: 0 };
-function denseActiveRanges(arr) {
-  rangeFail.reason = null;
-  rangeFail.runs = 0;
-  rangeFail.total = 0;
-  const out = [];
-  let total = 0;
-  let runStart = -1;
-  const n = arr.length;
-  for (let i = 0; i < n; i++) {
-    if (arr[i]) {
-      if (runStart < 0) runStart = i;
-    } else if (runStart >= 0) {
-      const len = i - runStart;
-      total += len;
-      if (out.length >= RANGE_MAX_RUNS) {
-        rangeFail.reason = "runs";
-        let runs = out.length + 1;
-        let inRun = false;
-        for (let k = i + 1; k < n; k++) {
-          if (arr[k]) {
-            if (!inRun) {
-              runs++;
-              inRun = true;
-            }
-            total++;
-          } else inRun = false;
-        }
-        rangeFail.runs = runs;
-        rangeFail.total = total;
-        return null;
-      }
-      if (total > RANGE_MAX_TOTAL) {
-        rangeFail.reason = "total";
-        rangeFail.runs = out.length;
-        rangeFail.total = total;
-        return null;
-      }
-      out.push([runStart, len]);
-      runStart = -1;
-    }
-  }
-  if (runStart >= 0) {
-    const len = n - runStart;
-    total += len;
-    if (out.length >= RANGE_MAX_RUNS) {
-      rangeFail.reason = "runs";
-      rangeFail.runs = out.length;
-      rangeFail.total = total;
-      return null;
-    }
-    if (total > RANGE_MAX_TOTAL) {
-      rangeFail.reason = "total";
-      rangeFail.runs = out.length;
-      rangeFail.total = total;
-      return null;
-    }
-    out.push([runStart, len]);
-  }
-  rangeFail.runs = out.length;
-  rangeFail.total = total;
-  if (!out.length) {
-    rangeFail.reason = "empty";
-    return null;
-  }
-  return out;
-}
-function indexRanges(sortedIdx) {
-  rangeFail.reason = null;
-  rangeFail.runs = 0;
-  rangeFail.total = 0;
-  if (!sortedIdx || !sortedIdx.length) {
-    rangeFail.reason = "empty";
-    return null;
-  }
-  rangeFail.total = sortedIdx.length;
-  if (sortedIdx.length > RANGE_MAX_TOTAL) {
-    rangeFail.reason = "total";
-    return null;
-  }
-  const out = [];
-  let runStart = sortedIdx[0];
-  let prev = sortedIdx[0];
-  for (let i = 1; i < sortedIdx.length; i++) {
-    const v = sortedIdx[i];
-    if (v === prev + 1) {
-      prev = v;
-      continue;
-    }
-    if (out.length >= RANGE_MAX_RUNS) {
-      rangeFail.reason = "runs";
-      let runs = out.length + 2;
-      let p = v;
-      for (let k = i + 1; k < sortedIdx.length; k++) {
-        const w = sortedIdx[k];
-        if (w !== p + 1) runs++;
-        p = w;
-      }
-      rangeFail.runs = runs;
-      return null;
-    }
-    out.push([runStart, prev - runStart + 1]);
-    runStart = v;
-    prev = v;
-  }
-  if (out.length >= RANGE_MAX_RUNS) {
-    rangeFail.reason = "runs";
-    rangeFail.runs = out.length + 1;
-    return null;
-  }
-  out.push([runStart, prev - runStart + 1]);
-  rangeFail.runs = out.length;
-  return out;
-}
-var CLUSTER_HEBBIAN_MIXIN = {
-  /**
-   * MAY THIS BRAIN TEACH RIGHT NOW? (2026-08-14)
-   *
-   * One predicate, asked by every teach entry point, answering the question
-   * the compute layer actually cares about: is this brain's declared substrate
-   * present. For a GPU-required brain that is `_gpuProxyReady` - the WEIGHTS
-   * ARE UPLOADED - not merely "a socket is open". Those are different
-   * questions, and confusing them is what let a connected-but-not-yet-uploaded
-   * donor pass the walk gate while the math still landed on the host CPU.
-   *
-   * Returns false instead of waiting, so a chat reply with no donor simply
-   * does not LEARN rather than hanging. Pausing the WALK is the curriculum
-   * gate's job; refusing the MATH is this one's. Both enforce the same rule,
-   * and this one is the law: nothing downstream can teach around it.
-   */
-  _teachSubstrateReady(who) {
-    if (!this.requireGpuSubstrate) return true;
-    const _sockLive = !!(this._brain && this._brain._gpuClient && this._brain._gpuClient.readyState === 1);
-    if (this._gpuProxyReady === true && _sockLive) {
-      if (this._substrateDownSince) {
-        console.log(`[Cluster ${this.name}] compute substrate BACK after ${((Date.now() - this._substrateDownSince) / 1e3).toFixed(0)}s (${this._substrateRefusals | 0} teach calls refused while it was gone) - teaching resumes.`);
-        this._substrateDownSince = null;
-        this._substrateRefusals = 0;
-      }
-      return true;
-    }
-    if (!this._substrateDownSince) {
-      this._substrateDownSince = Date.now();
-      this._substrateRefusals = 0;
-      console.warn(`[Cluster ${this.name}] NO COMPUTE SUBSTRATE - teach REFUSED (first refusal from ${who}). Weights are not uploaded to a donor GPU, and this brain has no CPU teach path: training does not happen without a donor, by design.`);
-    }
-    this._substrateRefusals = (this._substrateRefusals | 0) + 1;
-    return false;
-  },
-  async _crossRegionHebbian(lr, opts = {}) {
-    if (!this.crossProjections) return;
-    if (!this._teachSubstrateReady("_crossRegionHebbian")) return;
-    if (!this._crossRegionHebbianDiagLogged) {
-      this._crossRegionHebbianDiagLogged = true;
-      try {
-        const gpuReady = !!this._gpuProxyReady;
-        const hasProxy = !!(this._gpuProxy && this._gpuProxy.hebbianBound);
-        const poolReady = !!(this._sparsePool && this._sparsePool.ready);
-        const paths = [];
-        for (const [name, proj] of Object.entries(this.crossProjections)) {
-          const gpuFast = !!(proj._gpuBound && gpuReady && hasProxy);
-          const cpuAlive = !!(proj.values && proj.colIdx && proj.rowPtr);
-          paths.push(`${name}:${gpuFast ? "GPU-fast" : cpuAlive ? "CPU" : "NULL"}`);
-        }
-        console.log(`[Cluster ${this.name}] _crossRegionHebbian first-call diag \u2014 gpuReady=${gpuReady} proxy=${hasProxy} pool=${poolReady} \xB7 paths: ${paths.join(" ")}`);
-      } catch {
-      }
-    }
-    const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
-    const wl = opts.projectionsWhitelist;
-    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
-    let _spkCache;
-    const _spkTok = opts.spkCacheStamp;
-    if (_spkTok !== void 0 && this._spkTokCache && this._spkTokCache.word === _spkTok && this._spkTokCache.gen === (this._regionScratchGen | 0)) {
-      _spkCache = this._spkTokCache.map;
-    } else {
-      _spkCache = /* @__PURE__ */ new Map();
-      this._spkTokCache = _spkTok !== void 0 ? { word: _spkTok, map: _spkCache, gen: -1 } : null;
-    }
-    const _spk = (regionName) => {
-      let e = _spkCache.get(regionName);
-      if (!e) {
-        e = this.regionSpikesActive(regionName);
-        _spkCache.set(regionName, e);
-        if (this._spkTokCache && this._spkTokCache.map === _spkCache) {
-          this._spkTokCache.gen = this._regionScratchGen | 0;
-        }
-      }
-      return e;
-    };
-    for (const [name, proj] of Object.entries(this.crossProjections)) {
-      if (whitelistSet && !whitelistSet.has(name)) continue;
-      const idx = name.indexOf("_to_");
-      if (idx < 0) continue;
-      const src = name.slice(0, idx);
-      const dst = name.slice(idx + 4);
-      if (!this.regions[src] || !this.regions[dst]) continue;
-      if (this._smLrScale === void 0) {
-        let _v = NaN;
-        try {
-          _v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_SM_LR_SCALE);
-        } catch {
-          _v = NaN;
-        }
-        this._smLrScale = Number.isFinite(_v) && _v >= 0 ? _v : 0.5;
-        if (this._smLrScale !== 1) {
-          console.log(`[Cluster ${this.name}] sem\u2192motor LR damping ACTIVE \u2014 sem_to_motor + sem_to_word_motor Hebbian LR \xD7${this._smLrScale} (saturation prevention; DREAM_SM_LR_SCALE=1.0 disables). Watch [SatHealth] meanCos across the walk.`);
-        }
-      }
-      const _isMotorEmissionProj = name === "sem_to_motor" || name === "sem_to_word_motor";
-      const lrEff = _isMotorEmissionProj ? lr * this._smLrScale : lr;
-      const kScalesForProj = opts.kScalesOverride !== void 0 ? opts.kScalesOverride : typeof this.buildKScalesForProjection === "function" ? this.buildKScalesForProjection(src, dst) : null;
-      const ojaOpts = kScalesForProj ? { kScales: kScalesForProj } : void 0;
-      if (proj._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound) {
-        try {
-          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lrEff);
-        } catch {
-        }
-        const PROBE_CRITICAL = this._probeCriticalProjectionsSet ||= /* @__PURE__ */ new Set([
-          "letter_to_phon",
-          "letter_to_motor"
-        ]);
-        if (PROBE_CRITICAL.has(name) && !skipCpuWhitelist) {
-          const sampleN = this._teachFinalRepSampleEveryN | 0;
-          if (sampleN > 1) {
-            this._whitelistSampleCounter = (this._whitelistSampleCounter || 0) + 1;
-            if (this._whitelistSampleCounter % sampleN !== 0) {
-              continue;
-            }
-          }
-          const preS = _spk(src);
-          const postS = _spk(dst);
-          const preF2 = preS.vec;
-          const postF2 = postS.vec;
-          const activeRows = postS.active;
-          await this._ojaUpdateChunked(
-            proj,
-            preF2,
-            postF2,
-            lrEff,
-            // `projName` rides the options bag purely so the slow-Oja warning
-            // can name what it just spent seconds on — `ASSOCBOUND.2`.
-            ojaOpts ? { ...ojaOpts, activeRows, projName: name } : { activeRows, projName: name }
-          );
-        }
-        continue;
-      }
-      if (this.requireGpuSubstrate) {
-        if (this._gpuProxy && this._gpuProxy.hebbian) {
-          const preU = _spk(src);
-          const postU = _spk(dst);
-          try {
-            this._gpuProxy.hebbian(`${this.name}_${name}`, preU.vec, postU.vec, lrEff);
-          } catch {
-          }
-        } else if (!this._unboundNoProxyWarned) {
-          this._unboundNoProxyWarned = true;
-          console.error(`[Cluster ${this.name}] CRITICAL - ${name} is not GPU-bound and the proxy exposes no unbound hebbian entry point, so this projection is NOT being trained. It is deliberately NOT computed on the CPU: this brain's substrate is the GPU.`);
-        }
-        continue;
-      }
-      if (!proj.values || !proj.colIdx || !proj.rowPtr) {
-        if (!proj._nullCsrHebbianWarned) {
-          proj._nullCsrHebbianWarned = true;
-          console.warn(`[Cluster ${this.name}] Hebbian skip on ${name} \u2014 CPU CSR null AND GPU fast path unavailable (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}). Check compute.html client or PROBE_CRITICAL_CPU_CSR whitelist.`);
-        }
-        continue;
-      }
-      const preS2 = _spk(src);
-      const postS2 = _spk(dst);
-      const preF = preS2.vec;
-      const postF = postS2.vec;
-      const activeRows2 = postS2.active;
-      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2, projName: name } : { activeRows: activeRows2, projName: name };
-      if (this._sparsePool && this._sparsePool.ready) {
-        try {
-          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
-        } catch {
-          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
-        }
-      } else {
-        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
-      }
-      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
-        try {
-          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
-        } catch {
-        }
-      }
-    }
-  },
-  // #37/#112.4 + TIME-SLICED — chunked CPU Oja. The old fixed 250k-row slice
-  // had scale-dependent COST: at 306M a single "slice" ran seconds, so the
-  // event loop starved between yields (the 5s BLOCKED cadence — dashboard
-  // freezes, /ws stalls — that appeared with the full-size deploy; at 40M
-  // the same slice was ~300ms and nobody noticed). Slices now adapt by
-  // TIME: each synchronous slice is measured and the row-chunk halves
-  // (floor 16k) past 60ms / doubles (cap 512k) under 15ms, converging every
-  // projection to ~30ms slices at ANY scale. Identical math (rows are
-  // independent); a slice that still exceeds 2s warns with the projection
-  // name so the next freeze names its culprit. Below one chunk it stays a
-  // single synchronous pass (no yield overhead).
-  async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
-    const rows = proj.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
-    const activeRows = ojaOpts && ojaOpts.activeRows;
-    if (activeRows && activeRows.length >= 16384 && this._sparsePool && typeof this._sparsePool.ojaActive === "function" && !(ojaOpts && (ojaOpts.trackDelta || typeof ojaOpts.rowStart === "number" || typeof ojaOpts.rowEnd === "number"))) {
-      try {
-        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows, ojaOpts && ojaOpts.kScales)) return;
-      } catch (e) {
-        if (!this._ojaPoolWarned) {
-          this._ojaPoolWarned = true;
-          console.warn(`[Cluster ${this.name}] Oja on the worker pool failed (${e && e.message}) \u2014 running it on the main thread.`);
-        }
-      }
-    }
-    if (activeRows) {
-      const n = activeRows.length | 0;
-      const ACTIVE_SLICE_MIN = 2048;
-      if (n <= ACTIVE_SLICE_MIN) {
-        const _t0 = Date.now();
-        proj.ojaUpdate(preF, postF, lr, ojaOpts);
-        const _dt = Date.now() - _t0;
-        if (_dt > 250) {
-          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (proj=${ojaOpts && ojaOpts.projName || "?"} nnz=${proj.nnz ?? "?"}) \u2014 under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
-        }
-        return;
-      }
-      const rowsList = Array.prototype.slice.call(activeRows);
-      const total = rowsList.length;
-      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
-      const yieldMacro2 = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-      const _tStart = Date.now();
-      for (let i = 0; i < total; ) {
-        const chunk = this._ojaActiveChunk;
-        const j = Math.min(i + chunk, total);
-        const t0 = Date.now();
-        proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, activeRows: rowsList.slice(i, j) });
-        const dt = Date.now() - t0;
-        i = j;
-        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
-        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
-        if (i < total) {
-          const _h0 = Date.now();
-          await yieldMacro2();
-          const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
-          _hp.n++;
-          _hp.ms += Date.now() - _h0;
-        }
-      }
-      const _tot = Date.now() - _tStart;
-      if (_tot > 2e3) {
-        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (proj=${ojaOpts && ojaOpts.projName || "?"} nnz=${proj.nnz ?? "?"}) \u2014 but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
-      }
-      return;
-    }
-    if (rows <= 65536) {
-      const _t0 = Date.now();
-      proj.ojaUpdate(preF, postF, lr, ojaOpts);
-      const _dt = Date.now() - _t0;
-      if (_dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW single-pass Oja: ${_dt}ms for ${rows.toLocaleString()} rows (nnz=${proj.nnz ?? "?"}) \u2014 under the chunk threshold so it never sliced; this matrix is a loop-pin culprit.`);
-      return;
-    }
-    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; ) {
-      const chunk = this._ojaChunkRows;
-      const re = Math.min(rs + chunk, rows);
-      const t0 = Date.now();
-      proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, rowStart: rs, rowEnd: re });
-      const dt = Date.now() - t0;
-      rs = re;
-      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
-      if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) \u2014 chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
-      if (rs < rows) {
-        const _h0 = Date.now();
-        await yieldMacro();
-        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
-        _hp.n++;
-        _hp.ms += Date.now() - _h0;
-      }
-    }
-  },
-  // TIME-SLICED — chunked bare-Hebbian write (the predictive-error delta
-  // rule in _teachPredictiveError). Same adaptive slicing + shared chunk
-  // state as _ojaUpdateChunked; row-independent so identical math. Fires
-  // once per pair over the full intra matrix — unsliced it stacked into
-  // ~20s stalls on multi-pair seed words (e.g. "minus").
-  async _hebbianUpdateChunked(mat, preF, postF, lr) {
-    const rows = mat.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
-    if (rows <= 65536) {
-      mat.hebbianUpdate(preF, postF, lr);
-      return;
-    }
-    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; ) {
-      const chunk = this._ojaChunkRows;
-      const re = Math.min(rs + chunk, rows);
-      const t0 = Date.now();
-      mat.hebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
-      const dt = Date.now() - t0;
-      rs = re;
-      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
-      if (rs < rows) {
-        const _h0 = Date.now();
-        await yieldMacro();
-        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
-        _hp.n++;
-        _hp.ms += Date.now() - _h0;
-      }
-    }
-  },
-  // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
-  // slicing as _ojaUpdateChunked (shared chunk-size state so both paths
-  // converge together). Identical math; row-independent.
-  async _antiHebbianChunked(mat, preF, postF, lr, opts) {
-    const rows = mat.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
-    const activeRows = opts && opts.activeRows;
-    if (activeRows) {
-      const n = activeRows.length | 0;
-      const ACTIVE_SLICE_MIN = 2048;
-      if (n <= ACTIVE_SLICE_MIN) {
-        mat.antiHebbianUpdate(preF, postF, lr, { activeRows });
-        return;
-      }
-      const rowsList = Array.prototype.slice.call(activeRows);
-      const total = rowsList.length;
-      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
-      const yieldMacroA = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-      for (let i = 0; i < total; ) {
-        const chunk = this._ojaActiveChunk;
-        const j = Math.min(i + chunk, total);
-        const t0 = Date.now();
-        mat.antiHebbianUpdate(preF, postF, lr, { activeRows: rowsList.slice(i, j) });
-        const dt = Date.now() - t0;
-        i = j;
-        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
-        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
-        if (i < total) {
-          const _h0 = Date.now();
-          await yieldMacroA();
-          const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
-          _hp.n++;
-          _hp.ms += Date.now() - _h0;
-        }
-      }
-      return;
-    }
-    if (rows <= 65536) {
-      const _t0 = Date.now();
-      mat.antiHebbianUpdate(preF, postF, lr);
-      const _dt = Date.now() - _t0;
-      if (_dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW single-pass anti-Hebbian: ${_dt}ms for ${rows.toLocaleString()} rows (nnz=${mat.nnz ?? "?"}) \u2014 under the chunk threshold so it never sliced; this matrix is a loop-pin culprit.`);
-      return;
-    }
-    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; ) {
-      const chunk = this._ojaChunkRows;
-      const re = Math.min(rs + chunk, rows);
-      const t0 = Date.now();
-      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
-      const dt = Date.now() - t0;
-      rs = re;
-      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
-      if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows \u2014 chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
-      if (rs < rows) {
-        const _h0 = Date.now();
-        await yieldMacro();
-        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
-        _hp.n++;
-        _hp.ms += Date.now() - _h0;
-      }
-    }
-  },
-  /**
-   * T17.3.d — Upload all cross-projections to GPU via the proxy. Once
-   * complete, sets `_gpuProxyReady = true` so subsequent
-   * `_crossRegionHebbian` calls dispatch to GPU alongside the CPU
-   * shadow updates. The `_propagateCrossRegions` hot-path wiring
-   * follows in T17.3.e — currents readback requires async/await
-   * cascade through cluster.step which is a larger refactor.
-   *
-   * Cluster must be fully constructed (cross-projections initialized)
-   * before calling this. Safe to call after construction but before
-   * any curriculum teach.
-   */
-  async initGpu() {
-    if (!this._gpuProxy || !this._gpuProxy.upload) return false;
-    this._gpuProxyReady = false;
-    const targets = [];
-    if (this.synapses) {
-      const _intraBinding = this._gpuBindingHint && this.size > 0 ? {
-        srcCluster: "langCortex",
-        srcRegion: { start: 0, end: this.size },
-        dstCluster: "langCortex",
-        dstRegion: { start: 0, end: this.size }
-      } : null;
-      targets.push({ key: `${this.name}_intraSynapses`, name: "intraSynapses", proj: this.synapses, binding: _intraBinding });
-    }
-    if (this.crossProjections) {
-      const hint = this._gpuBindingHint || null;
-      for (const name of Object.keys(this.crossProjections)) {
-        const key = `${this.name}_${name}`;
-        let binding = null;
-        if (hint && typeof hint.resolve === "function") {
-          try {
-            binding = hint.resolve(name, this.crossProjections[name]);
-          } catch {
-            binding = null;
-          }
-        }
-        targets.push({ key, name, proj: this.crossProjections[name], binding });
-      }
-    }
-    let uploaded = 0;
-    let boundCount = 0;
-    for (const { key, name: projName, proj, binding } of targets) {
-      if (!proj || !proj.values || !proj.rowPtr || !proj.colIdx) {
-        console.error(`[Cluster ${this.name}] CRITICAL \u2014 ${key} CPU CSR is FREED (GPU-authoritative weights died with the previous donor). NOT uploading an empty matrix over the new donor. This projection restarts from its last DISK state on next boot; mid-run learning since the free is lost until GPU-readback persistence ships.`);
-        continue;
-      }
-      try {
-        const matrix = {
-          rows: proj.rows,
-          cols: proj.cols,
-          nnz: proj.nnz,
-          values: proj.values,
-          colIdx: proj.colIdx,
-          rowPtr: proj.rowPtr
-        };
-        let ack = null;
-        for (let _try = 1; _try <= 3; _try++) {
-          ack = await this._gpuProxy.upload(key, matrix, binding);
-          if (ack && ack.ok) break;
-          if (_try < 3) console.warn(`[Cluster ${this.name}] GPU upload ${projName || key} attempt ${_try}/3 failed (${ack ? "ack not-ok" : "null / timeout"}) \u2014 retrying`);
-        }
-        if (ack && ack.ok) {
-          uploaded++;
-          if (binding) {
-            boundCount++;
-            proj._gpuBound = true;
-            const _freedValuesBytes = proj.values ? proj.values.byteLength : 0;
-            const _freedColIdxBytes = proj.colIdx ? proj.colIdx.byteLength : 0;
-            const _freedRowPtrBytes = proj.rowPtr ? proj.rowPtr.byteLength : 0;
-            const _freedMB = ((_freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes) / (1024 * 1024)).toFixed(1);
-            if (!this._t1822TotalFreedBytes) this._t1822TotalFreedBytes = 0;
-            const PROBE_CRITICAL_CPU_CSR = /* @__PURE__ */ new Set([
-              "letter_to_phon",
-              // READ probe reads phon via CPU propagate
-              "letter_to_motor",
-              // TALK probe + DYN-PROD letter fallback
-              "sem_to_motor",
-              // DYN-PROD primary path + separation probe
-              // GINTRA — the intra matrix is now GPU-BOUND (langCortex pseudo-
-              // cluster) which routes it through this free branch for the first
-              // time. Its CPU CSR must NEVER free: checkpoints serialize it
-              // (brain-weights.bin section 'cortex.synapses'), the final-rep
-              // shadow trains it, and emission's intra propagate reads it.
-              "intraSynapses"
-              // Reverted: widening the whitelist added ~2 GB CPU CSR
-              // back per extra projection and re-triggered the 14 GB
-              // external-memory V8 GC stall that T24.a fixed. READ
-              // probes that want letter_to_sem now route through the
-              // GPU proxy fallback — `SparseMatrix.propagate` on a
-              // freed CSR returns a zero vector via the null-CSR
-              // guard, so probe scoring stays correct-shape even when
-              // the CPU array is gone.
-            ]);
-            const _freeMinBytes = (Number(process.env.DREAM_CSR_FREE_MIN_MB) > 0 ? Number(process.env.DREAM_CSR_FREE_MIN_MB) : 512) * 1048576;
-            const _projBytes = _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
-            if (_projBytes < _freeMinBytes) {
-              console.log(`[CPU-CSR-free] keeping ${key} resident (${_freedMB}MB < ${Math.round(_freeMinBytes / 1048576)}MB pressure gate) \u2014 checkpoints stay complete, donor churn stays lossless.`);
-            } else if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
-              console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) \u2014 needed for READ/TALK/DYN-PROD gate probes AND for checkpoint completeness (freed matrices are skipped by the save; freeing this would silently stop persisting the largest section of her brain).`);
-            } else {
-              proj.values = null;
-              proj.colIdx = null;
-              proj.rowPtr = null;
-              this._t1822TotalFreedBytes += _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
-              console.log(`[CPU-CSR-free] freed ${key} CPU arrays: ${(_freedValuesBytes / 1024 / 1024).toFixed(1)}MB values + ${(_freedColIdxBytes / 1024 / 1024).toFixed(1)}MB colIdx + ${(_freedRowPtrBytes / 1024 / 1024).toFixed(1)}MB rowPtr = ${_freedMB}MB \xB7 cumulative freed ${(this._t1822TotalFreedBytes / 1024 / 1024).toFixed(1)}MB.`);
-            }
-          }
-        } else {
-          console.warn(`[Cluster ${this.name}] GPU upload failed for ${key}:`, ack && ack.error);
-        }
-      } catch (err) {
-        console.warn(`[Cluster ${this.name}] GPU upload exception for ${key}:`, err && err.message);
-      }
-    }
-    this._gpuProxyReady = uploaded === targets.length;
-    const boundTag = boundCount > 0 ? ` (${boundCount} cluster-bound at upload \u2014 standalone VRAM overhead skipped)` : "";
-    console.log(`[Cluster ${this.name}] GPU proxy ready: ${uploaded}/${targets.length} matrices uploaded${boundTag} (${this._gpuProxyReady ? "FULL \u2014 intra-synapses + all cross-projections on GPU" : "PARTIAL \u2014 falling back to CPU for failed matrices"})`);
-    if (typeof process !== "undefined" && typeof process.memoryUsage === "function") {
-      try {
-        const mem = process.memoryUsage();
-        const heapMB = (mem.heapUsed / 1024 / 1024).toFixed(1);
-        const extMB = ((mem.external || 0) / 1024 / 1024).toFixed(1);
-        const abMB = ((mem.arrayBuffers || 0) / 1024 / 1024).toFixed(1);
-        console.log(`[Cluster] Post-upload V8 memory: heapUsed=${heapMB}MB external=${extMB}MB arrayBuffers=${abMB}MB (selective free nulled ~${((this._t1822TotalFreedBytes || 0) / 1024 / 1024).toFixed(1)}MB of CPU CSR arrays \u2014 V8 auto-reclaims on its own schedule; explicit gc() removed because prior attempts triggered OOM mid-gc).`);
-      } catch (err) {
-        console.warn(`[Cluster] memory-log diagnostic failed:`, err && err.message);
-      }
-    }
-    return this._gpuProxyReady;
-  },
-  /**
-   * T17.3.e — intra-cluster Hebbian wrapper. Applies the update on
-   * CPU (authoritative) AND fires GPU fire-and-forget shadow when
-   * proxy ready. Curriculum teach uses this instead of calling
-   * `cluster.synapses.hebbianUpdate` directly so intra-cluster
-   * weights stay in sync between CPU and GPU.
-   */
-  async intraSynapsesHebbian(pre, post, lr) {
-    if (!this.synapses) return;
-    if (!this._teachSubstrateReady("intraSynapsesHebbian")) return;
-    let _boundCarried = false;
-    if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
-      try {
-        this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr);
-      } catch {
-      }
-      const _sB = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
-      _sB.boundGpu = (_sB.boundGpu || 0) + 1;
-      if (this._teachIntermediateRep === true) {
-        _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
-        return;
-      }
-      const _nowSh = Date.now();
-      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
-      if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) {
-        _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
-        return;
-      }
-      this._lastIntraShadowMs = _nowSh;
-      _boundCarried = true;
-    }
-    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
-    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
-    if (atBioScale) {
-      const _act = [];
-      for (let _i = 0; _i < post.length; _i++) {
-        if (post[_i]) _act.push(_i);
-      }
-      let _gpuCarried = false;
-      const _sPre = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
-      _sPre.activeSum = (_sPre.activeSum || 0) + _act.length;
-      _sPre.calls = (_sPre.calls || 0) + 1;
-      if (!_boundCarried && this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === "function") {
-        try {
-          const _postRanges = indexRanges(_act);
-          const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
-          if (!_postRanges) {
-            _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
-            const _r = rangeFail.reason || "unknown";
-            _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
-            if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
-            _sPre.rangesRunsSum = (_sPre.rangesRunsSum || 0) + rangeFail.runs;
-            const _b = rangeFail.runs <= 16 ? "le16" : rangeFail.runs <= 64 ? "le64" : rangeFail.runs <= 256 ? "le256" : rangeFail.runs <= 1024 ? "le1k" : rangeFail.runs <= 8192 ? "le8k" : rangeFail.runs <= 65536 ? "le64k" : "gt64k";
-            _sPre[`rangesRunsBucket_${_b}`] = (_sPre[`rangesRunsBucket_${_b}`] || 0) + 1;
-          } else if (!_preRanges) {
-            _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
-            const _r = rangeFail.reason || "unknown";
-            _sPre[`rangesFailPre_${_r}`] = (_sPre[`rangesFailPre_${_r}`] || 0) + 1;
-          } else {
-            const _okRuns = Math.max(_preRanges.length, _postRanges.length);
-            if (_okRuns > (_sPre.rangesRunsOkMax || 0)) _sPre.rangesRunsOkMax = _okRuns;
-            _sPre.rangesOk = (_sPre.rangesOk || 0) + 1;
-            _sPre.rangesRunsOkSum = (_sPre.rangesRunsOkSum || 0) + _okRuns;
-          }
-          if (_preRanges && _postRanges) {
-            _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
-          }
-        } catch {
-          _gpuCarried = false;
-          _sPre.rangesThrew = (_sPre.rangesThrew || 0) + 1;
-        }
-      }
-      this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
-      const _s = _sPre;
-      if (_gpuCarried) _s.gpu = (_s.gpu || 0) + 1;
-      if (_boundCarried || !_gpuCarried || this._intraOjaShadowCounter % 5 === 0) {
-        if (_boundCarried) {
-          _s.boundShadow = (_s.boundShadow || 0) + 1;
-          _s.cpuShadow = (_s.cpuShadow || 0) + 1;
-        } else if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1;
-        else _s.cpuFull = (_s.cpuFull || 0) + 1;
-        const _shadow0 = Date.now();
-        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: "intraSynapses" });
-        const _cpuDt = Date.now() - _shadow0;
-        _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
-        if (_gpuCarried || _boundCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
-        else _s.cpuFullMs = (_s.cpuFullMs || 0) + _cpuDt;
-      }
-    } else if (this._sparsePool && this._sparsePool.ready) {
-      try {
-        await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
-      } catch {
-        this.synapses.ojaUpdate(pre, post, lr);
-      }
-    } else {
-      this.synapses.ojaUpdate(pre, post, lr);
-    }
-  },
-  /**
-   * BCM sliding-threshold update on the intra-cluster synapse matrix.
-   * Requires a per-neuron firing-rate target θ; on first call, lazy-
-   * inits `_bcmTheta` to a Float32Array of size `this.size` populated
-   * at 0.05 (prior to biological calibration). Every call:
-   *
-   *   1. Low-pass θ against the current post-spike vector:
-   *        θ[i] ← (1−α)·θ[i] + α·y[i]²
-   *   2. Apply the BCM delta:
-   *        Δw[i,j] = lr × y[i] × (y[i] − θ[i]) × x[j]
-   *
-   * `α` defaults to 0.01 (slow drift — matches biological sliding-
-   * threshold timescales of ~100-1000 teach events). Silent no-op when
-   * disabled so the teach path stays Oja-only by default.
-   *
-   * ⭐ THE SWITCH IS `DREAM_BCM=1`, resolved once in the Cluster constructor;
-   * a runtime `cluster._bcmEnabled = true` still overrides it. ⛔ Until
-   * 2026-09-01 this comment promised that "the operator can flip the flag in
-   * a session" while `_bcmEnabled` was assigned NOWHERE in the tree — the
-   * feature was complete from gate to kernel and simply unreachable on the
-   * box. Default stays OFF deliberately: turning BCM on changes the
-   * plasticity rule on every teach path and is a RE-PRICE-bearing change.
-   */
-  intraSynapsesBcm(pre, post, lr, alpha = 0.01) {
-    if (!this._bcmEnabled) return;
-    if (!this.synapses || typeof this.synapses.bcmUpdate !== "function") return;
-    if (!this._bcmTheta || this._bcmTheta.length !== this.size) {
-      this._bcmTheta = new Float32Array(this.size);
-      this._bcmTheta.fill(0.05);
-    }
-    const theta = this._bcmTheta;
-    const oneMinusAlpha = 1 - alpha;
-    for (let i = 0; i < this.size; i++) {
-      const y = post[i];
-      if (y) {
-        theta[i] = oneMinusAlpha * theta[i] + alpha * y * y;
-      } else {
-        theta[i] = oneMinusAlpha * theta[i];
-      }
-    }
-    this.synapses.bcmUpdate(pre, post, theta, lr);
-  },
-  /**
-   * Anti-Hebbian update on every cross-region projection. GPU dispatch
-   * only — at biological scale sem_to_motor's CPU CSR is selectively
-   * freed so the CPU anti-Hebbian can't land on cross-projections.
-   * Routes through the batched plasticity queue with a NEGATIVE lr,
-   * which the PLASTICITY_SHADER branches on to apply pure co-active
-   * decrement instead of Oja's self-normalizing update. Silent no-op
-   * when the GPU proxy is unavailable — in that case contrastive
-   * push-pull rides intra-cluster recurrent matrix only.
-   */
-  async _crossRegionAntiHebbian(lr, opts = {}) {
-    if (!this.crossProjections) return;
-    if (!this._gpuProxyReady || !this._gpuProxy || typeof this._gpuProxy.antiHebbianBound !== "function") return;
-    const absLr = Math.abs(lr);
-    const wl = opts.projectionsWhitelist;
-    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
-    for (const name of Object.keys(this.crossProjections)) {
-      if (whitelistSet && !whitelistSet.has(name)) continue;
-      const proj = this.crossProjections[name];
-      if (!proj || !proj._gpuBound) {
-        if (proj && (!proj.values || !proj.colIdx || !proj.rowPtr) && !proj._nullCsrAntiHebbianWarned) {
-          proj._nullCsrAntiHebbianWarned = true;
-          console.warn(`[Cluster ${this.name}] Anti-Hebbian skip on ${name} \u2014 CPU CSR null AND not GPU-bound (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}).`);
-        }
-        continue;
-      }
-      try {
-        this._gpuProxy.antiHebbianBound(`${this.name}_${name}`, absLr);
-      } catch {
-      }
-    }
-  },
-  /**
-   * Anti-Hebbian update on the intra-cluster synapse matrix. Depresses
-   * co-active (pre=1, post=1) weights so sampled-wrong pairs push apart
-   * instead of superposing. Used by the push-pull contrastive teach path:
-   * caller fires the positive-pair Oja update first, then invokes this
-   * method with a sampled WRONG post-pattern to repel it from the
-   * pre-pattern in weight space.
-   *
-   * Sync at biological scale (matches `intraSynapsesHebbian`'s bio-path
-   * branch) — zero external-memory allocation, single CSR walk. `lr`
-   * here is always POSITIVE; the method handles the sign internally.
-   */
-  async intraSynapsesAntiHebbian(pre, post, lr, opts = {}) {
-    if (!this.synapses) return;
-    if (!this._teachSubstrateReady("intraSynapsesAntiHebbian")) return;
-    if (typeof this.synapses.antiHebbianUpdate !== "function") return;
-    if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
-      try {
-        this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, -Math.abs(lr));
-      } catch {
-      }
-      if (this._teachIntermediateRep === true) return;
-      const _nowSh = Date.now();
-      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
-      if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
-      this._lastIntraAntiShadowMs = _nowSh;
-    }
-    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
-    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
-    if (atBioScale) {
-      const _act = Array.isArray(opts.activeRows) ? opts.activeRows : (() => {
-        const a = [];
-        for (let _i = 0; _i < post.length; _i++) {
-          if (post[_i]) a.push(_i);
-        }
-        return a;
-      })();
-      await this._antiHebbianChunked(this.synapses, pre, post, lr, { activeRows: _act });
-    } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
-      try {
-        await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
-      } catch {
-        this.synapses.antiHebbianUpdate(pre, post, lr);
-      }
-    } else {
-      this.synapses.antiHebbianUpdate(pre, post, lr);
-    }
-  }
-};
-
-// ../js/brain/cluster/lexical-constants.js
-var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
-var FUNCTION_WORDS = /* @__PURE__ */ new Set([
-  // Articles + determiners
-  "a",
-  "an",
-  "the",
-  "this",
-  "that",
-  "these",
-  "those",
-  // Auxiliaries + copulas
-  "is",
-  "am",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "being",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "will",
-  "would",
-  "can",
-  "could",
-  "should",
-  "may",
-  "might",
-  // Pronouns
-  "i",
-  "you",
-  "he",
-  "she",
-  "it",
-  "we",
-  "they",
-  "me",
-  "him",
-  "her",
-  "us",
-  "them",
-  "my",
-  "your",
-  "his",
-  "its",
-  "our",
-  "their",
-  // Prepositions
-  "of",
-  "to",
-  "in",
-  "on",
-  "at",
-  "by",
-  "for",
-  "with",
-  "from",
-  "up",
-  "down",
-  "out",
-  "off",
-  "over",
-  "under",
-  "into",
-  // Conjunctions
-  "and",
-  "or",
-  "but",
-  "so",
-  "if",
-  "because",
-  "when",
-  "while",
-  "as",
-  // Negation
-  "not",
-  "no"
-]);
-
-// ../js/brain/cluster/emit.js
-init_brain_rng();
-
 // ../js/brain/speech-readout.js
 var D = 300;
 var ID = 1024;
@@ -15856,17 +14652,28 @@ var SpeechReadout = class {
     return !!(also && t !== -1 && also.includes(t) && also.includes(target));
   }
   // ── Teach ─────────────────────────────────────────────────────────────────────
-  /** The moment's key: its units without how she feels. */
+  /**
+   * The moment's key: its units without how she feels. The same SET of units
+   * gives the same key in any order — a state read back from her cells lists
+   * its units in cell order, not the order the encoder made them in.
+   */
   _key(units) {
-    let a = 2166136261, b = 2654435769;
+    let a = 0, b = 0;
     for (let i = 0; i < units.length; i++) {
       const u = units[i];
       if (u >= L.live) continue;
-      a = Math.imul(a ^ u, 16777619) >>> 0;
-      b = Math.imul(b ^ u + 2135587861, 2246822507) >>> 0;
-      b ^= b >>> 13;
+      let x = Math.imul(u + 2135587861, 2654435761) >>> 0;
+      x ^= x >>> 15;
+      x = Math.imul(x, 2246822507) >>> 0;
+      x ^= x >>> 13;
+      let y = Math.imul(u ^ 2166136261, 3266489909) >>> 0;
+      y ^= y >>> 16;
+      y = Math.imul(y, 668265263) >>> 0;
+      y ^= y >>> 15;
+      a = a + x >>> 0;
+      b = (b ^ y) >>> 0;
     }
-    return a * 2097152 + (b >>> 0 >>> 11);
+    return a * 2097152 + (b >>> 11);
   }
   _rand() {
     let x = this._rng;
@@ -16324,8 +15131,1444 @@ var SpeechReadout = class {
     };
   }
 };
+var SPEECH_LAYOUT = L;
+
+// ../js/brain/letter-input.js
+var LETTER_INVENTORY = /* @__PURE__ */ new Set();
+var DEFAULT_ALPHABET = [
+  // Lowercase English (26)
+  "a",
+  "b",
+  "c",
+  "d",
+  "e",
+  "f",
+  "g",
+  "h",
+  "i",
+  "j",
+  "k",
+  "l",
+  "m",
+  "n",
+  "o",
+  "p",
+  "q",
+  "r",
+  "s",
+  "t",
+  "u",
+  "v",
+  "w",
+  "x",
+  "y",
+  "z",
+  // Digits (10)
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  // Whitespace + basic punctuation (4)
+  " ",
+  ".",
+  ",",
+  "'"
+];
+for (const ch of DEFAULT_ALPHABET) LETTER_INVENTORY.add(ch);
+var _inventoryLocked = true;
+var _oneHotCache = /* @__PURE__ */ new Map();
+var _cachedInventorySize = 0;
+function inventorySize() {
+  return LETTER_INVENTORY.size;
+}
+function inventorySnapshot() {
+  return Array.from(LETTER_INVENTORY);
+}
+function ensureLetter(letter) {
+  if (!letter) return;
+  const key = String(letter).toLowerCase();
+  if (!LETTER_INVENTORY.has(key)) {
+    if (_inventoryLocked) return;
+    LETTER_INVENTORY.add(key);
+    _oneHotCache.clear();
+    _cachedInventorySize = 0;
+  }
+}
+function encodeLetter(letter) {
+  if (!letter) return new Float32Array(0);
+  const key = String(letter).toLowerCase();
+  ensureLetter(key);
+  if (_cachedInventorySize !== LETTER_INVENTORY.size) {
+    _oneHotCache.clear();
+    _cachedInventorySize = LETTER_INVENTORY.size;
+  }
+  const cached = _oneHotCache.get(key);
+  if (cached) {
+    const out2 = new Float32Array(cached.length);
+    out2.set(cached);
+    return out2;
+  }
+  const size = LETTER_INVENTORY.size;
+  const vec = new Float32Array(size);
+  let idx = 0;
+  for (const l of LETTER_INVENTORY) {
+    if (l === key) {
+      vec[idx] = 1;
+      break;
+    }
+    idx++;
+  }
+  _oneHotCache.set(key, vec);
+  const out = new Float32Array(size);
+  out.set(vec);
+  return out;
+}
+function decodeLetterAlpha(vec) {
+  if (!vec || vec.length === 0 || LETTER_INVENTORY.size === 0) return null;
+  const limit = Math.min(vec.length, LETTER_INVENTORY.size);
+  let best = -Infinity;
+  let bestIdx = -1;
+  let idx = 0;
+  for (const l of LETTER_INVENTORY) {
+    if (idx >= limit) break;
+    if (l && /^[a-z]$/.test(l)) {
+      const v = vec[idx];
+      if (v > best) {
+        best = v;
+        bestIdx = idx;
+      }
+    }
+    idx++;
+  }
+  if (bestIdx < 0) return null;
+  let i = 0;
+  for (const l of LETTER_INVENTORY) {
+    if (i === bestIdx) return l;
+    i++;
+  }
+  return null;
+}
+
+// ../js/brain/subjects.js
+var SUBJECT_NORMALIZE = Object.freeze({
+  ela: "ela",
+  english: "ela",
+  math: "math",
+  mathematics: "math",
+  sci: "sci",
+  science: "sci",
+  soc: "soc",
+  social: "soc",
+  "social-studies": "soc",
+  art: "art",
+  arts: "art",
+  life: "life",
+  "life-skills": "life"
+});
+var SUBJECTS = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
+function normalizeSubject(subject) {
+  if (!subject || typeof subject !== "string") return null;
+  return SUBJECT_NORMALIZE[subject.toLowerCase()] || null;
+}
+
+// ../js/brain/cluster/telemetry.js
+var CLUSTER_TELEMETRY_MIXIN = {
+  trackRecentEmission(word) {
+    if (typeof word !== "string" || word.length === 0) return;
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    this._recentEmissions.push(word);
+    while (this._recentEmissions.length > 8) {
+      this._recentEmissions.shift();
+    }
+  },
+  /**
+   * Compositional emergence telemetry — install the trained-sentence
+   * corpus + derived word-transition set so subsequent emissions can be
+   * classified as verbatim / novel-recombination / partial-match.
+   * Called from curriculum side (`_teachConcreteSentences`) once the
+   * corpus is locked in. Safe to call multiple times — last call wins
+   * and counters are NOT reset (so trained-corpus updates between
+   * sessions still aggregate against a coherent denominator).
+   *
+   * @param {string[]} corpus — trained K-grade sentences
+   */
+  initCompositionalTelemetry(corpus) {
+    if (!Array.isArray(corpus) || corpus.length === 0) return;
+    const corpusHash = corpus.length + ":" + corpus.slice(0, 8).join("|").slice(0, 200);
+    const corpusChanged = this._compositionalCorpusHash !== corpusHash;
+    if (!this._compositionalCounters || corpusChanged) {
+      if (corpusChanged && this._compositionalCounters) {
+        console.log(`[Cluster ${this.name}] compositional-telemetry corpus changed (was ${this._compositionalCorpusHash || "unset"}, now ${corpusHash}). Counters RESET.`);
+      }
+      this._compositionalCounters = {
+        totalClassified: 0,
+        verbatimCount: 0,
+        novelCount: 0,
+        partialCount: 0,
+        novelVocabCount: 0,
+        // Audit B.2 — separate vocab-axis counter
+        novelCompositionalCount: 0,
+        // Audit B.2 — separate compositional-axis counter
+        firstNovelTs: null,
+        maxNovelty: 0,
+        maxNoveltySentence: "",
+        bootTs: Date.now(),
+        recentEmissions: []
+      };
+      this._compositionalCorpusHash = corpusHash;
+    }
+    this._trainedSentencesNormalized = /* @__PURE__ */ new Set();
+    this._trainedTransitions = /* @__PURE__ */ new Set();
+    this._trainedVocab = /* @__PURE__ */ new Set();
+    for (const s of corpus) {
+      if (typeof s !== "string") continue;
+      const norm = s.toLowerCase().trim();
+      if (norm.length === 0) continue;
+      this._trainedSentencesNormalized.add(norm);
+      const words = norm.split(/\s+/).filter((w) => w.length > 0);
+      for (const w of words) this._trainedVocab.add(w);
+      for (let i = 0; i < words.length - 1; i++) {
+        this._trainedTransitions.add(`${words[i]}|${words[i + 1]}`);
+      }
+    }
+  },
+  /**
+   * Classify a composed sentence as verbatim / novel / partial. Updates
+   * counters + appends to recent-emissions ring (cap 100). Returns the
+   * classification result. No-op when telemetry hasn't been initialized
+   * (returns null) — caller can ignore the missing-init case since
+   * `_teachConcreteSentences` initializes during K curriculum.
+   *
+   * Novelty metric: fraction of word-transition pairs (n-1 per
+   * n-word sentence) that are NOT present in the trained-transitions
+   * set. A wholly-original recombination scores 1.0 novelty; an exact
+   * trained sentence scores 0.0. Threshold 0.5 separates novel from
+   * partial.
+   *
+   * @param {string} sentence
+   * @returns {{kind:string,novelty:number}|null}
+   */
+  classifyCompositionalEmission(sentence) {
+    if (!this._trainedSentencesNormalized || !this._compositionalCounters) return null;
+    if (typeof sentence !== "string" || sentence.length === 0) return null;
+    const c = this._compositionalCounters;
+    const norm = sentence.toLowerCase().replace(/[.!?]+$/, "").trim();
+    if (norm.length === 0) return null;
+    c.totalClassified++;
+    let kind;
+    let novelty;
+    let compositionalNovelty = 0;
+    let vocabNovelty = 0;
+    if (this._trainedSentencesNormalized.has(norm)) {
+      kind = "verbatim";
+      novelty = 0;
+      c.verbatimCount++;
+    } else {
+      const words = norm.split(/\s+/).filter((w) => w.length > 0);
+      const transitionCount = Math.max(1, words.length - 1);
+      let novelTransitions = 0;
+      for (let i = 0; i < words.length - 1; i++) {
+        const key = `${words[i]}|${words[i + 1]}`;
+        if (!this._trainedTransitions.has(key)) novelTransitions++;
+      }
+      compositionalNovelty = novelTransitions / transitionCount;
+      if (this._trainedVocab && words.length > 0) {
+        let untrained = 0;
+        for (const w of words) {
+          if (!this._trainedVocab.has(w)) untrained++;
+        }
+        vocabNovelty = untrained / words.length;
+      }
+      novelty = Math.max(compositionalNovelty, vocabNovelty);
+      const compositionalHigh = compositionalNovelty > 0.5;
+      const vocabHigh = vocabNovelty > 0.5;
+      if (compositionalHigh && vocabHigh) kind = "novel";
+      else if (compositionalHigh && !vocabHigh) kind = "novel-compositional";
+      else if (!compositionalHigh && vocabHigh) kind = "novel-vocab";
+      else kind = "partial";
+      if (kind !== "partial") {
+        c.novelCount++;
+        if (c.firstNovelTs === null) c.firstNovelTs = Date.now();
+        if (novelty > c.maxNovelty) {
+          c.maxNovelty = novelty;
+          c.maxNoveltySentence = sentence;
+        }
+        if (kind === "novel-compositional" || kind === "novel") c.novelCompositionalCount = (c.novelCompositionalCount || 0) + 1;
+        if (kind === "novel-vocab" || kind === "novel") c.novelVocabCount = (c.novelVocabCount || 0) + 1;
+      } else {
+        c.partialCount++;
+      }
+    }
+    c.recentEmissions.push({
+      sentence,
+      kind,
+      novelty: +novelty.toFixed(3),
+      compositionalNovelty: +compositionalNovelty.toFixed(3),
+      vocabNovelty: +vocabNovelty.toFixed(3),
+      ts: Date.now()
+    });
+    if (c.recentEmissions.length > 100) c.recentEmissions.shift();
+    return { kind, novelty, compositionalNovelty, vocabNovelty };
+  },
+  /**
+   * Word-creation candidate gate. When emitWordDirect rejects an emission
+   * but the top-2 candidates both carry meaningful (above-noise) activation,
+   * the brain is in a "tip-of-the-tongue" co-activation state. Record the
+   * candidate pair so a future schema-coherence check OR operator review
+   * can decide whether to promote the compound (e.g. "moon" + "light" →
+   * "moonlight") to the vocab. Doesn't auto-commit — pure surface.
+   *
+   * Tracks co-occurrence count per compound so the candidate gate only
+   * surfaces compounds that fired repeatedly (single fires are likely
+   * noise; recurring co-activation is a real candidate).
+   *
+   * @param {{word:string,mean:number}} top1
+   * @param {{word:string,mean:number}} top2
+   * @param {number} floor
+   */
+  _recordWordCreationCandidate(top1, top2, floor) {
+    if (!top1 || !top2) return;
+    if (top1.word === top2.word) return;
+    if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 8) {
+      const counts = /* @__PURE__ */ new Map();
+      for (const e of this._metaRegister) {
+        if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1);
+      }
+      let topN = 0;
+      for (const n of counts.values()) if (n > topN) topN = n;
+      if (topN / this._metaRegister.length > 0.45) return;
+    }
+    try {
+      const se = typeof globalThis !== "undefined" && globalThis.__sharedEmbeddings ? globalThis.__sharedEmbeddings : null;
+      if (se && typeof se.getEmbedding === "function") {
+        const e1 = se.getEmbedding(top1.word);
+        const e2 = se.getEmbedding(top2.word);
+        if (e1 && e2 && e1.length === e2.length && e1.length > 0) {
+          let dot = 0, n1 = 0, n2 = 0;
+          for (let i = 0; i < e1.length; i++) {
+            dot += e1[i] * e2[i];
+            n1 += e1[i] * e1[i];
+            n2 += e2[i] * e2[i];
+          }
+          const cos = n1 > 0 && n2 > 0 ? dot / (Math.sqrt(n1) * Math.sqrt(n2)) : 0;
+          let cohMin = 0.2;
+          try {
+            const v = parseFloat(process?.env?.DREAM_BC_COMPOUND_COH_MIN);
+            if (Number.isFinite(v) && v >= 0) cohMin = v;
+          } catch {
+          }
+          if (cos < cohMin) return;
+        }
+      }
+    } catch {
+    }
+    if (!this._wordCreationCandidates) {
+      this._wordCreationCandidates = /* @__PURE__ */ new Map();
+    }
+    const [a, b] = [top1.word, top2.word].sort();
+    const compound = `${a}_${b}`;
+    const combined = top1.mean + top2.mean;
+    const entry = this._wordCreationCandidates.get(compound) || {
+      count: 0,
+      components: [a, b],
+      firstTs: Date.now(),
+      lastTs: Date.now(),
+      sumMean: 0,
+      maxMean: 0,
+      lastFloor: floor
+    };
+    entry.count++;
+    entry.lastTs = Date.now();
+    entry.sumMean += combined;
+    if (combined > entry.maxMean) entry.maxMean = combined;
+    entry.lastFloor = floor;
+    this._wordCreationCandidates.set(compound, entry);
+    if (this._wordCreationCandidates.size > 200) {
+      let leastKey = null;
+      let leastCount = Infinity;
+      for (const [k, v] of this._wordCreationCandidates) {
+        if (v.count < leastCount) {
+          leastCount = v.count;
+          leastKey = k;
+        }
+      }
+      if (leastKey) this._wordCreationCandidates.delete(leastKey);
+    }
+  },
+  /**
+   * Read top-N word-creation candidates sorted by occurrence count
+   * descending (most-frequently co-activated first). Returns array of
+   * `{compound, components, count, avgMean, maxMean, firstTs, lastTs}`.
+   * Filters out candidates below `minCount` (default 3) so single-shot
+   * noise doesn't surface.
+   *
+   * @param {object} [opts]
+   * @param {number} [opts.limit=20]
+   * @param {number} [opts.minCount=3]
+   * @returns {Array}
+   */
+  getWordCreationCandidates(opts = {}) {
+    const limit = opts.limit ?? 20;
+    const minCount = opts.minCount ?? 3;
+    if (!this._wordCreationCandidates) return [];
+    const out = [];
+    for (const [compound, e] of this._wordCreationCandidates) {
+      if (e.count < minCount) continue;
+      out.push({
+        compound,
+        components: e.components,
+        count: e.count,
+        avgMean: e.sumMean / e.count,
+        maxMean: e.maxMean,
+        firstTs: e.firstTs,
+        lastTs: e.lastTs
+      });
+    }
+    out.sort((a, b) => b.count - a.count);
+    return out.slice(0, limit);
+  },
+  /**
+   * Read aggregated compositional-emergence stats for dashboard / state
+   * broadcast. Returns null when telemetry hasn't been initialized.
+   *
+   * @returns {object|null}
+   */
+  getCompositionalStats() {
+    const c = this._compositionalCounters;
+    if (!c) return null;
+    const total = c.totalClassified;
+    const novelComp = c.novelCompositionalCount || 0;
+    const novelVoc = c.novelVocabCount || 0;
+    return {
+      totalClassified: total,
+      verbatimCount: c.verbatimCount,
+      novelCount: c.novelCount,
+      partialCount: c.partialCount,
+      // Audit B.2 — two-axis novelty rates
+      novelCompositionalCount: novelComp,
+      novelVocabCount: novelVoc,
+      novelCompositionalRate: total > 0 ? novelComp / total : 0,
+      novelVocabRate: total > 0 ? novelVoc / total : 0,
+      verbatimRate: total > 0 ? c.verbatimCount / total : 0,
+      novelRate: total > 0 ? c.novelCount / total : 0,
+      partialRate: total > 0 ? c.partialCount / total : 0,
+      firstNovelMsAfterBoot: c.firstNovelTs !== null ? Math.max(0, c.firstNovelTs - c.bootTs) : null,
+      maxNovelty: +c.maxNovelty.toFixed(3),
+      maxNoveltySentence: c.maxNoveltySentence,
+      recentTail: c.recentEmissions.slice(-10)
+    };
+  }
+};
+
+// ../js/brain/cluster/hebbian.js
+var _RANGE_RUNS_ENV = typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 0;
+var RANGE_MAX_RUNS = Math.max(1, _RANGE_RUNS_ENV || 16);
+function setRangeMaxRuns(n) {
+  if (_RANGE_RUNS_ENV) return RANGE_MAX_RUNS;
+  const v = Math.floor(Number(n));
+  if (v >= 1) RANGE_MAX_RUNS = v;
+  return RANGE_MAX_RUNS;
+}
+var RANGE_MAX_TOTAL = 2e6;
+var rangeFail = { reason: null, runs: 0, total: 0 };
+function denseActiveRanges(arr) {
+  rangeFail.reason = null;
+  rangeFail.runs = 0;
+  rangeFail.total = 0;
+  const out = [];
+  let total = 0;
+  let runStart = -1;
+  const n = arr.length;
+  for (let i = 0; i < n; i++) {
+    if (arr[i]) {
+      if (runStart < 0) runStart = i;
+    } else if (runStart >= 0) {
+      const len = i - runStart;
+      total += len;
+      if (out.length >= RANGE_MAX_RUNS) {
+        rangeFail.reason = "runs";
+        let runs = out.length + 1;
+        let inRun = false;
+        for (let k = i + 1; k < n; k++) {
+          if (arr[k]) {
+            if (!inRun) {
+              runs++;
+              inRun = true;
+            }
+            total++;
+          } else inRun = false;
+        }
+        rangeFail.runs = runs;
+        rangeFail.total = total;
+        return null;
+      }
+      if (total > RANGE_MAX_TOTAL) {
+        rangeFail.reason = "total";
+        rangeFail.runs = out.length;
+        rangeFail.total = total;
+        return null;
+      }
+      out.push([runStart, len]);
+      runStart = -1;
+    }
+  }
+  if (runStart >= 0) {
+    const len = n - runStart;
+    total += len;
+    if (out.length >= RANGE_MAX_RUNS) {
+      rangeFail.reason = "runs";
+      rangeFail.runs = out.length;
+      rangeFail.total = total;
+      return null;
+    }
+    if (total > RANGE_MAX_TOTAL) {
+      rangeFail.reason = "total";
+      rangeFail.runs = out.length;
+      rangeFail.total = total;
+      return null;
+    }
+    out.push([runStart, len]);
+  }
+  rangeFail.runs = out.length;
+  rangeFail.total = total;
+  if (!out.length) {
+    rangeFail.reason = "empty";
+    return null;
+  }
+  return out;
+}
+function indexRanges(sortedIdx) {
+  rangeFail.reason = null;
+  rangeFail.runs = 0;
+  rangeFail.total = 0;
+  if (!sortedIdx || !sortedIdx.length) {
+    rangeFail.reason = "empty";
+    return null;
+  }
+  rangeFail.total = sortedIdx.length;
+  if (sortedIdx.length > RANGE_MAX_TOTAL) {
+    rangeFail.reason = "total";
+    return null;
+  }
+  const out = [];
+  let runStart = sortedIdx[0];
+  let prev = sortedIdx[0];
+  for (let i = 1; i < sortedIdx.length; i++) {
+    const v = sortedIdx[i];
+    if (v === prev + 1) {
+      prev = v;
+      continue;
+    }
+    if (out.length >= RANGE_MAX_RUNS) {
+      rangeFail.reason = "runs";
+      let runs = out.length + 2;
+      let p = v;
+      for (let k = i + 1; k < sortedIdx.length; k++) {
+        const w = sortedIdx[k];
+        if (w !== p + 1) runs++;
+        p = w;
+      }
+      rangeFail.runs = runs;
+      return null;
+    }
+    out.push([runStart, prev - runStart + 1]);
+    runStart = v;
+    prev = v;
+  }
+  if (out.length >= RANGE_MAX_RUNS) {
+    rangeFail.reason = "runs";
+    rangeFail.runs = out.length + 1;
+    return null;
+  }
+  out.push([runStart, prev - runStart + 1]);
+  rangeFail.runs = out.length;
+  return out;
+}
+var CLUSTER_HEBBIAN_MIXIN = {
+  /**
+   * MAY THIS BRAIN TEACH RIGHT NOW? (2026-08-14)
+   *
+   * One predicate, asked by every teach entry point, answering the question
+   * the compute layer actually cares about: is this brain's declared substrate
+   * present. For a GPU-required brain that is `_gpuProxyReady` - the WEIGHTS
+   * ARE UPLOADED - not merely "a socket is open". Those are different
+   * questions, and confusing them is what let a connected-but-not-yet-uploaded
+   * donor pass the walk gate while the math still landed on the host CPU.
+   *
+   * Returns false instead of waiting, so a chat reply with no donor simply
+   * does not LEARN rather than hanging. Pausing the WALK is the curriculum
+   * gate's job; refusing the MATH is this one's. Both enforce the same rule,
+   * and this one is the law: nothing downstream can teach around it.
+   */
+  _teachSubstrateReady(who) {
+    if (!this.requireGpuSubstrate) return true;
+    const _sockLive = !!(this._brain && this._brain._gpuClient && this._brain._gpuClient.readyState === 1);
+    if (this._gpuProxyReady === true && _sockLive) {
+      if (this._substrateDownSince) {
+        console.log(`[Cluster ${this.name}] compute substrate BACK after ${((Date.now() - this._substrateDownSince) / 1e3).toFixed(0)}s (${this._substrateRefusals | 0} teach calls refused while it was gone) - teaching resumes.`);
+        this._substrateDownSince = null;
+        this._substrateRefusals = 0;
+      }
+      return true;
+    }
+    if (!this._substrateDownSince) {
+      this._substrateDownSince = Date.now();
+      this._substrateRefusals = 0;
+      console.warn(`[Cluster ${this.name}] NO COMPUTE SUBSTRATE - teach REFUSED (first refusal from ${who}). Weights are not uploaded to a donor GPU, and this brain has no CPU teach path: training does not happen without a donor, by design.`);
+    }
+    this._substrateRefusals = (this._substrateRefusals | 0) + 1;
+    return false;
+  },
+  async _crossRegionHebbian(lr, opts = {}) {
+    if (!this.crossProjections) return;
+    if (!this._teachSubstrateReady("_crossRegionHebbian")) return;
+    if (!this._crossRegionHebbianDiagLogged) {
+      this._crossRegionHebbianDiagLogged = true;
+      try {
+        const gpuReady = !!this._gpuProxyReady;
+        const hasProxy = !!(this._gpuProxy && this._gpuProxy.hebbianBound);
+        const poolReady = !!(this._sparsePool && this._sparsePool.ready);
+        const paths = [];
+        for (const [name, proj] of Object.entries(this.crossProjections)) {
+          const gpuFast = !!(proj._gpuBound && gpuReady && hasProxy);
+          const cpuAlive = !!(proj.values && proj.colIdx && proj.rowPtr);
+          paths.push(`${name}:${gpuFast ? "GPU-fast" : cpuAlive ? "CPU" : "NULL"}`);
+        }
+        console.log(`[Cluster ${this.name}] _crossRegionHebbian first-call diag \u2014 gpuReady=${gpuReady} proxy=${hasProxy} pool=${poolReady} \xB7 paths: ${paths.join(" ")}`);
+      } catch {
+      }
+    }
+    const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
+    let _spkCache;
+    const _spkTok = opts.spkCacheStamp;
+    if (_spkTok !== void 0 && this._spkTokCache && this._spkTokCache.word === _spkTok && this._spkTokCache.gen === (this._regionScratchGen | 0)) {
+      _spkCache = this._spkTokCache.map;
+    } else {
+      _spkCache = /* @__PURE__ */ new Map();
+      this._spkTokCache = _spkTok !== void 0 ? { word: _spkTok, map: _spkCache, gen: -1 } : null;
+    }
+    const _spk = (regionName) => {
+      let e = _spkCache.get(regionName);
+      if (!e) {
+        e = this.regionSpikesActive(regionName);
+        _spkCache.set(regionName, e);
+        if (this._spkTokCache && this._spkTokCache.map === _spkCache) {
+          this._spkTokCache.gen = this._regionScratchGen | 0;
+        }
+      }
+      return e;
+    };
+    for (const [name, proj] of Object.entries(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
+      const idx = name.indexOf("_to_");
+      if (idx < 0) continue;
+      const src = name.slice(0, idx);
+      const dst = name.slice(idx + 4);
+      if (!this.regions[src] || !this.regions[dst]) continue;
+      if (this._smLrScale === void 0) {
+        let _v = NaN;
+        try {
+          _v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_SM_LR_SCALE);
+        } catch {
+          _v = NaN;
+        }
+        this._smLrScale = Number.isFinite(_v) && _v >= 0 ? _v : 0.5;
+        if (this._smLrScale !== 1) {
+          console.log(`[Cluster ${this.name}] sem\u2192motor LR damping ACTIVE \u2014 sem_to_motor + sem_to_word_motor Hebbian LR \xD7${this._smLrScale} (saturation prevention; DREAM_SM_LR_SCALE=1.0 disables). Watch [SatHealth] meanCos across the walk.`);
+        }
+      }
+      const _isMotorEmissionProj = name === "sem_to_motor" || name === "sem_to_word_motor";
+      const lrEff = _isMotorEmissionProj ? lr * this._smLrScale : lr;
+      const kScalesForProj = opts.kScalesOverride !== void 0 ? opts.kScalesOverride : typeof this.buildKScalesForProjection === "function" ? this.buildKScalesForProjection(src, dst) : null;
+      const ojaOpts = kScalesForProj ? { kScales: kScalesForProj } : void 0;
+      if (proj._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound) {
+        try {
+          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lrEff);
+        } catch {
+        }
+        const PROBE_CRITICAL = this._probeCriticalProjectionsSet ||= /* @__PURE__ */ new Set([
+          "letter_to_phon",
+          "letter_to_motor"
+        ]);
+        if (PROBE_CRITICAL.has(name) && !skipCpuWhitelist) {
+          const sampleN = this._teachFinalRepSampleEveryN | 0;
+          if (sampleN > 1) {
+            this._whitelistSampleCounter = (this._whitelistSampleCounter || 0) + 1;
+            if (this._whitelistSampleCounter % sampleN !== 0) {
+              continue;
+            }
+          }
+          const preS = _spk(src);
+          const postS = _spk(dst);
+          const preF2 = preS.vec;
+          const postF2 = postS.vec;
+          const activeRows = postS.active;
+          await this._ojaUpdateChunked(
+            proj,
+            preF2,
+            postF2,
+            lrEff,
+            // `projName` rides the options bag purely so the slow-Oja warning
+            // can name what it just spent seconds on — `ASSOCBOUND.2`.
+            ojaOpts ? { ...ojaOpts, activeRows, projName: name } : { activeRows, projName: name }
+          );
+        }
+        continue;
+      }
+      if (this.requireGpuSubstrate) {
+        if (this._gpuProxy && this._gpuProxy.hebbian) {
+          const preU = _spk(src);
+          const postU = _spk(dst);
+          try {
+            this._gpuProxy.hebbian(`${this.name}_${name}`, preU.vec, postU.vec, lrEff);
+          } catch {
+          }
+        } else if (!this._unboundNoProxyWarned) {
+          this._unboundNoProxyWarned = true;
+          console.error(`[Cluster ${this.name}] CRITICAL - ${name} is not GPU-bound and the proxy exposes no unbound hebbian entry point, so this projection is NOT being trained. It is deliberately NOT computed on the CPU: this brain's substrate is the GPU.`);
+        }
+        continue;
+      }
+      if (!proj.values || !proj.colIdx || !proj.rowPtr) {
+        if (!proj._nullCsrHebbianWarned) {
+          proj._nullCsrHebbianWarned = true;
+          console.warn(`[Cluster ${this.name}] Hebbian skip on ${name} \u2014 CPU CSR null AND GPU fast path unavailable (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}). Check compute.html client or PROBE_CRITICAL_CPU_CSR whitelist.`);
+        }
+        continue;
+      }
+      const preS2 = _spk(src);
+      const postS2 = _spk(dst);
+      const preF = preS2.vec;
+      const postF = postS2.vec;
+      const activeRows2 = postS2.active;
+      const _ed = opts.errorDriven ? { eta: opts.errorEta, theta: opts.errorTheta, margin: opts.errorMargin } : proj.errorDriven || null;
+      if (_ed) {
+        const eOpts = { theta: _ed.theta, margin: _ed.margin };
+        const eta = typeof _ed.eta === "number" ? _ed.eta : 1;
+        const step = 2e5;
+        let sliceAt = Date.now();
+        for (let rs = 0; rs < proj.rows; rs += step) {
+          proj.errorUpdate(preF, postF, eta, { ...eOpts, rowStart: rs, rowEnd: Math.min(proj.rows, rs + step) });
+          if (Date.now() - sliceAt > 40) {
+            await new Promise((resolve) => setImmediate(resolve));
+            sliceAt = Date.now();
+          }
+        }
+        continue;
+      }
+      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2, projName: name } : { activeRows: activeRows2, projName: name };
+      if (this._sparsePool && this._sparsePool.ready) {
+        try {
+          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
+        } catch {
+          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
+        }
+      } else {
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
+      }
+      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
+        try {
+          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
+        } catch {
+        }
+      }
+    }
+  },
+  // #37/#112.4 + TIME-SLICED — chunked CPU Oja. The old fixed 250k-row slice
+  // had scale-dependent COST: at 306M a single "slice" ran seconds, so the
+  // event loop starved between yields (the 5s BLOCKED cadence — dashboard
+  // freezes, /ws stalls — that appeared with the full-size deploy; at 40M
+  // the same slice was ~300ms and nobody noticed). Slices now adapt by
+  // TIME: each synchronous slice is measured and the row-chunk halves
+  // (floor 16k) past 60ms / doubles (cap 512k) under 15ms, converging every
+  // projection to ~30ms slices at ANY scale. Identical math (rows are
+  // independent); a slice that still exceeds 2s warns with the projection
+  // name so the next freeze names its culprit. Below one chunk it stays a
+  // single synchronous pass (no yield overhead).
+  async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
+    const rows = proj.rows | 0;
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    const activeRows = ojaOpts && ojaOpts.activeRows;
+    if (activeRows && activeRows.length >= 16384 && this._sparsePool && typeof this._sparsePool.ojaActive === "function" && !(ojaOpts && (ojaOpts.trackDelta || typeof ojaOpts.rowStart === "number" || typeof ojaOpts.rowEnd === "number"))) {
+      try {
+        if (await this._sparsePool.ojaActive(proj, preF, postF, lr, activeRows, ojaOpts && ojaOpts.kScales)) return;
+      } catch (e) {
+        if (!this._ojaPoolWarned) {
+          this._ojaPoolWarned = true;
+          console.warn(`[Cluster ${this.name}] Oja on the worker pool failed (${e && e.message}) \u2014 running it on the main thread.`);
+        }
+      }
+    }
+    if (activeRows) {
+      const n = activeRows.length | 0;
+      const ACTIVE_SLICE_MIN = 2048;
+      if (n <= ACTIVE_SLICE_MIN) {
+        const _t0 = Date.now();
+        proj.ojaUpdate(preF, postF, lr, ojaOpts);
+        const _dt = Date.now() - _t0;
+        if (_dt > 250) {
+          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (proj=${ojaOpts && ojaOpts.projName || "?"} nnz=${proj.nnz ?? "?"}) \u2014 under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
+        }
+        return;
+      }
+      const rowsList = Array.prototype.slice.call(activeRows);
+      const total = rowsList.length;
+      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
+      const yieldMacro2 = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+      const _tStart = Date.now();
+      for (let i = 0; i < total; ) {
+        const chunk = this._ojaActiveChunk;
+        const j = Math.min(i + chunk, total);
+        const t0 = Date.now();
+        proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, activeRows: rowsList.slice(i, j) });
+        const dt = Date.now() - t0;
+        i = j;
+        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
+        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
+        if (i < total) {
+          const _h0 = Date.now();
+          await yieldMacro2();
+          const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+          _hp.n++;
+          _hp.ms += Date.now() - _h0;
+        }
+      }
+      const _tot = Date.now() - _tStart;
+      if (_tot > 2e3) {
+        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (proj=${ojaOpts && ojaOpts.projName || "?"} nnz=${proj.nnz ?? "?"}) \u2014 but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
+      }
+      return;
+    }
+    if (rows <= 65536) {
+      const _t0 = Date.now();
+      proj.ojaUpdate(preF, postF, lr, ojaOpts);
+      const _dt = Date.now() - _t0;
+      if (_dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW single-pass Oja: ${_dt}ms for ${rows.toLocaleString()} rows (nnz=${proj.nnz ?? "?"}) \u2014 under the chunk threshold so it never sliced; this matrix is a loop-pin culprit.`);
+      return;
+    }
+    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; ) {
+      const chunk = this._ojaChunkRows;
+      const re = Math.min(rs + chunk, rows);
+      const t0 = Date.now();
+      proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, rowStart: rs, rowEnd: re });
+      const dt = Date.now() - t0;
+      rs = re;
+      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
+      if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) \u2014 chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
+      if (rs < rows) {
+        const _h0 = Date.now();
+        await yieldMacro();
+        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+        _hp.n++;
+        _hp.ms += Date.now() - _h0;
+      }
+    }
+  },
+  // TIME-SLICED — chunked bare-Hebbian write (the predictive-error delta
+  // rule in _teachPredictiveError). Same adaptive slicing + shared chunk
+  // state as _ojaUpdateChunked; row-independent so identical math. Fires
+  // once per pair over the full intra matrix — unsliced it stacked into
+  // ~20s stalls on multi-pair seed words (e.g. "minus").
+  async _hebbianUpdateChunked(mat, preF, postF, lr) {
+    const rows = mat.rows | 0;
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    if (rows <= 65536) {
+      mat.hebbianUpdate(preF, postF, lr);
+      return;
+    }
+    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; ) {
+      const chunk = this._ojaChunkRows;
+      const re = Math.min(rs + chunk, rows);
+      const t0 = Date.now();
+      mat.hebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
+      const dt = Date.now() - t0;
+      rs = re;
+      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
+      if (rs < rows) {
+        const _h0 = Date.now();
+        await yieldMacro();
+        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+        _hp.n++;
+        _hp.ms += Date.now() - _h0;
+      }
+    }
+  },
+  // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
+  // slicing as _ojaUpdateChunked (shared chunk-size state so both paths
+  // converge together). Identical math; row-independent.
+  async _antiHebbianChunked(mat, preF, postF, lr, opts) {
+    const rows = mat.rows | 0;
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    const activeRows = opts && opts.activeRows;
+    if (activeRows) {
+      const n = activeRows.length | 0;
+      const ACTIVE_SLICE_MIN = 2048;
+      if (n <= ACTIVE_SLICE_MIN) {
+        mat.antiHebbianUpdate(preF, postF, lr, { activeRows });
+        return;
+      }
+      const rowsList = Array.prototype.slice.call(activeRows);
+      const total = rowsList.length;
+      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
+      const yieldMacroA = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+      for (let i = 0; i < total; ) {
+        const chunk = this._ojaActiveChunk;
+        const j = Math.min(i + chunk, total);
+        const t0 = Date.now();
+        mat.antiHebbianUpdate(preF, postF, lr, { activeRows: rowsList.slice(i, j) });
+        const dt = Date.now() - t0;
+        i = j;
+        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
+        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
+        if (i < total) {
+          const _h0 = Date.now();
+          await yieldMacroA();
+          const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+          _hp.n++;
+          _hp.ms += Date.now() - _h0;
+        }
+      }
+      return;
+    }
+    if (rows <= 65536) {
+      const _t0 = Date.now();
+      mat.antiHebbianUpdate(preF, postF, lr);
+      const _dt = Date.now() - _t0;
+      if (_dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW single-pass anti-Hebbian: ${_dt}ms for ${rows.toLocaleString()} rows (nnz=${mat.nnz ?? "?"}) \u2014 under the chunk threshold so it never sliced; this matrix is a loop-pin culprit.`);
+      return;
+    }
+    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; ) {
+      const chunk = this._ojaChunkRows;
+      const re = Math.min(rs + chunk, rows);
+      const t0 = Date.now();
+      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
+      const dt = Date.now() - t0;
+      rs = re;
+      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
+      if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows \u2014 chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
+      if (rs < rows) {
+        const _h0 = Date.now();
+        await yieldMacro();
+        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+        _hp.n++;
+        _hp.ms += Date.now() - _h0;
+      }
+    }
+  },
+  /**
+   * T17.3.d — Upload all cross-projections to GPU via the proxy. Once
+   * complete, sets `_gpuProxyReady = true` so subsequent
+   * `_crossRegionHebbian` calls dispatch to GPU alongside the CPU
+   * shadow updates. The `_propagateCrossRegions` hot-path wiring
+   * follows in T17.3.e — currents readback requires async/await
+   * cascade through cluster.step which is a larger refactor.
+   *
+   * Cluster must be fully constructed (cross-projections initialized)
+   * before calling this. Safe to call after construction but before
+   * any curriculum teach.
+   */
+  async initGpu() {
+    if (!this._gpuProxy || !this._gpuProxy.upload) return false;
+    this._gpuProxyReady = false;
+    const targets = [];
+    if (this.synapses) {
+      const _intraBinding = this._gpuBindingHint && this.size > 0 ? {
+        srcCluster: "langCortex",
+        srcRegion: { start: 0, end: this.size },
+        dstCluster: "langCortex",
+        dstRegion: { start: 0, end: this.size }
+      } : null;
+      targets.push({ key: `${this.name}_intraSynapses`, name: "intraSynapses", proj: this.synapses, binding: _intraBinding });
+    }
+    if (this.crossProjections) {
+      const hint = this._gpuBindingHint || null;
+      for (const name of Object.keys(this.crossProjections)) {
+        const key = `${this.name}_${name}`;
+        let binding = null;
+        if (hint && typeof hint.resolve === "function") {
+          try {
+            binding = hint.resolve(name, this.crossProjections[name]);
+          } catch {
+            binding = null;
+          }
+        }
+        targets.push({ key, name, proj: this.crossProjections[name], binding });
+      }
+    }
+    let uploaded = 0;
+    let boundCount = 0;
+    for (const { key, name: projName, proj, binding } of targets) {
+      if (!proj || !proj.values || !proj.rowPtr || !proj.colIdx) {
+        console.error(`[Cluster ${this.name}] CRITICAL \u2014 ${key} CPU CSR is FREED (GPU-authoritative weights died with the previous donor). NOT uploading an empty matrix over the new donor. This projection restarts from its last DISK state on next boot; mid-run learning since the free is lost until GPU-readback persistence ships.`);
+        continue;
+      }
+      try {
+        const matrix = {
+          rows: proj.rows,
+          cols: proj.cols,
+          nnz: proj.nnz,
+          values: proj.values,
+          colIdx: proj.colIdx,
+          rowPtr: proj.rowPtr
+        };
+        let ack = null;
+        for (let _try = 1; _try <= 3; _try++) {
+          ack = await this._gpuProxy.upload(key, matrix, binding);
+          if (ack && ack.ok) break;
+          if (_try < 3) console.warn(`[Cluster ${this.name}] GPU upload ${projName || key} attempt ${_try}/3 failed (${ack ? "ack not-ok" : "null / timeout"}) \u2014 retrying`);
+        }
+        if (ack && ack.ok) {
+          uploaded++;
+          if (binding) {
+            boundCount++;
+            proj._gpuBound = true;
+            const _freedValuesBytes = proj.values ? proj.values.byteLength : 0;
+            const _freedColIdxBytes = proj.colIdx ? proj.colIdx.byteLength : 0;
+            const _freedRowPtrBytes = proj.rowPtr ? proj.rowPtr.byteLength : 0;
+            const _freedMB = ((_freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes) / (1024 * 1024)).toFixed(1);
+            if (!this._t1822TotalFreedBytes) this._t1822TotalFreedBytes = 0;
+            const PROBE_CRITICAL_CPU_CSR = /* @__PURE__ */ new Set([
+              "letter_to_phon",
+              // READ probe reads phon via CPU propagate
+              "letter_to_motor",
+              // TALK probe + DYN-PROD letter fallback
+              "sem_to_motor",
+              // DYN-PROD primary path + separation probe
+              // GINTRA — the intra matrix is now GPU-BOUND (langCortex pseudo-
+              // cluster) which routes it through this free branch for the first
+              // time. Its CPU CSR must NEVER free: checkpoints serialize it
+              // (brain-weights.bin section 'cortex.synapses'), the final-rep
+              // shadow trains it, and emission's intra propagate reads it.
+              "intraSynapses"
+              // Reverted: widening the whitelist added ~2 GB CPU CSR
+              // back per extra projection and re-triggered the 14 GB
+              // external-memory V8 GC stall that T24.a fixed. READ
+              // probes that want letter_to_sem now route through the
+              // GPU proxy fallback — `SparseMatrix.propagate` on a
+              // freed CSR returns a zero vector via the null-CSR
+              // guard, so probe scoring stays correct-shape even when
+              // the CPU array is gone.
+            ]);
+            const _freeMinBytes = (Number(process.env.DREAM_CSR_FREE_MIN_MB) > 0 ? Number(process.env.DREAM_CSR_FREE_MIN_MB) : 512) * 1048576;
+            const _projBytes = _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
+            if (_projBytes < _freeMinBytes) {
+              console.log(`[CPU-CSR-free] keeping ${key} resident (${_freedMB}MB < ${Math.round(_freeMinBytes / 1048576)}MB pressure gate) \u2014 checkpoints stay complete, donor churn stays lossless.`);
+            } else if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
+              console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) \u2014 needed for READ/TALK/DYN-PROD gate probes AND for checkpoint completeness (freed matrices are skipped by the save; freeing this would silently stop persisting the largest section of her brain).`);
+            } else {
+              proj.values = null;
+              proj.colIdx = null;
+              proj.rowPtr = null;
+              this._t1822TotalFreedBytes += _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
+              console.log(`[CPU-CSR-free] freed ${key} CPU arrays: ${(_freedValuesBytes / 1024 / 1024).toFixed(1)}MB values + ${(_freedColIdxBytes / 1024 / 1024).toFixed(1)}MB colIdx + ${(_freedRowPtrBytes / 1024 / 1024).toFixed(1)}MB rowPtr = ${_freedMB}MB \xB7 cumulative freed ${(this._t1822TotalFreedBytes / 1024 / 1024).toFixed(1)}MB.`);
+            }
+          }
+        } else {
+          console.warn(`[Cluster ${this.name}] GPU upload failed for ${key}:`, ack && ack.error);
+        }
+      } catch (err) {
+        console.warn(`[Cluster ${this.name}] GPU upload exception for ${key}:`, err && err.message);
+      }
+    }
+    this._gpuProxyReady = uploaded === targets.length;
+    const boundTag = boundCount > 0 ? ` (${boundCount} cluster-bound at upload \u2014 standalone VRAM overhead skipped)` : "";
+    console.log(`[Cluster ${this.name}] GPU proxy ready: ${uploaded}/${targets.length} matrices uploaded${boundTag} (${this._gpuProxyReady ? "FULL \u2014 intra-synapses + all cross-projections on GPU" : "PARTIAL \u2014 falling back to CPU for failed matrices"})`);
+    if (typeof process !== "undefined" && typeof process.memoryUsage === "function") {
+      try {
+        const mem = process.memoryUsage();
+        const heapMB = (mem.heapUsed / 1024 / 1024).toFixed(1);
+        const extMB = ((mem.external || 0) / 1024 / 1024).toFixed(1);
+        const abMB = ((mem.arrayBuffers || 0) / 1024 / 1024).toFixed(1);
+        console.log(`[Cluster] Post-upload V8 memory: heapUsed=${heapMB}MB external=${extMB}MB arrayBuffers=${abMB}MB (selective free nulled ~${((this._t1822TotalFreedBytes || 0) / 1024 / 1024).toFixed(1)}MB of CPU CSR arrays \u2014 V8 auto-reclaims on its own schedule; explicit gc() removed because prior attempts triggered OOM mid-gc).`);
+      } catch (err) {
+        console.warn(`[Cluster] memory-log diagnostic failed:`, err && err.message);
+      }
+    }
+    return this._gpuProxyReady;
+  },
+  /**
+   * T17.3.e — intra-cluster Hebbian wrapper. Applies the update on
+   * CPU (authoritative) AND fires GPU fire-and-forget shadow when
+   * proxy ready. Curriculum teach uses this instead of calling
+   * `cluster.synapses.hebbianUpdate` directly so intra-cluster
+   * weights stay in sync between CPU and GPU.
+   */
+  /**
+   * The host's error-driven pass over the inside wiring: lit `post` cells are the
+   * pattern that should fire for the lit `pre` cells, and a wire changes only
+   * where a cell is wrong. Rows are visited only in the regions the taught
+   * pattern lies in (overlapping sub-bands merged), sliced by time.
+   */
+  /** Set how many index runs a directed inside-wiring lesson may ship (the holding card's limit). */
+  setRangeMaxRuns(n) {
+    return setRangeMaxRuns(n);
+  },
+  async _intraErrorUpdate(pre, post) {
+    const mode = this.synapses.errorDriven;
+    const act = [];
+    for (let i = 0; i < post.length; i++) {
+      if (post[i]) act.push(i);
+    }
+    if (act.length === 0) return;
+    const spans = [];
+    for (const r of Object.values(this.regions || {})) {
+      if (!r || !(r.end > r.start)) continue;
+      let lo = 0, hi = act.length - 1, hit = false;
+      while (lo <= hi) {
+        const mid = lo + hi >> 1;
+        const v = act[mid];
+        if (v < r.start) lo = mid + 1;
+        else if (v >= r.end) hi = mid - 1;
+        else {
+          hit = true;
+          break;
+        }
+      }
+      if (hit) spans.push([r.start, r.end]);
+    }
+    spans.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const s of spans) {
+      const m = merged[merged.length - 1];
+      if (m && s[0] <= m[1]) {
+        if (s[1] > m[1]) m[1] = s[1];
+      } else merged.push([s[0], s[1]]);
+    }
+    const eta = typeof mode.eta === "number" ? mode.eta : 1;
+    const eOpts = { theta: mode.theta, margin: mode.margin };
+    let sliceAt = Date.now();
+    for (const [a, b] of merged) {
+      for (let rs = a; rs < b; rs += 2e5) {
+        this.synapses.errorUpdate(pre, post, eta, { ...eOpts, rowStart: rs, rowEnd: Math.min(b, rs + 2e5) });
+        if (Date.now() - sliceAt > 40) {
+          await new Promise((resolve) => setImmediate(resolve));
+          sliceAt = Date.now();
+        }
+      }
+    }
+    const st = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+    st.errorDriven = (st.errorDriven || 0) + 1;
+  },
+  async intraSynapsesHebbian(pre, post, lr) {
+    if (!this.synapses) return;
+    if (!this._teachSubstrateReady("intraSynapsesHebbian")) return;
+    let _boundCarried = false;
+    if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
+      try {
+        this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr);
+      } catch {
+      }
+      const _sB = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+      _sB.boundGpu = (_sB.boundGpu || 0) + 1;
+      if (this._teachIntermediateRep === true) {
+        _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
+        return;
+      }
+      const _nowSh = Date.now();
+      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
+      if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) {
+        _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
+        return;
+      }
+      this._lastIntraShadowMs = _nowSh;
+      _boundCarried = true;
+    }
+    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
+    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
+    if (this.synapses.errorDriven && !atBioScale) {
+      await this._intraErrorUpdate(pre, post);
+      return;
+    }
+    if (atBioScale) {
+      const _act = [];
+      for (let _i = 0; _i < post.length; _i++) {
+        if (post[_i]) _act.push(_i);
+      }
+      let _gpuCarried = false;
+      const _sPre = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+      _sPre.activeSum = (_sPre.activeSum || 0) + _act.length;
+      _sPre.calls = (_sPre.calls || 0) + 1;
+      if (!_boundCarried && this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === "function") {
+        try {
+          const _postRanges = indexRanges(_act);
+          const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
+          if (!_postRanges) {
+            _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
+            const _r = rangeFail.reason || "unknown";
+            _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
+            if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
+            _sPre.rangesRunsSum = (_sPre.rangesRunsSum || 0) + rangeFail.runs;
+            const _b = rangeFail.runs <= 16 ? "le16" : rangeFail.runs <= 64 ? "le64" : rangeFail.runs <= 256 ? "le256" : rangeFail.runs <= 1024 ? "le1k" : rangeFail.runs <= 8192 ? "le8k" : rangeFail.runs <= 65536 ? "le64k" : "gt64k";
+            _sPre[`rangesRunsBucket_${_b}`] = (_sPre[`rangesRunsBucket_${_b}`] || 0) + 1;
+          } else if (!_preRanges) {
+            _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
+            const _r = rangeFail.reason || "unknown";
+            _sPre[`rangesFailPre_${_r}`] = (_sPre[`rangesFailPre_${_r}`] || 0) + 1;
+          } else {
+            const _okRuns = Math.max(_preRanges.length, _postRanges.length);
+            if (_okRuns > (_sPre.rangesRunsOkMax || 0)) _sPre.rangesRunsOkMax = _okRuns;
+            _sPre.rangesOk = (_sPre.rangesOk || 0) + 1;
+            _sPre.rangesRunsOkSum = (_sPre.rangesRunsOkSum || 0) + _okRuns;
+          }
+          if (_preRanges && _postRanges) {
+            _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
+          }
+        } catch {
+          _gpuCarried = false;
+          _sPre.rangesThrew = (_sPre.rangesThrew || 0) + 1;
+        }
+      }
+      this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
+      const _s = _sPre;
+      if (_gpuCarried) _s.gpu = (_s.gpu || 0) + 1;
+      if (_boundCarried || !_gpuCarried || this._intraOjaShadowCounter % 5 === 0) {
+        if (_boundCarried) {
+          _s.boundShadow = (_s.boundShadow || 0) + 1;
+          _s.cpuShadow = (_s.cpuShadow || 0) + 1;
+        } else if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1;
+        else _s.cpuFull = (_s.cpuFull || 0) + 1;
+        const _shadow0 = Date.now();
+        if (this.synapses.errorDriven) await this._intraErrorUpdate(pre, post);
+        else await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: "intraSynapses" });
+        const _cpuDt = Date.now() - _shadow0;
+        _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
+        if (_gpuCarried || _boundCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
+        else _s.cpuFullMs = (_s.cpuFullMs || 0) + _cpuDt;
+      }
+    } else if (this._sparsePool && this._sparsePool.ready) {
+      try {
+        await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
+      } catch {
+        this.synapses.ojaUpdate(pre, post, lr);
+      }
+    } else {
+      this.synapses.ojaUpdate(pre, post, lr);
+    }
+  },
+  /**
+   * BCM sliding-threshold update on the intra-cluster synapse matrix.
+   * Requires a per-neuron firing-rate target θ; on first call, lazy-
+   * inits `_bcmTheta` to a Float32Array of size `this.size` populated
+   * at 0.05 (prior to biological calibration). Every call:
+   *
+   *   1. Low-pass θ against the current post-spike vector:
+   *        θ[i] ← (1−α)·θ[i] + α·y[i]²
+   *   2. Apply the BCM delta:
+   *        Δw[i,j] = lr × y[i] × (y[i] − θ[i]) × x[j]
+   *
+   * `α` defaults to 0.01 (slow drift — matches biological sliding-
+   * threshold timescales of ~100-1000 teach events). Silent no-op when
+   * disabled so the teach path stays Oja-only by default.
+   *
+   * ⭐ THE SWITCH IS `DREAM_BCM=1`, resolved once in the Cluster constructor;
+   * a runtime `cluster._bcmEnabled = true` still overrides it. ⛔ Until
+   * 2026-09-01 this comment promised that "the operator can flip the flag in
+   * a session" while `_bcmEnabled` was assigned NOWHERE in the tree — the
+   * feature was complete from gate to kernel and simply unreachable on the
+   * box. Default stays OFF deliberately: turning BCM on changes the
+   * plasticity rule on every teach path and is a RE-PRICE-bearing change.
+   */
+  intraSynapsesBcm(pre, post, lr, alpha = 0.01) {
+    if (!this._bcmEnabled) return;
+    if (!this.synapses || typeof this.synapses.bcmUpdate !== "function") return;
+    if (!this._bcmTheta || this._bcmTheta.length !== this.size) {
+      this._bcmTheta = new Float32Array(this.size);
+      this._bcmTheta.fill(0.05);
+    }
+    const theta = this._bcmTheta;
+    const oneMinusAlpha = 1 - alpha;
+    for (let i = 0; i < this.size; i++) {
+      const y = post[i];
+      if (y) {
+        theta[i] = oneMinusAlpha * theta[i] + alpha * y * y;
+      } else {
+        theta[i] = oneMinusAlpha * theta[i];
+      }
+    }
+    this.synapses.bcmUpdate(pre, post, theta, lr);
+  },
+  /**
+   * Anti-Hebbian update on every cross-region projection. GPU dispatch
+   * only — at biological scale sem_to_motor's CPU CSR is selectively
+   * freed so the CPU anti-Hebbian can't land on cross-projections.
+   * Routes through the batched plasticity queue with a NEGATIVE lr,
+   * which the PLASTICITY_SHADER branches on to apply pure co-active
+   * decrement instead of Oja's self-normalizing update. Silent no-op
+   * when the GPU proxy is unavailable — in that case contrastive
+   * push-pull rides intra-cluster recurrent matrix only.
+   */
+  async _crossRegionAntiHebbian(lr, opts = {}) {
+    if (!this.crossProjections) return;
+    if (!this._gpuProxyReady || !this._gpuProxy || typeof this._gpuProxy.antiHebbianBound !== "function") return;
+    const absLr = Math.abs(lr);
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
+    for (const name of Object.keys(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
+      const proj = this.crossProjections[name];
+      if (!proj || !proj._gpuBound) {
+        if (proj && (!proj.values || !proj.colIdx || !proj.rowPtr) && !proj._nullCsrAntiHebbianWarned) {
+          proj._nullCsrAntiHebbianWarned = true;
+          console.warn(`[Cluster ${this.name}] Anti-Hebbian skip on ${name} \u2014 CPU CSR null AND not GPU-bound (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}).`);
+        }
+        continue;
+      }
+      try {
+        this._gpuProxy.antiHebbianBound(`${this.name}_${name}`, absLr);
+      } catch {
+      }
+    }
+  },
+  /**
+   * Anti-Hebbian update on the intra-cluster synapse matrix. Depresses
+   * co-active (pre=1, post=1) weights so sampled-wrong pairs push apart
+   * instead of superposing. Used by the push-pull contrastive teach path:
+   * caller fires the positive-pair Oja update first, then invokes this
+   * method with a sampled WRONG post-pattern to repel it from the
+   * pre-pattern in weight space.
+   *
+   * Sync at biological scale (matches `intraSynapsesHebbian`'s bio-path
+   * branch) — zero external-memory allocation, single CSR walk. `lr`
+   * here is always POSITIVE; the method handles the sign internally.
+   */
+  async intraSynapsesAntiHebbian(pre, post, lr, opts = {}) {
+    if (!this.synapses) return;
+    if (!this._teachSubstrateReady("intraSynapsesAntiHebbian")) return;
+    if (typeof this.synapses.antiHebbianUpdate !== "function") return;
+    if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
+      try {
+        this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, -Math.abs(lr));
+      } catch {
+      }
+      if (this._teachIntermediateRep === true) return;
+      const _nowSh = Date.now();
+      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
+      if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
+      this._lastIntraAntiShadowMs = _nowSh;
+    }
+    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
+    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
+    if (atBioScale) {
+      const _act = Array.isArray(opts.activeRows) ? opts.activeRows : (() => {
+        const a = [];
+        for (let _i = 0; _i < post.length; _i++) {
+          if (post[_i]) a.push(_i);
+        }
+        return a;
+      })();
+      await this._antiHebbianChunked(this.synapses, pre, post, lr, { activeRows: _act });
+    } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
+      try {
+        await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
+      } catch {
+        this.synapses.antiHebbianUpdate(pre, post, lr);
+      }
+    } else {
+      this.synapses.antiHebbianUpdate(pre, post, lr);
+    }
+  }
+};
+
+// ../js/brain/cluster/lexical-constants.js
+var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
+var FUNCTION_WORDS = /* @__PURE__ */ new Set([
+  // Articles + determiners
+  "a",
+  "an",
+  "the",
+  "this",
+  "that",
+  "these",
+  "those",
+  // Auxiliaries + copulas
+  "is",
+  "am",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "can",
+  "could",
+  "should",
+  "may",
+  "might",
+  // Pronouns
+  "i",
+  "you",
+  "he",
+  "she",
+  "it",
+  "we",
+  "they",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+  "my",
+  "your",
+  "his",
+  "its",
+  "our",
+  "their",
+  // Prepositions
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "by",
+  "for",
+  "with",
+  "from",
+  "up",
+  "down",
+  "out",
+  "off",
+  "over",
+  "under",
+  "into",
+  // Conjunctions
+  "and",
+  "or",
+  "but",
+  "so",
+  "if",
+  "because",
+  "when",
+  "while",
+  "as",
+  // Negation
+  "not",
+  "no"
+]);
 
 // ../js/brain/cluster/emit.js
+init_brain_rng();
 var _emitSampleRand = brainStream("emit-word-sample");
 var SPEECH_FLOOR = 0.04;
 var CLUSTER_EMIT_MIXIN = {
@@ -16340,6 +16583,7 @@ var CLUSTER_EMIT_MIXIN = {
    * sem currently holds. Null when nothing is in mind.
    */
   currentSpeechUnits() {
+    if (this._speechUnitCells) return this._speechCellsLit();
     let base = null;
     if (Array.isArray(this._speechUnits) && this._speechUnits.length) base = this._speechUnits;
     else if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
@@ -16349,6 +16593,77 @@ var CLUSTER_EMIT_MIXIN = {
     if (!base) return null;
     const live = this.feelingUnits();
     return live.length ? base.concat(live) : base;
+  },
+  /** How much of what a lesson gives must be present before she says a first word (see SPEECH_FLOOR). */
+  speechFloor() {
+    return SPEECH_FLOOR;
+  },
+  /**
+   * Put the speaking state in mind. Every writer of the state calls this. In
+   * a cortex built with a cell for every unit, the units are LIT in her spike
+   * sheet (and on the card), replacing whatever state was lit before; `null`
+   * clears it.
+   */
+  setSpeechUnits(units) {
+    this._speechUnits = Array.isArray(units) && units.length ? units : null;
+    if (!this._speechUnitCells) return;
+    this._lightSpeechCells("_speechLit", this._speechUnits);
+  },
+  /** Clear the cells a previous call lit under `slot`, light `units` (unit id = cell of the speech region), mirror to the card. */
+  _lightSpeechCells(slot, units) {
+    const r = this.regions.speech;
+    const sheet = this.lastSpikes;
+    const n = r.end - r.start;
+    const prev = this[slot];
+    if (prev) for (let i = 0; i < prev.length; i++) sheet[r.start + prev[i]] = 0;
+    const lit = [];
+    if (units) for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u >= 0 && u < n) {
+        sheet[r.start + u] = 1;
+        lit.push(u);
+      }
+    }
+    this[slot] = lit.length ? lit : null;
+    const other = this[slot === "_speechLit" ? "_feelingLit" : "_speechLit"];
+    if (other) for (let i = 0; i < other.length; i++) sheet[r.start + other[i]] = 1;
+    if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.writeSpikeSlice === "function") {
+      try {
+        this._gpuProxy.writeSpikeSlice("speech", other ? lit.concat(other) : lit);
+      } catch {
+      }
+    }
+  },
+  /**
+   * The speaking state, READ FROM HER CELLS: the cells of the speech region
+   * that are lit in the spike sheet right now. A meaning held in sem with no
+   * spoken state lights its cells first, and so does how she feels. Null when
+   * no cell is lit — then there is nothing to say.
+   */
+  _speechCellsLit() {
+    if (!(Array.isArray(this._speechUnits) && this._speechUnits.length) && Array.isArray(this._mindFeats) && this._mindFeats.length) {
+      const key = this._mindFeats[this._mindFeats.length - 1];
+      if (this._mindLitFor !== key || !this._speechLit) {
+        this._lightSpeechCells("_speechLit", this.speechReadout().meaningUnits(this._mindFeats));
+        this._mindLitFor = key;
+      }
+    }
+    const r = this.regions.speech;
+    const sheet = this.lastSpikes;
+    let any = false;
+    const sl = this._speechLit;
+    if (sl) {
+      for (let i = 0; i < sl.length; i++) if (sheet[r.start + sl[i]]) {
+        any = true;
+        break;
+      }
+    }
+    if (!any) return null;
+    this._lightSpeechCells("_feelingLit", this.feelingUnits());
+    const out = [];
+    const reg = sheet.subarray(r.start, r.end);
+    for (let i = reg.indexOf(1); i !== -1; i = reg.indexOf(1, i + 1)) out.push(i);
+    return out.length ? out : null;
   },
   /**
    * Has she been taught something to say to this line? True when the first
@@ -16363,12 +16678,30 @@ var CLUSTER_EMIT_MIXIN = {
     const rd = this.speechReadout();
     const units = rd.stateUnits(said, []);
     if (!units.length) return false;
-    const live = this.feelingUnits();
-    const all = live.length ? units.concat(live) : units;
-    const s = rd.scores(all, n);
+    const all = this.speechStateFor(units);
+    if (!all || !all.length) return false;
+    const s = rd.bucketMeans(all, n);
     let best = 0;
     for (let b = 0; b < n; b++) if (s[b] > best) best = s[b];
-    return best / all.length >= SPEECH_FLOOR;
+    return best >= SPEECH_FLOOR;
+  },
+  /**
+   * "If this were in mind, what state would she speak from?" — lights `units`
+   * as the speaking state, reads the state back the way a spoken word is read
+   * (her lit cells and how she feels), then restores what was in mind before.
+   * Probes and gates use this, so they measure the path speech takes.
+   */
+  speechStateFor(units) {
+    const keepU = this._speechUnits, keepC = this._speechCtx, keepM = this._mindFeats;
+    this.setSpeechUnits(units);
+    this._speechCtx = null;
+    this._mindFeats = null;
+    const got = this.currentSpeechUnits();
+    this.setSpeechUnits(keepU);
+    this._speechCtx = keepC;
+    this._mindFeats = keepM;
+    if (this._speechUnitCells) this._mindLitFor = null;
+    return got;
   },
   /** How she feels right now, as speaking-state units (empty when no mood is known). */
   feelingUnits() {
@@ -17929,6 +18262,16 @@ var CLUSTER_ATTENTION_MIXIN = {
 
 // ../js/brain/cluster.js
 init_brain_rng();
+var CORTEX_BUILD = Object.freeze({
+  targetFanout: 300,
+  crossTargetFanout: 300,
+  betweenClusterDensityScale: 1,
+  crossDensityCap: 1,
+  regionWiring: true,
+  errorDrivenProjections: true,
+  errorDrivenIntra: true,
+  speechUnitCells: true
+});
 var EMPTY_PRE_SPIKES = new Uint32Array(0);
 var _personaRefreshRand = brainStream("persona-refresh-pick");
 var _lifNoiseRand = brainStream("lif-noise");
@@ -18095,6 +18438,10 @@ var NeuronCluster = class {
   constructor(name, size, opts = {}) {
     this.name = name;
     this.size = size;
+    if (name === "cortex" && size - SPEECH_LAYOUT.G >= 1e4) {
+      opts = { ...CORTEX_BUILD, ...opts };
+      if (this.wordCellCode === void 0) this.wordCellCode = true;
+    }
     this._gpuProxy = opts.gpuProxy || null;
     this._gpuProxyReady = false;
     this.requireGpuSubstrate = !!this._gpuProxy;
@@ -18177,9 +18524,14 @@ var NeuronCluster = class {
           size - 1
         );
         if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (small-world topology) ${size.toLocaleString()}\xD7${size.toLocaleString()} fanout=${fanout} radiusLocal=${this.smallWorldRadiusLocal} radiusMed=${this.smallWorldRadiusMed} (~${(size * fanout).toLocaleString()} nnz)...`);
-        this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1, {
+        const _startStrength = opts.errorDrivenIntra ? 0.03 : 1;
+        this.synapses.initSmallWorld(fanout, this.excitatoryRatio, _startStrength, {
           radiusLocal: this.smallWorldRadiusLocal,
-          radiusMed: this.smallWorldRadiusMed
+          radiusMed: this.smallWorldRadiusMed,
+          // the speaking-state cells at the end of the cortex take no inside wires
+          wired: name === "cortex" && opts.speechUnitCells ? size - SPEECH_LAYOUT.G : 0,
+          // `opts.regionWiring`: a cell's inside wires come from its own region
+          spans: opts.regionWiring ? this._regionSpans() : null
         });
       } else {
         if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}\xD7${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
@@ -18192,7 +18544,12 @@ var NeuronCluster = class {
       if (_logIntra) console.log(`[Cluster ${name}] intra-synapse topology DEFERRED \u2014 a matching checkpoint is queued and would overwrite it anyway (saves the full construction pass at ${size.toLocaleString()} neurons). ensureIntraTopology() builds it if the restore does not deliver.`);
     } else {
       this._intraTopologyThunk = null;
-      _buildIntraTopology();
+      if (name === "cortex") this._buildIntraAfterRegions = _buildIntraTopology;
+      else _buildIntraTopology();
+    }
+    if (opts.errorDrivenIntra) {
+      const m = opts.errorDrivenIntra;
+      this.synapses.errorDriven = { eta: m.eta ?? 1, theta: m.theta ?? 0.5, margin: m.margin ?? 0.25 };
     }
     this.attentionGain = {};
     this._metaRegister = [];
@@ -18211,7 +18568,11 @@ var NeuronCluster = class {
     this.firingRate = 0;
     this.regions = {};
     if (name === "cortex") {
-      const s = size;
+      const _speechRun = opts.speechUnitCells ? SPEECH_LAYOUT.G : 0;
+      if (_speechRun && size - _speechRun < 1e4) {
+        throw new Error(`[Cluster ${name}] ${size.toLocaleString()} cells cannot hold the ${_speechRun.toLocaleString()} speaking-state cells and a language cortex beside them.`);
+      }
+      const s = size - _speechRun;
       const semStart = Math.floor(s * 0.75);
       const semEnd = Math.floor(s * 0.875);
       const semBand = Math.floor((semEnd - semStart) / 6);
@@ -18258,6 +18619,17 @@ var NeuronCluster = class {
         word_motor_art: wmBands.art,
         word_motor_life: wmBands.life
       };
+      this._speechUnitCells = false;
+      this.wiredCells = s;
+      if (_speechRun) {
+        this.regions.speech = { start: s, end: size };
+        this._speechUnitCells = true;
+      }
+      if (this._buildIntraAfterRegions) {
+        const build = this._buildIntraAfterRegions;
+        this._buildIntraAfterRegions = null;
+        build();
+      }
       if (_kLayersEligible && this.regions && (this.microcolumns || this.lamination || this.hubsEnabled)) {
         const _allRegions = this.regions;
         const regionNames = Object.keys(_allRegions).filter((rn) => {
@@ -18368,7 +18740,13 @@ var NeuronCluster = class {
         ["sem", "fineType"],
         ["sem", "motor"],
         ["motor", "letter"],
-        ["auditory", "phon"]
+        ["auditory", "phon"],
+        // READING BY SIGHT. A written word's letters-in-order code in `letter`
+        // (`Curriculum._spellingCells`) onto the word's own cells in `sem`, and
+        // back (meaning → how it is spelled). The sounding-out route
+        // (letter → phon → sem) stays; this is the direct one, and it is the
+        // pathway the READ gates measure.
+        ["letter", "sem"]
         // ⛔ NO `['sem', 'word_motor']` PAIR. What she says is read by the speech
         // readout (`speech-readout.js`): active units of the speaking state →
         // word slots, every slot reading every unit. As a cell-to-cell sheet
@@ -18377,7 +18755,7 @@ var NeuronCluster = class {
         // lesson could change which cells a slot was wired to. The `word_motor`
         // region itself stays: it is where the said word lights up.
       ];
-      const crossTargetFanout = 10;
+      const crossTargetFanout = opts.crossTargetFanout > 0 ? opts.crossTargetFanout : 10;
       const EMISSION_PAIRS = /* @__PURE__ */ new Set([
         "sem-motor",
         "motor-sem"
@@ -18399,11 +18777,7 @@ var NeuronCluster = class {
       })();
       const TOPOGRAPHIC_PAIRS = /* @__PURE__ */ new Set([
         "letter-motor",
-        "motor-letter",
-        "letter-phon",
-        "phon-letter",
-        "phon-motor",
-        "motor-phon"
+        "motor-letter"
       ]);
       if (_semTopographic) {
         for (const k of ["sem-motor", "motor-sem"]) TOPOGRAPHIC_PAIRS.add(k);
@@ -18428,8 +18802,9 @@ var NeuronCluster = class {
         const baKey = `${b}-${a}`;
         const abFanout = MOTOR_BOUND_PAIRS.has(abKey) ? crossTargetFanout * 2 : crossTargetFanout;
         const baFanout = MOTOR_BOUND_PAIRS.has(baKey) ? crossTargetFanout * 2 : crossTargetFanout;
-        const abCap = MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 5e-3;
-        const baCap = MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 5e-3;
+        const _capOpt = opts.crossDensityCap > 0 ? opts.crossDensityCap : 0;
+        const abCap = _capOpt || (MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 5e-3);
+        const baCap = _capOpt || (MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 5e-3);
         const aCluster = this.regionClusterMap[a];
         const bCluster = this.regionClusterMap[b];
         const k8BetweenScale = aCluster && bCluster && aCluster !== bCluster ? this.betweenClusterDensityScale : 1;
@@ -18471,6 +18846,12 @@ var NeuronCluster = class {
         } else {
           ab.initRandom(abDensity, abExcitatory, 0.2);
         }
+        const _edMode = opts.errorDrivenProjections ? { eta: opts.errorDrivenProjections.eta ?? 1, theta: opts.errorDrivenProjections.theta ?? 0.5, margin: opts.errorDrivenProjections.margin ?? 0.25 } : null;
+        if (_edMode) {
+          ab.errorDriven = _edMode;
+          ab.wMin = -2;
+          ab.wMax = 2;
+        }
         this.crossProjections[`${a}_to_${b}`] = ab;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? " [topographic]" : ""} (${bSize.toLocaleString()}\xD7${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
@@ -18487,6 +18868,11 @@ var NeuronCluster = class {
           });
         } else {
           ba.initRandom(baDensity, baExcitatory, 0.2);
+        }
+        if (_edMode) {
+          ba.errorDriven = { ..._edMode };
+          ba.wMin = -2;
+          ba.wMax = 2;
         }
         this.crossProjections[`${b}_to_${a}`] = ba;
         _projIdx++;
@@ -18714,7 +19100,7 @@ var NeuronCluster = class {
       this._mindFeats.push(emb);
       if (this._mindFeats.length > 4) this._mindFeats.shift();
       this._mindFeatsAt = now;
-      this._speechUnits = null;
+      this.setSpeechUnits(null);
       this._speechCtx = null;
     }
     const groupSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -20764,6 +21150,17 @@ var NeuronCluster = class {
    * @param {string} reason — logged when the build actually has to happen
    * @returns {boolean} true if the topology was built here
    */
+  /**
+   * The cortex's regions as [[start, end), …] in order: every region that no
+   * other region contains (so `sem`, not `sem_ela`), leaving out the
+   * speaking-state run, which has no inside wires. Null when there are none.
+   */
+  _regionSpans() {
+    const all = Object.entries(this.regions || {}).filter(([n, r]) => n !== "speech" && r && r.end > r.start);
+    const top = all.filter(([n, r]) => !all.some(([m, q]) => m !== n && q.start <= r.start && q.end >= r.end && q.end - q.start > r.end - r.start));
+    const spans = top.map(([, r]) => [r.start, r.end]).sort((a, b) => a[0] - b[0]);
+    return spans.length ? spans : null;
+  }
   ensureIntraTopology(reason = "unspecified") {
     const thunk = this._intraTopologyThunk;
     if (!thunk) return false;
@@ -21088,8 +21485,8 @@ var NeuronCluster = class {
     let _d0 = -1;
     let _exitRep = reps;
     for (let i = 0; i < reps; i++) {
-      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true }) || 0;
-      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true }) || 0;
+      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true, rowStart: region.start, rowEnd: region.end }) || 0;
+      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true, rowStart: region.start, rowEnd: region.end }) || 0;
       if (_d0 < 0) _d0 = _d;
       if (_d === 0 || _d0 > 0 && _d < _d0 * 1e-9) {
         _exitRep = i + 1;

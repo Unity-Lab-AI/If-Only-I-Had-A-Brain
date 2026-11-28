@@ -1540,7 +1540,17 @@ const CURRENT_DONOR_VERSION = (() => {
   return _m[1];
 })();
 
-const WEIGHTS_FORMAT_VERSION = 7;   // speech readout (2026-11-27): the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
+// How her cortex cells feel their wiring on the card. Measured in the donor's
+// self-test with the step terms she runs on (tunnelling, twin noise,
+// refractoriness, noise 8), 20 taught pattern pairs. With cells resting 1.75
+// below the map's default they are silent on their own at her nominal cortex
+// drive (18): delivery off, 0.0 taught and 0.1 other cells fire. At gain 5,
+// 53.9 of 54 taught target cells fire one step after their source pattern is
+// lit against 4.5 of the other 1,946 (at zero drive 54.0 against 0.7). Gain 3
+// fires 2.5 of the 54; rest 1 at drive 18 lets 15–18 other cells through.
+const CORTEX_DELIVERY = Object.freeze({ gain: 5, restShift: 1.75 });
+
+const WEIGHTS_FORMAT_VERSION = 8;  // whole-brain wiring (2026-11-27): the language cortex is wired at 100 inside / 100 between regions (was 30 / 10) with its cell count derived at that wiring, every matrix learns only-when-wrong, a word lights its own cells, and a `speech` region holds a cell for every unit of the speaking state — earlier saves hold a different geometry, different wiring and patterns in a different code, so they auto-refuse → fresh walk. (v7 was speech readout (2026-11-27):the sem↔word_motor card matrices are gone and what she says is read from the speech-readout table saved beside the weights — earlier saves hold two matrices this brain no longer builds and no speech table, so they auto-refuse → fresh walk. (v6 was language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 // ⛔⛔ THE `UBWT` BINARY WEIGHT FILE'S OWN FORMAT VERSION — A DIFFERENT NUMBER
 // FROM `WEIGHTS_FORMAT_VERSION` ABOVE, AND CONFLATING THEM IS A DATA-LOSS BUG.
 //
@@ -3270,6 +3280,42 @@ class ServerBrain {
       // with the hardware available, eventually to millions of GPUs
       // in a distributed compute fabric.
 
+      // ⭐ THE WIRING COMES FIRST; THE CELL COUNT IS WHAT THIS SYSTEM AFFORDS AT
+      // THAT WIRING. How many wires a language cell has is fixed by what her
+      // lessons were measured to need, and everything below derives the number
+      // of cells from the machine she is running on at that wiring — never
+      // the other way round (fewer wires to fit more cells is how she came to
+      // have cells that could not learn).
+      //
+      // WHAT SETS THE NUMBER: A TAUGHT CELL HAS TO FIRE. A cell fires when its
+      // input passes its threshold, and it can only be taught to do that for a
+      // word it receives several LIT inputs from. A word lights 2.67 % of a
+      // region, so lit inputs a cell = its wires × 0.0267. Measured (200 taught
+      // pairs, share of taught cells past threshold / share of other cells):
+      //     30 wires →  0.8 lit →  2 %          100 wires → 2.7 lit → 20 %
+      //    200 wires →  5.3 lit → 95 % / 0.13 %  300 wires → 8 lit → 99.3 % / 0.02 %
+      // (At 30 and 100 the right pattern still RANKED first every time — which
+      // is what the earlier 100-wire figure was measuring, and is not firing.)
+      // Lighting more of a region instead makes other cells fire (8 % lit: 1.5 %
+      // strays), so the wires are the lever.
+      //   between regions : 300 wires a cell, on every pathway, with no cut for
+      //     pathways that cross between cluster groups and no density ceiling
+      //     (`betweenClusterDensityScale: 1`, `crossDensityCap: 1` below — the
+      //     0.3 cut is what left sound↔meaning at 30 wires).
+      //   inside a region : 300 wires a cell, drawn from across the cell's own
+      //     region (`regionWiring`): 98.1 % / 0.03 %; from its neighbours only,
+      //     78.8 %.
+      // docs/WHOLE-BRAIN-DESIGN.md holds the tables. Both must equal what
+      // `js/brain/cluster.js` builds (`targetFanout`, `crossTargetFanout`),
+      // which this method passes below.
+      const CORTEX_TARGET_FANOUT = 300;
+      const CROSS_TARGET_FANOUT = 300;
+      // The cells of her speaking state: a fixed run at the end of the cortex,
+      // one per unit, with no wires of the kinds priced here (their wiring is
+      // grown where lessons need it). Every size below is "wired cells + these".
+      const { SPEECH_LAYOUT } = await import('../js/brain/speech-readout.js');
+      const SPEECH_CELLS = SPEECH_LAYOUT.G;
+
       // Prior commit had LANG_CLUSTER_BYTES_PER_NEURON=8192 which was
       // wrong — ignored that cross-projection sparse matrices scale
       // with post_region_size × fanout, not just total neuron count.
@@ -3319,7 +3365,31 @@ class ServerBrain {
       // lands at ~13M — the WORD_MOTOR target below still controls landing size.
       // If boot-time free RAM dips and the floor skips, DREAM_LANG_CORTEX=12000000
       // overrides outright (logged either way).
-      const LANG_CLUSTER_BYTES_PER_NEURON = 1000;
+      // ⭐ FOLLOWS THE WIRING NOW. The 1,000 above was sized (1.7 × the ~590
+      // bytes measured) for a cell with 30 wires inside and 10 between regions
+      // — and a cell carries about 1.92 between-region wires per unit of that
+      // fan-out (230 M between-region weights over 12 M cells at fan-out 10),
+      // so 49.2 wires a cell in all. A cell's memory is its wires, so the same
+      // allowance scales with them:
+      //   1,000 × (inside + 1.92 × between) ÷ 49.2
+      // = 1,000 at 30 / 10, and 5,935 at 100 / 100.
+      // ⛔ CORRECTED THE SAME DAY, BEFORE ANY BOOT: the line above scaled a
+      // constant that was itself stale — the "590 bytes measured" dates from
+      // 12-byte weights, and the "1.92" counted pathways that no longer exist.
+      // The geometry estimator below (`estimateLangCortexVramBytes`, which
+      // mirrors what the cluster builds) gives 342 bytes a cell at 30 / 10 and
+      // 1,728 at 100 / 100: 8.46 bytes for each inside wire and 8.82 for each
+      // unit of between-region fan-out. The host holds the same matrices, so
+      // its allowance is that with the same 1.7 safety:
+      //   1.7 × (8.46 × inside + 8.82 × between)  = 581 at 30/10, 2,938 at 100/100.
+      // ⭐ AND AGAIN FOR THE WIRING THAT MAKES CELLS FIRE: with no between-group
+      // cut, a cell carries 1.859 between-region wires per unit of fan-out
+      // (the sum over the 16 pathways of their target region's share of the
+      // cortex, the motor-bound ones doubled) — 14.9 bytes per unit, where the
+      // cut had made it 8.82. So, per WIRED cell:
+      //   1.7 × (8.46 × inside + 14.9 × between)  = 11,914 at 300 / 300.
+      // The speaking-state cells carry no wires and are counted apart.
+      const LANG_CLUSTER_BYTES_PER_NEURON = Math.ceil(1.7 * (8.46 * CORTEX_TARGET_FANOUT + 14.9 * CROSS_TARGET_FANOUT));
       const freeRamBytes = os.freemem();
       // LANGRAM (2026-08-19) — the free-RAM fraction was 0.5 and it cost the 12M
       // language cortex by 2.4%. Live boot line from the box:
@@ -3348,7 +3418,7 @@ class ServerBrain {
         ? Math.min(0.9, Number(process.env.DREAM_LANG_RAM_FRACTION))
         : 0.6;
       const ramBudget = freeRamBytes * LANG_RAM_FRACTION;
-      const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON);
+      const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON) + SPEECH_CELLS;   // wired cells this RAM holds + the speaking-state run
       // V8 heap sized from start.bat --max-old-space-size. Read the
       // actual limit from v8.getHeapStatistics() so env overrides flow
       // through correctly.
@@ -3359,7 +3429,7 @@ class ServerBrain {
         const heapLimit = heapStats.heap_size_limit;
         // Reserve 2 GB of the heap for non-cluster allocations.
         const clusterHeapBudget = Math.max(0, heapLimit - 2 * 1024 * 1024 * 1024);
-        v8BasedMax = Math.floor(clusterHeapBudget / LANG_CLUSTER_BYTES_PER_NEURON);
+        v8BasedMax = Math.floor(clusterHeapBudget / LANG_CLUSTER_BYTES_PER_NEURON) + SPEECH_CELLS;
       } catch { /* v8 module missing — skip heap-based bound */ }
 
       // VRAM budget pre-flight with auto-rescale loop-back — scales
@@ -3402,7 +3472,8 @@ class ServerBrain {
       // (was 0.08%). Still not Master's 25% target but 100× up —
       // 25% needs architecture redesign (topographic sparse, hierarchy,
       // or streaming from CPU). Must match cluster.js values exactly.
-      const CORTEX_TARGET_FANOUT = 30;          // matches cortexCluster opts.targetFanout
+      // (CORTEX_TARGET_FANOUT is declared at the top of this sizing block now:
+      // the wiring is fixed first and the cell count derived from it.)
       // iter14-F per operator 2026-05-04 ("MAKE THE LANGUAGE CORTEX
       // BIG ENOUGH"): cut CROSS_TARGET_FANOUT 20→10 to halve cross-
       // projection nnz storage. Each cross-projection at fanout 20
@@ -3416,7 +3487,8 @@ class ServerBrain {
       // fix; further cut to 10 is more aggressive. If sep-probe results
       // pin in OVERLOAD band, can be tuned back up to 14-16 in next
       // iteration. Must match cluster.js crossTargetFanout exactly.
-      const CROSS_TARGET_FANOUT = 10;
+      // (That cut to 10 is what the measurements reversed — CROSS_TARGET_FANOUT
+      // is declared with the inside fan-out at the top of this sizing block.)
       // ⛔⛔ WEIGHTPREC (2026-09-05) — THIS CONSTANT WAS A LIE FOR ITS ENTIRE LIFE,
       // AND IT IS THE REASON THE BOX'S MEMORY COULD NOT BE ACCOUNTED FOR.
       //
@@ -3466,7 +3538,7 @@ class ServerBrain {
       // without affecting at-scale where the runtime clamp via
       // (CORTEX_TARGET_FANOUT / size) keeps actual density much smaller.
       const INTRA_CONNECTIVITY_CAP = 0.05;
-      const CROSS_DENSITY_CAP = 0.005;          // cluster.js cross-projection clamp
+      const CROSS_DENSITY_CAP = 1;              // no ceiling: the cortex is built with `crossDensityCap: 1`, so a pathway gets its full fan-out whatever the source region's size (the 0.005 ceiling cut pathways out of small regions below what a cell needs to fire)
       // SCALEAUDIT.1 (2026-08-20) — PARITY RESTORED. This table's own contract is
       // "Fractions match js/brain/cluster.js `this.regions`… Must match cluster.js
       // values exactly", and it had DRIFTED: `sem` 0.167 (real 0.125 — semStart
@@ -3511,9 +3583,9 @@ class ServerBrain {
         ['sem', 'motor'],     ['motor', 'sem'],
         ['motor', 'letter'],  ['letter', 'motor'],
         ['auditory', 'phon'], ['phon', 'auditory'],
-        // No sem↔word_motor pair: what she says is read by the speech readout
-        // (js/brain/speech-readout.js), a table in host memory, not a card
-        // matrix. 14 cross-projections + the intra matrix = 15 on the card.
+        ['letter', 'sem'],    ['sem', 'letter'],     // reading by sight, and spelling from meaning
+        // No sem↔word_motor pair in this list. 16 cross-projections + the intra
+        // matrix = 17 on the card.
       ];
       // ⛔⛔ THE TWO TERMS BELOW WERE MISSING, AND THEY ERRED IN OPPOSITE
       // DIRECTIONS SO THE TOTAL LOOKED PLAUSIBLE. Measured against the real
@@ -3548,10 +3620,17 @@ class ServerBrain {
         sem: 'association', fineType: 'association', free: 'association',
         motor: 'output', word_motor: 'output',
       };
-      const EST_BETWEEN_CLUSTER_SCALE = 0.3;
+      // 1 since the cortex is built with `betweenClusterDensityScale: 1` (the
+      // 0.3 it used to be left the pathways between cluster groups too thin
+      // for a taught cell to fire).
+      const EST_BETWEEN_CLUSTER_SCALE = 1;
 
-      function estimateLangCortexVramBytes(trial) {
-        if (trial <= 0) return 0;
+      // `total` cells = wired cells + the speaking-state run. Only the wired
+      // cells are laid out by FRACTIONS and carry inside wires and pathways;
+      // the run adds its row pointers and nothing else.
+      function estimateLangCortexVramBytes(total_) {
+        const trial = total_ - SPEECH_CELLS;
+        if (trial <= 0) return Infinity;
         const regions = {};
         for (const [name, frac] of Object.entries(FRACTIONS)) {
           regions[name] = Math.floor(trial * frac);
@@ -3559,7 +3638,7 @@ class ServerBrain {
         // Intra-synapse matrix
         const intraDensity = Math.min(INTRA_CONNECTIVITY_CAP, CORTEX_TARGET_FANOUT / Math.max(1, trial));
         const intraNnz = Math.floor(trial * intraDensity * trial);
-        let total = intraNnz * BYTES_PER_NNZ + (trial + 1) * 4;
+        let total = intraNnz * BYTES_PER_NNZ + (total_ + 1) * 4;
         // 14 cross-projections (7 pairs × 2 directions) — the list above.
         for (const [src, dst] of CROSS_PAIRS) {
           const srcSize = regions[src] || 0;
@@ -3591,7 +3670,9 @@ class ServerBrain {
 
       const envOverride = parseInt(process.env.DREAM_LANG_CORTEX, 10);
       const configuredCortex = CLUSTER_SIZES.cortex;
-      const RESCALE_MIN_NEURONS = 10_000;
+      // The speaking-state run plus the smallest wired cortex worth building.
+      // Below it this machine cannot hold her; the sizing stops there and says so.
+      const RESCALE_MIN_NEURONS = SPEECH_CELLS + 50_000;
       const RESCALE_SAFETY = 0.95;              // 5% margin under budget so upload-time jitter doesn't trip
       const RESCALE_MAX_ITERS = 10;
 
@@ -3707,7 +3788,15 @@ class ServerBrain {
           let _baseMB = 0;
           const _asPath = path.join(__dirname, 'autoscale-settings.json');
           if (fs.existsSync(_asPath)) {
-            _baseMB = Number((JSON.parse(fs.readFileSync(_asPath, 'utf8')) || {}).donorBaselineMB) || 0;
+            // ⭐ THE CARD THAT LAST HELD HER CORTEX, not the biggest card ever
+            // seen. `donorBaselineMB` only ever goes up (a 97 GB rented card
+            // set it once), and at 100 wires a cell a language cortex sized
+            // for that card is 25 GB — it would not fit the 16 GB card of the
+            // machine she actually runs on. `cortexCardMB` is written each
+            // time a card finishes taking her cortex (`_noteCortexCard`), so
+            // the size follows the system she is on. Nothing recorded yet →
+            // the 6 GB floor below, which every card that can hold her has.
+            _baseMB = Number((JSON.parse(fs.readFileSync(_asPath, 'utf8')) || {}).cortexCardMB) || 0;
           }
           if (!(_baseMB > 0)) return _HIST;         // nothing learned yet — behave exactly as before
           const _usableBytes = _baseMB * 0.75 * 1024 * 1024;
@@ -3798,7 +3887,17 @@ class ServerBrain {
       try {
         if (fs.existsSync(LANG_GEOM_FILE)) {
           const _p = JSON.parse(fs.readFileSync(LANG_GEOM_FILE, 'utf8'));
-          if (_p && Number.isFinite(Number(_p.langCortexSize)) && Number(_p.langCortexSize) > 0) _pinnedGeom = _p;
+          if (_p && Number.isFinite(Number(_p.langCortexSize)) && Number(_p.langCortexSize) > 0) {
+            // A pin holds a cell count that was derived AT A WIRING. At a
+            // different wiring that count is a different amount of memory —
+            // the pin written at 30 / 10 wires says 20,000,000 cells, which at
+            // 100 / 100 is six times what this machine was sized for. Such a
+            // pin is not a size this build has ever run: it is set aside and
+            // this boot derives afresh.
+            const _w = _p.wiring || {};
+            if (Number(_w.inside) === CORTEX_TARGET_FANOUT && Number(_w.between) === CROSS_TARGET_FANOUT) _pinnedGeom = _p;
+            else console.warn(`[Brain] LANGRAM.6 — the geometry pin (${Math.floor(Number(_p.langCortexSize)).toLocaleString()} cells, written ${_p.writtenAt || 'unknown date'}) was derived at ${_w.inside != null ? `${_w.inside} wires inside / ${_w.between} between` : 'an older wiring it does not record'}; this build wires ${CORTEX_TARGET_FANOUT} inside / ${CROSS_TARGET_FANOUT} between. The pin is SET ASIDE and this boot derives the cell count for this machine at this wiring.`);
+          }
         }
       } catch (e) {
         console.warn(`[Brain] LANGRAM.6 — lang-geometry.json unreadable (${e.message}); the pin is treated as absent and this boot re-derives.`);
@@ -3919,6 +4018,7 @@ class ServerBrain {
             : (_pinnedGeom && _weightsOnDisk) ? 'held existing pin'
             : 'derived from live bounds',
           derivedThisBoot: _autoDerivedSize,
+          wiring: { inside: CORTEX_TARGET_FANOUT, between: CROSS_TARGET_FANOUT },
           freeRamGB: Number((freeRamBytes / 1e9).toFixed(2)),
           ramFraction: LANG_RAM_FRACTION,
           weightsOnDisk: _weightsOnDisk,
@@ -4248,7 +4348,26 @@ class ServerBrain {
         // Language cortex settles around ~17M neurons at this tuning —
         // 4% of brain, 56× the pre-T37 baseline, plenty of substrate
         // for K-level cognition even if below Master's 25% target.
-        targetFanout: 30,
+        // ⭐ The wiring her lessons were measured to need (the two constants at
+        // the top of the sizing block — the cell count above was derived AT
+        // this wiring, so these two lines and that derivation cannot disagree).
+        targetFanout: CORTEX_TARGET_FANOUT,
+        crossTargetFanout: CROSS_TARGET_FANOUT,
+        // Every pathway gets its full fan-out: no cut for crossing between
+        // cluster groups, no density ceiling. And a cell's inside wires are
+        // drawn from across its own region. (The measurements behind each are
+        // with the two constants.)
+        betweenClusterDensityScale: 1,
+        crossDensityCap: 1,
+        regionWiring: true,
+        // Every pathway, and the wiring inside her cortex, changes a wire only
+        // where a cell is wrong (`SparseMatrix.errorUpdate`); the card is told
+        // the same by `_sendPlasticityModes` once it holds her.
+        errorDrivenProjections: true,
+        errorDrivenIntra: true,
+        // A cell of her cortex for every unit of the speaking state: what she
+        // is about to say is read from the cells that are lit.
+        speechUnitCells: true,
         excitatoryRatio: 0.85,
         learningRate: 0.002,
         gpuProxy, // T17.3.d — proxy used for cross-region ops when GPU ready
@@ -4383,6 +4502,11 @@ class ServerBrain {
         this.dictionary,
         this.languageCortex,
       );
+      // ⭐ A word lights ITS OWN cells wherever a lesson writes it (a few cells
+      // for what it means, the rest hashed from the word itself), so two words
+      // that mean nearly the same are still two different patterns. Measured
+      // with the wiring and rule above: her pair lesson 3 of 100 → 100 of 100.
+      this.curriculum.setWordCellCode(true);
       // TEACHVIEW RETENTION — restore the teach view from the last boot, then
       // snapshot it on a timer. The walk runs for WEEKS and every reboot used to
       // reset the totals to zero and drop the 400-row reading ring, so the
@@ -6238,6 +6362,18 @@ class ServerBrain {
     return (this._fireCtl && this._firingTargetPct() > 0) ? this._fireCtl.scale : 1.0;
   }
 
+  /**
+   * The controller's scale for one cluster's drive. Her cortex cells rest
+   * silent and fire from their wiring, so how many fire is an outcome of what
+   * she is doing, not a share to be held: the controller does not push her
+   * cortex drive, which stays at its nominal value (the drive the delivery
+   * setting was measured at). Every other cluster is scaled as before.
+   */
+  _firingDriveScaleFor(name) {
+    if (name === 'cortex' && CORTEX_DELIVERY.restShift > 0) return 1.0;
+    return this._firingDriveScale();
+  }
+
   // ⚠ MEASURED 2026-11-23 (freshstart): her live firing is BISTABLE WITH
   // HYSTERESIS in drive — it flips to busy (14–21%) only when drive climbs to
   // ~0.4, and once busy stays busy until drive falls to ~0.06, then drops to
@@ -6640,6 +6776,99 @@ class ServerBrain {
   // measured readback: ~2.9 GB of matrices at the card's local read rate is
   // seconds of worker time, so 10 min costs the walk well under 2% while
   // bounding a crash's loss to one interval instead of the 30-min readback gap.
+  /**
+   * Tell a card which of her matrices learn only-when-wrong. A cross-projection
+   * that carries `errorDriven` on the host gets the same mode on the card, so the
+   * two sides teach by one rule. Sent after the cortex upload lands (the card
+   * keeps the mode by matrix name, so it also survives a later re-upload) and
+   * answered by `plasticity_mode_ack`. Returns how many matrices were named.
+   */
+  /**
+   * Remember the card that now holds her cortex (its memory, its name, when).
+   * The next boot sizes her language cortex from THIS card — the system she is
+   * actually on — and not from the largest card that ever connected. Written
+   * only when it changes; a change takes effect at the next fresh walk (while
+   * weights exist the geometry pin holds the size they were trained at).
+   */
+  _noteCortexCard(ws) {
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    const mb = Math.floor(Number(c && c.gpuVramMB) || 0);
+    if (!(mb > 1024)) return false;
+    const p = path.join(__dirname, 'autoscale-settings.json');
+    let as = {};
+    try { if (fs.existsSync(p)) as = JSON.parse(fs.readFileSync(p, 'utf8')) || {}; } catch { as = {}; }
+    if (Number(as.cortexCardMB) === mb) return false;
+    const prev = Number(as.cortexCardMB) || 0;
+    as.cortexCardMB = mb; as.cortexCardFrom = (c.gpuName || 'unknown').toString().slice(0, 80); as.cortexCardAt = new Date().toISOString();
+    fs.writeFileSync(p, JSON.stringify(as, null, 2));
+    console.log(`[Brain] her cortex is on ${as.cortexCardFrom} (${mb.toLocaleString()} MB)${prev ? ` — the last card that held it had ${prev.toLocaleString()} MB` : ''}. The next fresh walk sizes her language cortex for this card.`);
+    return true;
+  }
+
+  /**
+   * Tell a card how her cortex cells feel their wiring: the gain on the input
+   * each cell receives from cells that fired the step before, and how far below
+   * the map's default rest point an undriven cell sits (so a cell with no input
+   * is silent). The card keeps it by cluster name and answers `delivery_ack`
+   * with the clusters it holds. A card older than 0.3.58 ignores the message
+   * and steps on drive and noise alone.
+   */
+  _sendDelivery(ws) {
+    const cortex = this.cortexCluster;
+    if (!ws || ws.readyState !== 1 || !cortex) return false;
+    const d = CORTEX_DELIVERY;
+    ws.send(JSON.stringify({ type: 'delivery', clusters: [{ name: cortex.name, gain: d.gain, restShift: d.restShift }] }));
+    this._deliverySent = { at: Date.now(), gain: d.gain, restShift: d.restShift, held: null };
+    console.log(`[Brain] told the card her cortex cells feel their wiring at gain ${d.gain}, resting ${d.restShift} below the default; waiting for it to confirm.`);
+    return true;
+  }
+
+  _sendPlasticityModes(ws) {
+    const cortex = this.cortexCluster;
+    if (!ws || ws.readyState !== 1 || !cortex || !cortex.crossProjections) return 0;
+    // This card now holds her cortex, so directed lessons ship as many index runs
+    // as THIS build accepts: 4,096 from 0.3.58, 16 before it.
+    if (typeof cortex.setRangeMaxRuns === 'function') {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().match(/^(\d+)\.(\d+)\.(\d+)/);
+      const ver = v ? (+v[1]) * 1e6 + (+v[2]) * 1e3 + (+v[3]) : 0;
+      this._rangeMaxRuns = cortex.setRangeMaxRuns(ver >= 3058 ? 4096 : 16);
+    }
+    const byMode = new Map();   // "eta|theta|margin" → { mode, names }
+    for (const [pn, proj] of Object.entries(cortex.crossProjections)) {
+      const m = proj && proj.errorDriven;
+      if (!m) continue;
+      const key = `${m.eta}|${m.theta}|${m.margin}`;
+      let g = byMode.get(key);
+      if (!g) { g = { mode: { eta: m.eta, theta: m.theta, margin: m.margin }, names: [] }; byMode.set(key, g); }
+      g.names.push(`${cortex.name}_${pn}`);
+    }
+    // The wiring inside the cortex is one more matrix on the card, under its own name.
+    // It goes in its own message because it carries her region table: a lesson
+    // inside one region then sweeps that region's rows on the card, not the
+    // whole cortex.
+    let n = 0;
+    const mi = cortex.synapses && cortex.synapses.errorDriven;
+    if (mi) {
+      const spans = [];
+      for (const r of Object.values(cortex.regions || {})) {
+        if (r && r.end > r.start) spans.push([r.start, r.end - r.start]);
+      }
+      ws.send(JSON.stringify({
+        type: 'plasticity_mode', names: [`${cortex.name}_intraSynapses`],
+        mode: { eta: mi.eta, theta: mi.theta, margin: mi.margin }, spans,
+      }));
+      n += 1;
+    }
+    for (const g of byMode.values()) {
+      ws.send(JSON.stringify({ type: 'plasticity_mode', names: g.names, mode: g.mode }));
+      n += g.names.length;
+    }
+    this._plasticityModesSent = { at: Date.now(), matrices: n, acked: 0, heldOnCard: 0 };
+    if (n > 0) console.log(`[Brain] told the card that ${n} of her pathways learn only when wrong; waiting for it to confirm.`);
+    return n;
+  }
+
   _sendDonorCheckpointConfig(ws, restore) {
     if (!ws || ws.readyState !== 1) return false;
     const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
@@ -8254,6 +8483,11 @@ class ServerBrain {
                 // so the pull never fills the link (see refreshCheckpointFromDonor).
                 const _adopted = (this._adoptedMatrices instanceof Set) ? this._adoptedMatrices.size : 0;
                 try { this._sendDonorCheckpointConfig(this._gpuClient, _adopted === 0); } catch { /* the donor simply does not checkpoint this session */ }
+                // Which pathways learn only-when-wrong — after the upload, so the
+                // card answers with how many of them it actually holds.
+                try { this._sendPlasticityModes(this._gpuClient); } catch (e) { console.warn(`[Brain] could not send the pathways' learning mode to the card: ${e.message}`); }
+                try { this._sendDelivery(this._gpuClient); } catch (e) { console.warn(`[Brain] could not tell the card how her cells feel their wiring: ${e.message}`); }
+                try { this._noteCortexCard(this._gpuClient); } catch (e) { console.warn(`[Brain] could not record which card holds her cortex: ${e.message}`); }
                 // ⛔ NO READBACK AFTER ADOPT. This pulled the whole cortex back off
                 // the card 60 s after it reattached. Measured live 2026-11-25: the
                 // pull got 0 chunks, the card went silent ~120 s and its socket died
@@ -8481,12 +8715,12 @@ class ServerBrain {
                 // FIREKNOB (2026-08-28) — × the self-calibrating firing-rate
                 // scale (see _firingControllerSample): the controller aims the
                 // measured fired-fraction at DREAM_FIRING_TARGET_PCT.
-                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale() * _hemiDrive.L, 0),
+                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScaleFor(name) * _hemiDrive.L, 0),
                 // Seed Crystal — the right half's drive, when the contest has
                 // moved it. A donor that counts halves reads it; older donors
                 // ignore the unknown fields and step both halves on tonicDrive.
                 ...((_hemiDrive.R !== _hemiDrive.L) ? {
-                  tonicDriveR: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale() * _hemiDrive.R, 0),
+                  tonicDriveR: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScaleFor(name) * _hemiDrive.R, 0),
                   half: Math.floor((CLUSTER_SIZES[name] || 0) / 2),
                 } : {}),
                 noiseAmp: _fin(this.noiseAmplitudes[name], 0),
@@ -9223,6 +9457,10 @@ class ServerBrain {
             // exam words (hours per press). Persisted like definitions.
             vocabTaughtWords: cortex._vocabTaughtWordsPersist
               ? Array.from(cortex._vocabTaughtWordsPersist) : [],
+            // The words she has been taught to read, in the order she met them —
+            // each new reading lesson goes back over a few of these.
+            readTaughtWords: cortex._readTaughtWords instanceof Map
+              ? Array.from(cortex._readTaughtWords) : [],
             // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
             // (so contributions survive restart/resume) and is WIPED on a fresh
             // walk (force-fresh clears brain-weights). Keyed by persistent donorId
@@ -10775,6 +11013,13 @@ class ServerBrain {
             else if (typeof e === 'string') m.set(e, Date.now());
           }
           cortex._vocabTaughtWordsPersist = m;
+        }
+        if (Array.isArray(pending.readTaughtWords)) {
+          const m = new Map();
+          for (const e of pending.readTaughtWords) {
+            if (Array.isArray(e) && e.length >= 2 && typeof e[0] === 'string') m.set(e[0], Number(e[1]) || Date.now());
+          }
+          cortex._readTaughtWords = m;
         }
         // Restore the donor neuron-compute leaderboard (persists across restart/
         // resume; a fresh walk via force-fresh wipes brain-weights so it starts
@@ -15959,6 +16204,22 @@ wss.on('connection', (ws, req) => {
           const _fc = Array.isArray(msg.freedClusters) ? msg.freedClusters : null;
           const _hc = Array.isArray(msg.heldClusters) ? msg.heldClusters : null;
           console.log(`[Pool] FREE ACK from ${(client && (client.gpuName || client.id)) || id} — freed ${_fr.length} matrix(es)${_fr.length ? ': ' + _fr.slice(0, 8).join(', ') + (_fr.length > 8 ? ' …' : '') : ' (it held none of them)'}${_fc ? ` · freed ${_fc.length} cluster state(s)${_fc.length ? ': ' + _fc.join(', ') : ''} · still holds ${_hc ? (_hc.length ? _hc.join(', ') : 'no cluster state') : '?'}` : ' · (donor older than 0.3.56: neuron state not freed)'}.`);
+          break;
+        }
+        case 'delivery_ack': {
+          const _held = Array.isArray(msg.held) ? msg.held : [];
+          if (brain._deliverySent) { brain._deliverySent.held = _held; brain._deliverySent.ackedAt = Date.now(); }
+          console.log(`[Brain] the card confirmed the wiring setting; resident there now: ${_held.length ? _held.join(', ') : 'none yet — it applies when the cluster is built'}.`);
+          break;
+        }
+        case 'plasticity_mode_ack': {
+          const _names = Array.isArray(msg.names) ? msg.names.length : 0;
+          const _held = Number(msg.held) || 0;
+          const _st = brain._plasticityModesSent;
+          if (_st) { _st.acked += _names; _st.heldOnCard += _held; _st.ackedAt = Date.now(); }
+          // Named ≠ held: a matrix the card does not hold cannot learn by the rule
+          // there, so the two counts are printed side by side.
+          console.log(`[Brain] the card confirmed: ${_names} pathway(s) set to ${msg.errorDriven ? 'learn only when wrong' : 'the default rule'}, ${_held} of them resident on ${(client && (client.gpuName || client.id)) || id}.${_held < _names ? ' ⚠ the rest are not on this card.' : ''}`);
           break;
         }
         case 'image_result': {

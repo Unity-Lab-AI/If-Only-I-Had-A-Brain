@@ -113,6 +113,10 @@ struct CudaCluster {
     state: CudaSlice<f32>,        // 2*n interleaved (x,y)
     spikes: CudaSlice<u32>,       // n
     currents: CudaSlice<f32>,     // n
+    /// n — the wiring's input this step (see `ComputeEngine`'s `Cluster::syn`).
+    syn: CudaSlice<f32>,
+    syn_gain: f32,
+    rest_shift: f32,
     region_gates: CudaSlice<f32>, // 4 * numRegions
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>,
@@ -170,6 +174,7 @@ pub struct CudaEngine {
     f_volt: Option<CudaFunction>,
     f_prop: CudaFunction,
     f_hebb: CudaFunction,
+    f_hebb_err: CudaFunction,
     // Device-side pattern ops: zero a span / scatter sparse indices in-place. These replace
     // the host-side dense-vector + full-span memcpy per teach frame (up to megabytes of
     // mostly-zeros over PCIe, synchronously, per frame) with a ~KB index upload + async
@@ -181,6 +186,9 @@ pub struct CudaEngine {
     f_tile_u32: CudaFunction,
     clusters: HashMap<String, CudaCluster>,
     sparse: HashMap<String, CudaSparse>,
+    /// Matrices that learn by the error-driven rule: name → (eta, theta, margin).
+    err_mode: HashMap<String, (f32, f32, f32)>,
+    err_spans: HashMap<String, Vec<(u32, u32)>>,
 }
 
 impl CudaEngine {
@@ -228,6 +236,7 @@ impl CudaEngine {
         };
         let f_prop = module.load_function("synapse_propagate").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'synapse_propagate' load failed on '{name}': {e}"); format!("load propagate: {e}") })?;
         let f_hebb = module.load_function("plasticity").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity' load failed on '{name}': {e}"); format!("load plasticity: {e}") })?;
+        let f_hebb_err = module.load_function("plasticity_error").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity_error' load failed on '{name}': {e}"); format!("load plasticity_error: {e}") })?;
         let f_fill_u32 = module.load_function("fill_zero_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_u32' load failed on '{name}': {e}"); format!("load fill_zero_u32: {e}") })?;
         let f_fill_f32 = module.load_function("fill_zero_f32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_f32' load failed on '{name}': {e}"); format!("load fill_zero_f32: {e}") })?;
         let f_scatter_u32 = module.load_function("scatter_ones_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'scatter_ones_u32' load failed on '{name}': {e}"); format!("load scatter_ones_u32: {e}") })?;
@@ -244,6 +253,7 @@ impl CudaEngine {
             f_volt,
             f_prop,
             f_hebb,
+            f_hebb_err,
             f_fill_u32,
             f_fill_f32,
             f_scatter_u32,
@@ -251,6 +261,8 @@ impl CudaEngine {
             f_tile_u32,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
+            err_mode: HashMap::new(),
+            err_spans: HashMap::new(),
         })
     }
 
@@ -296,12 +308,16 @@ impl CudaEngine {
             let state_buf = self.stream.memcpy_stod(&state).map_err(|e| e.to_string())?;
             let spikes = self.stream.alloc_zeros::<u32>(n.max(1)).map_err(|e| e.to_string())?;
             let currents = self.stream.alloc_zeros::<f32>(n.max(1)).map_err(|e| e.to_string())?;
+            let syn = self.stream.alloc_zeros::<f32>(n.max(1)).map_err(|e| e.to_string())?;
             let region_gates = self.stream.memcpy_stod(&gates).map_err(|e| e.to_string())?;
             Ok(CudaCluster {
                 size,
                 state: state_buf,
                 spikes,
                 currents,
+                syn,
+                syn_gain: 0.0,
+                rest_shift: 0.0,
                 region_gates,
                 num_regions,
                 regions: regions.clone(),
@@ -315,6 +331,16 @@ impl CudaEngine {
 
     pub fn has_cluster(&self, name: &str) -> bool {
         self.clusters.contains_key(name)
+    }
+
+    /// Set how strongly a cluster's cells feel their wiring (0 = not at all).
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.syn_gain = gain; true } None => false }
+    }
+
+    /// Set how far below the map's default rest point this cluster's cells sit (0 = default).
+    pub fn set_rest_shift(&mut self, cluster: &str, shift: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.rest_shift = shift; true } None => false }
     }
 
     /// RHYTHM3S.2 (v0.3.34) — overwrite this cluster's `[start,end,gate,pad]`
@@ -348,6 +374,24 @@ impl CudaEngine {
             return Ok((0, 0));
         }
         let launch_cfg = cfg(n);
+        // WIRING DELIVERY — mirrors the wgpu half: clear `syn`, then one
+        // propagate launch per matrix bound into this cluster (stream order
+        // keeps clear → deliver → step).
+        if c.syn_gain != 0.0 {
+            self.dev_zero_f32(&c.syn, 0, n)?;
+            for m in self.sparse.values() {
+                let bd = match &m.binding { Some(bd) if bd.dst_cluster == name => bd, _ => continue };
+                if m.rows == 0 || m.nnz == 0 { continue; }
+                let src = match self.clusters.get(&bd.src_cluster) { Some(s) => s, None => continue };
+                if (bd.src_start as u64) + (m.cols as u64) > (src.size as u64) { continue; }
+                if (bd.dst_start as u64) + (m.rows as u64) > (n as u64) { continue; }
+                let mut d = self.stream.launch_builder(&self.f_prop);
+                d.arg(&m.rows).arg(&bd.src_start).arg(&bd.dst_start)
+                    .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr)
+                    .arg(&src.spikes).arg(&c.syn);
+                unsafe { d.launch(cfg(m.rows)) }.map_err(|e| format!("deliver launch: {e}"))?;
+            }
+        }
         // LIF step — writes state + spikes through the device pointers (GPU-side mutation, so
         // shared refs are fine, exactly like wgpu's queue.submit).
         let mut b = self.stream.launch_builder(&self.f_lif);
@@ -366,7 +410,10 @@ impl CudaEngine {
             .arg(&q.tunnel_a)
             .arg(&q.tunnel_kappa)
             .arg(&q.entangle_rho)
-            .arg(&q.refract_beta);
+            .arg(&q.refract_beta)
+            .arg(&c.syn)
+            .arg(&c.syn_gain)
+            .arg(&c.rest_shift);
         unsafe { b.launch(launch_cfg) }.map_err(|e| format!("lif launch: {e}"))?;
 
         // Spike counts (left, right) into a fresh zeroed pair.
@@ -539,21 +586,7 @@ impl CudaEngine {
         self.dev_zero_u32(&m.post_spikes, 0, rows)?;
         self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
-        let (reward, w_min, w_max, src_off, dst_off) = (1.0f32, -2.0f32, 2.0f32, 0u32, 0u32);
-        let mut b = self.stream.launch_builder(&self.f_hebb);
-        b.arg(&rows)
-            .arg(&lr)
-            .arg(&reward)
-            .arg(&w_min)
-            .arg(&w_max)
-            .arg(&src_off)
-            .arg(&dst_off)
-            .arg(&m.values)
-            .arg(&m.col_idx)
-            .arg(&m.row_ptr)
-            .arg(&m.pre_spikes)
-            .arg(&m.post_spikes);
-        unsafe { b.launch(cfg(rows)) }.map_err(|e| format!("hebbian launch: {e}"))?;
+        self.launch_plasticity_rows(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices)).map_err(|e| format!("hebbian launch: {e}"))?;
         // No readback — ack-only, like the wgpu path (don't block the worker).
         Ok(())
     }
@@ -577,22 +610,8 @@ impl CudaEngine {
         self.dev_zero_u32(&m.post_spikes, 0, rows)?;
         self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
-        let (reward, w_min, w_max, src_off, dst_off) = (1.0f32, -2.0f32, 2.0f32, 0u32, 0u32);
         for _ in 0..reps.max(1) {
-            let mut b = self.stream.launch_builder(&self.f_hebb);
-            b.arg(&rows)
-                .arg(&lr)
-                .arg(&reward)
-                .arg(&w_min)
-                .arg(&w_max)
-                .arg(&src_off)
-                .arg(&dst_off)
-                .arg(&m.values)
-                .arg(&m.col_idx)
-                .arg(&m.row_ptr)
-                .arg(&m.pre_spikes)
-                .arg(&m.post_spikes);
-            unsafe { b.launch(cfg(rows)) }.map_err(|e| format!("hebbian-reps launch: {e}"))?;
+            self.launch_plasticity_rows(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices)).map_err(|e| format!("hebbian-reps launch: {e}"))?;
         }
         Ok(())
     }
@@ -614,23 +633,90 @@ impl CudaEngine {
         // buffers (CUDA OOB = crash, not a validation error).
         if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
         if (b.dst_start as u64) + (m.rows as u64) > (dst.spikes.len() as u64) { return Ok(false); }
+        self.launch_plasticity(name, m, lr, b.src_start, b.dst_start, &src.spikes, &dst.spikes).map_err(|e| format!("bound hebbian launch: {e}"))?;
+        Ok(true)
+    }
+
+    /// Put a matrix into (Some) or out of (None) error-driven learning. Returns
+    /// whether the matrix is resident here.
+    pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
+        match mode { Some(m) => { self.err_mode.insert(name.to_string(), m); } None => { self.err_mode.remove(name); } }
+        self.sparse.contains_key(name)
+    }
+
+    /// Launch the kernel this matrix learns by: Oja / anti-Hebbian by default;
+    /// `plasticity_error` when the matrix is in error-driven mode and lr > 0;
+    /// nothing for an anti-Hebbian call on such a matrix. Every plasticity verb
+    /// on this engine launches through here, so they all agree.
+    #[allow(clippy::too_many_arguments)]
+    fn launch_plasticity(&self, name: &str, m: &CudaSparse, lr: f32, src_off: u32, dst_off: u32, pre: &CudaSlice<u32>, post: &CudaSlice<u32>) -> Result<(), String> {
+        self.launch_plasticity_rows(name, m, lr, src_off, dst_off, pre, post, None)
+    }
+
+    /// Give an error-driven matrix the row spans its lessons lie in. Empty clears them.
+    pub fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
+        if spans.is_empty() { self.err_spans.remove(name); } else { self.err_spans.insert(name.to_string(), spans); }
+    }
+
+    /// `launch_plasticity` for a verb that knows its lit post rows: an
+    /// error-driven matrix with spans sweeps only the spans holding one.
+    #[allow(clippy::too_many_arguments)]
+    fn launch_plasticity_rows(&self, name: &str, m: &CudaSparse, lr: f32, src_off: u32, dst_off: u32, pre: &CudaSlice<u32>, post: &CudaSlice<u32>, post_idx: Option<&[u32]>) -> Result<(), String> {
         let rows = m.rows;
-        let (reward, w_min, w_max) = (1.0f32, -2.0f32, 2.0f32);
-        let (src_off, dst_off) = (b.src_start, b.dst_start);
+        let (w_min, w_max) = (-2.0f32, 2.0f32);
+        if let Some(&(eta, theta, margin)) = self.err_mode.get(name) {
+            if lr <= 0.0 { return Ok(()); }
+            for (row_start, row_count) in crate::compute::err_spans_hit(self.err_spans.get(name), post_idx) {
+                let n = if row_count == 0 { rows } else { row_count };
+                let mut bld = self.stream.launch_builder(&self.f_hebb_err);
+                bld.arg(&rows).arg(&eta).arg(&theta).arg(&margin).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+                    .arg(&row_start).arg(&row_count)
+                    .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
+                unsafe { bld.launch(cfg(n)) }.map(|_| ()).map_err(|e| e.to_string())?;
+            }
+            return Ok(());
+        }
+        let reward = 1.0f32;
         let mut bld = self.stream.launch_builder(&self.f_hebb);
+        bld.arg(&rows).arg(&lr).arg(&reward).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+            .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
+        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| e.to_string())
+    }
+
+    /// Error-driven bound plasticity (kernel `plasticity_error`): same resident
+    /// windows as `hebbian_bound`, but a wire changes only where its target cell is
+    /// wrong. Every row is visited. Ok(false) = skipped, never a crash.
+    pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.spikes.len() as u64) { return Ok(false); }
+        let rows = m.rows;
+        let (w_min, w_max) = (-2.0f32, 2.0f32);
+        let (src_off, dst_off) = (b.src_start, b.dst_start);
+        let (row_start, row_count) = (0u32, 0u32);   // every row
+        let mut bld = self.stream.launch_builder(&self.f_hebb_err);
         bld.arg(&rows)
-            .arg(&lr)
-            .arg(&reward)
+            .arg(&eta)
+            .arg(&theta)
+            .arg(&margin)
             .arg(&w_min)
             .arg(&w_max)
             .arg(&src_off)
             .arg(&dst_off)
+            .arg(&row_start)
+            .arg(&row_count)
             .arg(&m.values)
             .arg(&m.col_idx)
             .arg(&m.row_ptr)
             .arg(&src.spikes)
             .arg(&dst.spikes);
-        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| format!("bound hebbian launch: {e}"))?;
+        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| format!("bound error-plasticity launch: {e}"))?;
         Ok(true)
     }
 
@@ -664,23 +750,8 @@ impl CudaEngine {
         }
         let m = self.sparse.get(name).unwrap();
         let src = self.clusters.get(&b.src_cluster).unwrap();
-        let (reward, w_min, w_max) = (1.0f32, -2.0f32, 2.0f32);
-        let (src_off, dst_off) = (b.src_start, 0u32);
         for _ in 0..reps.max(1) {
-            let mut bld = self.stream.launch_builder(&self.f_hebb);
-            bld.arg(&rows)
-                .arg(&lr)
-                .arg(&reward)
-                .arg(&w_min)
-                .arg(&w_max)
-                .arg(&src_off)
-                .arg(&dst_off)
-                .arg(&m.values)
-                .arg(&m.col_idx)
-                .arg(&m.row_ptr)
-                .arg(&src.spikes)
-                .arg(&m.post_spikes);
-            unsafe { bld.launch(cfg(rows)) }.map_err(|e| format!("masked bound hebbian launch: {e}"))?;
+            self.launch_plasticity_rows(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes, Some(post_idx)).map_err(|e| format!("masked bound hebbian launch: {e}"))?;
         }
         Ok(true)
     }

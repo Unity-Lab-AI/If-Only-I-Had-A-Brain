@@ -372,6 +372,22 @@ Pollinations       → GONE (2026-10-18); her images render locally via image-en
 
 **`WORDSALAD.1–.5` + the age ladder** — Tier 3 identity anchors were **style instructions, not memories** (`'goth emo dark black leather'` — no agent, no verb), and ⛔ `'horny aroused sexual fucking'` was resident **from birth** while the vocabulary gate held those words to grade 11. Anchors are now first-person and **grade-banded**. The rule: **three independent axes, never one switch** — **LEARN** (never gated: she learns periods, tampons, puberty at the real age), **BE/WEAR** (gated: normal school-girl look to highschool), **DISCLOSE** (gated separately: learned ≠ spoken). Gee settled the register: *"let not be prude just dont be explicit"* — desire at grade 9 non-graphic, explicit at college1.
 
+### 2026-11-27 — her cells were not learning what they were taught, anywhere; the language cortex was rebuilt on what measured
+
+**`WHOLEBRAIN.1–.14`** (branch `feature/whole-brain`; full record `docs/FINALIZED.md` §2026-11-27, design `docs/WHOLE-BRAIN-DESIGN.md`). Taught 100 pairs, every cell-to-cell pathway returned **6–54**; speech answered the same with every cell silenced; three gates counted a word as read through a pathway that did not exist; on the card nothing read her wiring. Rebuilt: a word's own cells (2.67 % of a region), **a wire changes only when its cell is wrong**, 300 wires a cell, cells that rest silent and fire from their wiring, speech read from her own lit cells, a letters→meaning pathway. **A cortex built with no options comes out this way** (`CORTEX_BUILD` in `cluster.js`).
+
+⛔ **What I got wrong on the way, each caught by a number and worth keeping:**
+- **"100 of 100" was a RANKING, not firing.** A cell fires only past threshold; ranked-first hid that 2 % of taught cells could reach it at 30 wires.
+- **A bench on the bare map is not her.** It said 7–16 % of cells fire on their own; her real step (tunnelling, twin noise, refractoriness) gives 3.5 %. Step an instrument with the terms the server actually sends.
+- **Variants run back to back on the same cells measure the previous variant's hangover** (the slow variable carries an avalanche for thousands of steps). Fresh cells per variant.
+- **A readback that returns zeros is not a quiet brain** — the wgpu spike buffer could not be copied out and the error was swallowed.
+- **Running is not doing.** Lateral inhibition ran 207 times a lesson and changed no wire on only-when-wrong wiring; found by counting calls AND changes.
+- **Five rows became fourteen** because each finding was filed as a new row. Gee: *"you are suppose to be completeing the items … not endlessly addding more and more shit to do, only do that if its required for what Unity needs to speak and be her self and train right and work right"*. **A finding is fixed inside the row it came from.**
+- **A test's size is not her limit.** "505 of 600 read" was a 600-word test, and I let it read as a ceiling.
+- **`taskkill /IM node.exe` kills every node process on the machine.** Stop a run by its own process ID.
+
+**Gee's decisions on this branch (each asked as a question with options):** cells **silent at rest**; gates' untaught figure **shown only**; the word-vector table **kept**; the speech-wiring-on-the-card row **dropped**.
+
 ### The governing facts to check before believing any dashboard field
 
 | Fact | Consequence |

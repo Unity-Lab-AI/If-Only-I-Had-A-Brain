@@ -9148,7 +9148,7 @@ export const K_MIXIN = {
     this._hb(`[Curriculum] _teachWordEmissionDirect START: naming ${words.length} words, up to ${reps} passes (subject=${subject}) — each word taught until she says it for the thing in mind`);
 
     const t0 = Date.now();
-    let updates = 0, skipped = 0;
+    let updates = 0, skipped = 0, notTaught = 0;
 
     // Yield on ELAPSED TIME (~30 ms): `_microtask` hops via setImmediate, so
     // /ws handshakes and donor frames get a slot however long a pass runs.
@@ -9165,25 +9165,28 @@ export const K_MIXIN = {
         // means), the word she says is its name — taught until she says it.
         // A word already named correctly is left untouched, so a later pass
         // only repairs the names that another lesson disturbed.
-        cluster._speechUnits = readout.conceptUnits(word);
+        cluster.setSpeechUnits(readout.conceptUnits(word));
         cluster._speechCtx = null;
         cluster._mindFeats = null;
         const r = this._speechTeach(word);
-        if (r) { updates++; if (r.right) alreadyRight++; } else skipped++;
+        // A teach that returns nothing had no state to teach in or no slot for
+        // the word — a different fault from a missing dictionary entry, and
+        // counted apart so the line below names the right one.
+        if (r) { updates++; if (r.right) alreadyRight++; } else notTaught++;
         if ((Date.now() - sliceStart) >= YIELD_SLICE_MS) {
           await _microtask();
           sliceStart = Date.now();
         }
       }
-      cluster._speechUnits = null;
+      cluster.setSpeechUnits(null);
       await _microtask();
       // Stop as soon as a whole pass needed no correction.
       if (updates > 0 && alreadyRight === updates) break;
-      if (rep < reps - 1) { updates = 0; alreadyRight = 0; skipped = 0; }
+      if (rep < reps - 1) { updates = 0; alreadyRight = 0; skipped = 0; notTaught = 0; }
     }
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — last pass: ${alreadyRight}/${updates} names said before being corrected · ${skipped} without a dictionary entry (${words.length} words in her vocabulary)`);
+    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — last pass: ${alreadyRight}/${updates} names said before being corrected · ${skipped} without a dictionary entry${notTaught ? ` · ⛔ ${notTaught} NOT TAUGHT (no speaking state to teach in, or no slot for the word)` : ''} (${words.length} words in her vocabulary)`);
   },
 
 

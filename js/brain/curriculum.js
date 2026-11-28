@@ -924,6 +924,27 @@ const _gateEnvNum = (key, dflt) => {
 };
 const GATE_PROD_MIN = _gateEnvNum('DREAM_GATE_PROD_MIN', 0.80);
 const GATE_PATH_MIN = _gateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
+
+// A word's cells (`Curriculum._wordCells`): how many embedding dimensions carry
+// its meaning, and the hash that places each identity cell independently.
+const WORD_MEANING_DIMS = 4;
+const _NO_CELLS = new Int32Array(0);
+// "The vector knows its word": when a curriculum has the word-cell code on
+// (`setWordCellCode`), every writer that is handed a vector carrying `_word`
+// lights that word's own cells instead of tiling the numbers. Off → null →
+// every writer behaves exactly as before.
+let _wordCellCurriculum = null;
+function _taggedWordCells(feat, regionSize) {
+  if (!_wordCellCurriculum || !feat || typeof feat._word !== 'string' || !feat._word) return null;
+  const c = _wordCellCurriculum._wordCells(feat._word, { start: 0, end: regionSize });
+  return c.length ? c : null;
+}
+function _cellHash(text, salt) {
+  let h = (2166136261 ^ Math.imul(salt + 1, 0x9E3779B1)) >>> 0;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  h ^= h >>> 15; h = Math.imul(h, 0x85EBCA6B) >>> 0; h ^= h >>> 13;
+  return h >>> 0;
+}
 // How many cells' gate readings stay resident + persisted for the dashboard's
 // gate card. Counts only — the exam is held out, no question text is kept.
 const GATE_READINGS_MAX = Math.max(4, Math.round(_gateEnvNum('DREAM_GATE_READINGS_MAX', 24)));
@@ -2724,16 +2745,21 @@ const K_LETTER_PHONEMES = {
   'm':  { type: 'consonant', voiced: 1, place: 'labial',    manner: 'nasal' },
   'n':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'nasal' },
   // ── APPROXIMANTS / LIQUIDS ──────────────────────────────────────
-  'l':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'approximant' },
+  // l and r are both voiced alveolar approximants; what tells them apart is
+  // that for l the air goes round the SIDES of the tongue (lateral).
+  'l':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'approximant', lateral: 1 },
   'r':  { type: 'consonant', voiced: 1, place: 'alveolar',  manner: 'approximant' },
   'w':  { type: 'consonant', voiced: 1, place: 'labial',    manner: 'approximant' },
   'y':  { type: 'consonant', voiced: 1, place: 'palatal',   manner: 'approximant' },
   // ── AFFRICATES ──────────────────────────────────────────────────
   'j':  { type: 'consonant', voiced: 1, place: 'palatal',   manner: 'affricate' },
   // ── SHORT VOWELS (K phonics primary sounds) ─────────────────────
-  'a':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0 },
+  // Short a (cat) and short i (sit) are both front and unrounded; they differ
+  // in how HIGH the tongue is — low for a, high for i. Without `height` the
+  // two letters had one and the same sound pattern.
+  'a':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0, height: 'low' },
   'e':  { type: 'vowel',     length: 'short', position: 'mid',   rounded: 0 },
-  'i':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0 },
+  'i':  { type: 'vowel',     length: 'short', position: 'front', rounded: 0, height: 'high' },
   'o':  { type: 'vowel',     length: 'short', position: 'back',  rounded: 1 },
   'u':  { type: 'vowel',     length: 'short', position: 'back',  rounded: 0 },
 };
@@ -2759,7 +2785,10 @@ const K_LETTER_PHONEMES = {
 //   [16]    vowel_mid       (central vowel: e short)
 //   [17]    vowel_back      (back vowel: o,u short)
 //   [18]    vowel_rounded   (lip rounding: o short)
-//   [19-23] reserved for digraphs + irregular markers (G1+ extensions)
+//   [19]    vowel_high      (tongue high: i short)
+//   [20]    vowel_low       (tongue low: a short)
+//   [21]    lateral         (air round the sides of the tongue: l)
+//   [22-23] reserved for digraphs + irregular markers (G1+ extensions)
 
 // Two phonemes that share a letter-origin (e.g. /c/ and /k/ both mapping
 // to K_LETTER_PHONEMES['k']) produce IDENTICAL feature vectors — which
@@ -2784,6 +2813,8 @@ export function _phonemeFeatureForLetter(letter) {
     else if (entry.position === 'mid') out[16] = 1;
     else if (entry.position === 'back') out[17] = 1;
     if (entry.rounded) out[18] = 1;
+    if (entry.height === 'high') out[19] = 1;
+    else if (entry.height === 'low') out[20] = 1;
   } else if (entry.type === 'consonant') {
     out[1] = 1;  // is_consonant
     if (entry.voiced) out[2] = 1;
@@ -2797,6 +2828,7 @@ export function _phonemeFeatureForLetter(letter) {
     else if (entry.manner === 'nasal')   out[10] = 1;
     else if (entry.manner === 'approximant') out[11] = 1;
     else if (entry.manner === 'affricate') out[12] = 1;
+    if (entry.lateral) out[21] = 1;
   }
   // L2 normalize so injection strength is consistent across letters.
   let norm = 0;
@@ -3069,6 +3101,9 @@ export class Curriculum {
     // full GloVe patterns + correct spellings — using it as a lookup
     // bypasses sem_to_motor basin collapse for gate-probe emissions.
     if (cluster && dictionary) cluster.dictionary = dictionary;
+    // A cortex built with one code for a word (her language cortex is, by its
+    // own default) is taught with that code from the first lesson.
+    if (cluster && cluster.wordCellCode === true) this.setWordCellCode(true);
     // Telemetry — callers can read post-run to see what the curriculum
     // actually exposed the brain to.
     this.stats = {
@@ -6838,6 +6873,7 @@ export class Curriculum {
       : 300;
     const out = new Float64Array(dim);
     if (typeof word !== 'string' || word.length === 0) return out;
+    out._word = word.toLowerCase().trim();   // the vector knows its word
 
     // Stripe layout: 200 GloVe / 50 identity-hash / 50 cortex-snapshot.
     const gloveDims = 200;
@@ -15278,11 +15314,24 @@ export class Curriculum {
   _noteSemMeaning(region, feat) {
     const cluster = this.cluster;
     if (!cluster.regions || region !== cluster.regions.sem || feat.length !== 300) return;
-    cluster._speechUnits = null;
+    cluster.setSpeechUnits(null);
     cluster._speechCtx = null;
     const m = cluster._mindFeats || (cluster._mindFeats = []);
     m.push(feat);
     if (m.length > 4) m.shift();
+  }
+
+  /**
+   * Turn the word-cell code on or off for this curriculum (and its cluster).
+   * ON: every writer handed a vector that knows its word (`feat._word`) lights
+   * that word's own cells (`_wordCells`) — one code for one word in every
+   * lesson. OFF (default): every writer tiles the numbers as before.
+   */
+  setWordCellCode(on) {
+    const cluster = this.cluster;
+    if (cluster) cluster.wordCellCode = !!on;
+    _wordCellCurriculum = on ? this : (_wordCellCurriculum === this ? null : _wordCellCurriculum);
+    return !!on;
   }
 
   _writeTiledPattern(region, feat, binarize = true, opts = null) {
@@ -15290,6 +15339,13 @@ export class Curriculum {
     const collectInto = opts && opts.collectInto;
     if (!cluster || !region || !feat || feat.length === 0) return;
     this._noteSemMeaning(region, feat);
+    if (cluster.wordCellCode === true) {
+      if (typeof feat._word === 'string' && feat._word) { this._writeWordPattern(region, feat._word, opts); return; }
+      // A 300-number vector with no word on it is written the old way. Counted,
+      // so a lesson that loses the word (a copy drops it) shows up as a number
+      // instead of silently teaching a second code for the same word.
+      if (feat.length === 300) this.stats.untaggedVectorWrites = (this.stats.untaggedVectorWrites | 0) + 1;
+    }
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
@@ -15374,6 +15430,444 @@ export class Curriculum {
     }
   }
 
+  /**
+   * THE CELLS A WORD LIGHTS in a region — one code for one word, everywhere.
+   *
+   * The region is used in two parts:
+   *   MEANING  (first half)  — the word's four strongest positive embedding
+   *            dimensions, each a run of cells. Words alike in meaning share
+   *            these, so what is learned about one reaches its neighbours.
+   *   IDENTITY (second half) — cells chosen for THIS word alone, each from its
+   *            own hash, spread over single cells. Two words share almost none.
+   * The total lit is what eight full dimensions used to light (8/300 of the
+   * region), so nothing downstream sees a denser or sparser pattern.
+   *
+   * Why not 300 slots of cells, as `_writeTiledPattern` writes: the identity
+   * part then lives in 50 slots and each slot lights for about one word in
+   * ten. Measured on the same projection, rule and wiring (400 pairs, 100
+   * wires a cell): that code recalled 41; this one 242 (400 with the
+   * only-when-wrong rule). docs/WHOLE-BRAIN-DESIGN.md.
+   *
+   * Returns region-relative cell indices (ascending, no repeats). Cached per
+   * (word, region size). A word with no embedding gets its identity cells only.
+   */
+  /**
+   * The share of a region one word lights. It decides how many LIT inputs a
+   * cell downstream receives for a word (its wires × this share), and a cell
+   * can only be taught to fire for a word it receives several lit inputs
+   * from. `wordCellShare` on the curriculum overrides the built value.
+   */
+  _wordCellShare() {
+    const s = Number(this.wordCellShare);
+    return (s > 0 && s < 1) ? s : (8 / 300);
+  }
+
+  _wordCells(word, region) {
+    const w = typeof word === 'string' ? word.toLowerCase().trim() : '';
+    const n = region ? (region.end - region.start) : 0;
+    if (!w || !(n > 0)) return _NO_CELLS;
+    const cache = this._wordCellCache || (this._wordCellCache = new Map());
+    const key = n + '|' + w;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const active = Math.max(8, Math.round(n * this._wordCellShare()));
+    const half = Math.floor(n / 2);
+    const set = new Set();
+    // meaning — value-ranked, so only dimensions that can fire are chosen
+    const emb = (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') ? sharedEmbeddings.getEmbedding(w) : null;
+    if (emb && emb.length > 0 && half >= WORD_MEANING_DIMS) {
+      const dims = emb.length;
+      const g = Math.max(1, Math.floor(half / dims));
+      const per = Math.max(1, Math.min(g, Math.round(active * 0.5 / WORD_MEANING_DIMS)));
+      const best = []; // the WORD_MEANING_DIMS largest positive dims
+      for (let d = 0; d < dims; d++) {
+        const v = emb[d];
+        if (!(v > 0)) continue;
+        let j = best.length;
+        if (j < WORD_MEANING_DIMS) best.push(d); else if (v > emb[best[j - 1]]) best[j - 1] = d; else continue;
+        for (j = best.length - 1; j > 0 && emb[best[j]] > emb[best[j - 1]]; j--) { const t = best[j]; best[j] = best[j - 1]; best[j - 1] = t; }
+      }
+      for (const d of best) for (let k = 0; k < per; k++) { const i = d * g + k; if (i < half) set.add(i); }
+    }
+    // identity — each cell from its own hash of (word, k)
+    const span = n - half;
+    const want = Math.max(1, active - set.size);
+    const before = set.size;
+    for (let t = 0; set.size - before < want && t < want * 8; t++) set.add(half + (_cellHash(w, t) % span));
+    const out = Int32Array.from(set).sort();
+    if (cache.size > 60000) cache.clear();
+    cache.set(key, out);
+    return out;
+  }
+
+  /**
+   * Light a word's cells in a region (`_wordCells`) — on the host copy and on
+   * the card, the same cells on both. `opts.collectInto` receives the indices;
+   * `opts.noCpu` skips the host copy (the card-held lesson path). Returns the
+   * number of cells lit.
+   */
+  _writeWordPattern(region, word, opts = null) {
+    const cluster = this.cluster;
+    if (!cluster || !region) return 0;
+    const cells = this._wordCells(word, region);
+    if (!cells.length) return 0;
+    const collectInto = opts && opts.collectInto;
+    if (!(opts && opts.noCpu)) for (let i = 0; i < cells.length; i++) cluster.lastSpikes[region.start + cells[i]] = 1;
+    if (collectInto) for (let i = 0; i < cells.length; i++) collectInto.push(cells[i]);
+    if (cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice) {
+      const regionName = this._resolveRegionName(cluster, region);
+      if (regionName) { try { cluster._gpuProxy.writeSpikeSlice(regionName, Array.from(cells)); } catch { /* non-fatal */ } }
+    }
+    return cells.length;
+  }
+
+  /**
+   * THE CELLS A WRITTEN WORD LIGHTS — its spelling, as she sees it on a page.
+   *
+   * A word on a page is its letters IN ORDER. One letter alone says almost
+   * nothing about which word it is, so the page code is built from parts that
+   * together pin the word down and that words spelled alike share:
+   *   · each letter at its place from the front        ("c" first, "a" second …)
+   *   · each letter at its place from the back         (endings: -ing, -ed, -s)
+   *   · each pair of neighbouring letters              ("ca", "at")
+   *   · how long the word is
+   *   · the whole word at once                         (half of its cells)
+   * Every part lights a few cells of the region, chosen by a hash of the part,
+   * so the same word always lights the same cells, two words that share a
+   * part share those cells, and nothing here depends on a list of words: any
+   * string of letters has a code, taught or not.
+   *
+   * Returns region-relative cell indices (ascending, no repeats).
+   */
+  _spellingCells(word, region) {
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    const n = region ? (region.end - region.start) : 0;
+    if (!w || !(n > 0)) return _NO_CELLS;
+    const cache = this._spellCellCache || (this._spellCellCache = new Map());
+    const key = n + '|' + w;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const parts = this._spellingParts(w);
+    // The same share of the region a word's meaning lights (8 of every 300
+    // cells). Half of them are the word AS A WHOLE — its full run of letters
+    // seen at once, the way a known word is read at a glance — and half are
+    // spread evenly over its parts, at least 2 cells a part. It is the split a
+    // word's meaning cells have (half its own, half shared), for the same
+    // reason: with every cell shared, each new word's lesson lowered the cells
+    // of every word spelled like it — measured, 600 words met once left 505
+    // read even with constant going-back; the whole-word half is a word's own.
+    const active = Math.max(8, Math.round(n * this._wordCellShare()));
+    const whole = Math.max(4, Math.round(active / 2));
+    const per = Math.max(2, Math.round((active - whole) / parts.length));
+    const set = new Set();
+    for (let t = 0; set.size < whole && t < whole * 8; t++) set.add(_cellHash('w' + w, t) % n);
+    for (const p of parts) {
+      const before = set.size;
+      for (let t = 0; set.size - before < per && t < per * 8; t++) set.add(_cellHash(p, t) % n);
+    }
+    const out = Int32Array.from(set).sort();
+    if (cache.size > 60000) cache.clear();
+    cache.set(key, out);
+    return out;
+  }
+
+  /** The parts of a written word that words spelled alike share (see `_spellingCells`). `w` is already lower-case letters. */
+  _spellingParts(w) {
+    const parts = [];
+    const L = Math.min(w.length, 16);
+    for (let i = 0; i < L; i++) { parts.push('f' + i + w[i]); parts.push('b' + i + w[w.length - 1 - i]); }
+    for (let i = 0; i + 1 < w.length && i < 16; i++) parts.push('p' + w[i] + w[i + 1]);
+    parts.push('n' + Math.min(w.length, 16));
+    return parts;
+  }
+
+  /** Light a written word's cells in a region (`_spellingCells`), host copy and card alike. Returns the number lit. */
+  _writeSpelling(region, word) {
+    const cluster = this.cluster;
+    if (!cluster || !region) return 0;
+    const cells = this._spellingCells(word, region);
+    if (!cells.length) return 0;
+    for (let i = 0; i < cells.length; i++) cluster.lastSpikes[region.start + cells[i]] = 1;
+    if (cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice) {
+      const regionName = this._resolveRegionName(cluster, region);
+      if (regionName) { try { cluster._gpuProxy.writeSpikeSlice(regionName, Array.from(cells)); } catch { /* non-fatal */ } }
+    }
+    return cells.length;
+  }
+
+  /**
+   * READING BY SIGHT — the lesson. The written word's cells are lit in `letter`
+   * and the word's own cells in `sem`, and the two pathways between them learn
+   * (only where a cell is wrong): seeing the spelling brings up the meaning,
+   * and holding the meaning brings up the spelling. Needs the word-cell code
+   * (a meaning has to be a pattern of its own to be read back) and the
+   * `letter↔sem` pathways; returns false, teaching nothing, without them.
+   */
+  async _teachReadingBySight(word, opts = {}) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections;
+    if (!R || !R.letter || !R.sem || !proj || !proj.letter_to_sem || cluster.wordCellCode !== true) return false;
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    if (!w) return false;
+    const reps = opts.reps ?? 4;
+    const wl = proj.sem_to_letter ? ['letter_to_sem', 'sem_to_letter'] : ['letter_to_sem'];
+    this._clearSpikes(['letter', 'sem']);
+    if (!this._writeSpelling(R.letter, w) || !this._writeWordPattern(R.sem, w)) { this._clearSpikes(['letter', 'sem']); return false; }
+    for (let rep = 0; rep < reps; rep++) {
+      await this._teachHebbian(cluster.learningRate, { projectionsWhitelist: wl, skipIntraSynapses: true });
+    }
+    this._clearSpikes(['letter', 'sem']);
+    const st = this._readingLesson || (this._readingLesson = { taught: 0 });
+    st.taught++;
+    // GOING BACK OVER EARLIER WORDS. A new word's spelling shares letters with
+    // words she already reads, and its lesson lowers their cells for those
+    // letters. So after each new word she LOOKS at earlier words — a look is a
+    // few hundred weights summed on the word's own cells, no lesson — and only
+    // a word the look finds broken (fewer than half of its own cells reach the
+    // firing threshold from its own spelling) is taught again. The list of
+    // words she has been taught to read lives on the cluster so it is saved
+    // with her.
+    const known = cluster._readTaughtWords instanceof Map ? cluster._readTaughtWords : (cluster._readTaughtWords = new Map());
+    if (!known.has(w)) known.set(w, Date.now());
+    const looks = opts.looks ?? this._readLooksPerWord();
+    if (looks > 0 && known.size > 1) {
+      // WHICH words: round the list she has been taught to read, in turn, from
+      // where the last lesson left off. Two aimed versions were built and
+      // measured and both lost to this one — looking only at words spelled
+      // like the new one (191 / 190 of 200 at 32 looks), and that plus asking
+      // whether the new word's cells answer to the older spelling (197 / 187
+      // at three times the time). Round the list at 64 looks: 200 / 198 after
+      // two sets, 198 / 198 / 199 after three, each word met once.
+      if (!st.order || st.orderSize !== known.size) { st.order = Array.from(known.keys()); st.orderSize = known.size; }
+      const order = st.order;
+      const onCard = opts.lessonsWithoutLooking ?? !!(proj.letter_to_sem._gpuBound && cluster._gpuProxyReady && cluster._gpuProxy && cluster._gpuProxy.hebbianBound);
+      // How many: 64 where she looks first (the look skips most of them — 872
+      // lessons from 36,115 looks). Where every one is a lesson, 16 is enough:
+      // measured 200 / 200 / 200 over three sets, each word met once.
+      const n = Math.min(onCard ? Math.min(looks, 16) : looks, order.length - 1);
+      for (let k = 0; k < n; k++) {
+        st.cursor = ((st.cursor ?? -1) + 1) % order.length;
+        const old = order[st.cursor];
+        if (old === w) continue;
+        st.looked = (st.looked || 0) + 1;
+        // The look reads the HOST's copy of the pathway. When a card holds the
+        // pathway and does the teaching, the host's copy is not kept current,
+        // so the look would be reading old weights — there the older word's
+        // lesson is simply run: on the card a lesson is one short kernel, and
+        // it changes nothing for a word that is still right.
+        if (!onCard && this._ownCellsFire(old)) continue;
+        if (!this._writeSpelling(R.letter, old) || !this._writeWordPattern(R.sem, old)) { this._clearSpikes(['letter', 'sem']); continue; }
+        await this._teachHebbian(cluster.learningRate, { projectionsWhitelist: wl, skipIntraSynapses: true });
+        this._clearSpikes(['letter', 'sem']);
+        st.rehearsed = (st.rehearsed || 0) + 1;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * A LOOK — does this word's spelling still bring every one of its own meaning
+   * cells to the pathway's firing threshold? Summed straight from the pathway's
+   * weights on the word's own cells only (its cells × their wires), so it costs
+   * almost nothing beside a lesson, which sweeps the whole region.
+   */
+  _ownCellsFire(word) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections && cluster.crossProjections.letter_to_sem;
+    if (!R || !R.letter || !R.sem || !proj || !proj.rowPtr) return true;   // nothing to look through
+    const own = this._wordCells(word, R.sem), lit = this._spellingCells(word, R.letter);
+    if (!own.length || !lit.length) return true;
+    const mark = this._lookMark && this._lookMark.length === proj.cols ? this._lookMark : (this._lookMark = new Uint8Array(proj.cols));
+    for (let i = 0; i < lit.length; i++) mark[lit[i]] = 1;
+    const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
+    // The same bar the read itself uses (`_readsWord`): at least half of the
+    // word's own cells at threshold. Asking for every cell would re-teach a
+    // word forever over a cell that has no wire from its spelling at all.
+    let fired = 0;
+    for (let i = 0; i < own.length; i++) {
+      let s = 0;
+      for (let k = proj.rowPtr[own[i]], e = proj.rowPtr[own[i] + 1]; k < e; k++) if (mark[proj.colIdx[k]]) s += proj.values[k];
+      if (s >= theta) fired++;
+    }
+    for (let i = 0; i < lit.length; i++) mark[lit[i]] = 0;
+    return fired * 2 >= own.length;
+  }
+
+  /** How many earlier words she looks at after each new reading lesson (`DREAM_READ_LOOKS`; 0 = none). */
+  _readLooksPerWord() {
+    if (this._readLooksN === undefined) {
+      const raw = (typeof process !== 'undefined' && process.env) ? process.env.DREAM_READ_LOOKS : undefined;
+      const v = (raw === undefined || raw === '') ? 64 : Number(raw);
+      this._readLooksN = Number.isFinite(v) && v >= 0 ? Math.floor(v) : 64;
+    }
+    return this._readLooksN;
+  }
+
+  /**
+   * READ — does she read this written word? The word's spelling is lit, sent
+   * through `letter_to_sem`, and two things must hold in what arrives at `sem`:
+   * the word's own cells are driven (at least half of them past the pathway's
+   * firing threshold), and no other word she knows is driven as fully. A word
+   * she was never taught to read lights a spelling that shares parts with
+   * taught words but drives no pattern of its own, so it does NOT read — which
+   * is what makes this a measurement.
+   * `among` — the words to compare against (default: every word she has a slot
+   * for). Returns { read, own, rival, rivalWord }; `reason` when it cannot run.
+   */
+  async _readsWord(word, among = null) {
+    const cluster = this.cluster;
+    const R = cluster && cluster.regions;
+    const proj = cluster && cluster.crossProjections && cluster.crossProjections.letter_to_sem;
+    if (!R || !R.letter || !R.sem || !proj) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'no letters→meaning pathway' };
+    if (cluster.wordCellCode !== true) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'words have no cells of their own in this build' };
+    const w = typeof word === 'string' ? word.toLowerCase().replace(/[^a-z']/g, '') : '';
+    const lit = this._spellingCells(w, R.letter);
+    if (!lit.length) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'nothing to read' };
+    const out = await this._probePropagate('letter_to_sem', null, { active: Array.from(lit), size: R.letter.end - R.letter.start });
+    if (!out) return { read: false, own: 0, rival: 0, rivalWord: null, reason: 'the pathway gave no answer' };
+    const theta = (proj.errorDriven && typeof proj.errorDriven.theta === 'number') ? proj.errorDriven.theta : 0.5;
+    const driven = (cand) => { const c = this._wordCells(cand, R.sem); if (!c.length) return 0; let k = 0; for (let i = 0; i < c.length; i++) if (out[c[i]] >= theta) k++; return k / c.length; };
+    const own = driven(w);
+    const list = Array.isArray(among) ? among : (Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords : []);
+    let rival = 0, rivalWord = null;
+    for (const cand of list) {
+      if (!cand || cand === w) continue;
+      const d = driven(cand);
+      if (d > rival) { rival = d; rivalWord = cand; }
+    }
+    return { read: own >= 0.5 && own > rival, own, rival, rivalWord };
+  }
+
+  /**
+   * THE WORD THAT GOES IN THE GAP — the lesson. A sentence with one word left
+   * out is put to her as something said to her, and she is taught to say the
+   * missing word. Every word of the sentence takes its turn as the gap. It
+   * uses the path she answers anything by (the speaking state and the wiring
+   * she speaks from), so what it teaches reaches a differently ordered
+   * prompt too. Measured on 300 of her own sentences: the gap as taught 99.5 %
+   * right; the same words reversed 93.8 %.
+   * ⚠ RE-PRICE: (words in the sentence) speech teaches a sentence a pass.
+   * Returns the number of gaps taught.
+   */
+  async _teachFillTheGap(sentence) {   // async: every `_teach…` method is timed through an awaiting wrapper
+    const cluster = this.cluster;
+    const words = (Array.isArray(sentence) ? sentence : String(sentence || '').split(/\s+/))
+      .map((w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '')).filter(Boolean);
+    if (words.length < 3 || !cluster || typeof cluster.speechReadout !== 'function') return 0;
+    const keepU = cluster._speechUnits, keepC = cluster._speechCtx, keepM = cluster._mindFeats;
+    let taught = 0;
+    for (let i = 0; i < words.length; i++) {
+      const rest = words.filter((_, j) => j !== i).join(' ');
+      if (!this._writeSpeechState(rest, [], { unitsOnly: true, noTemplate: true })) continue;
+      if (this._speechTeach(words[i])) taught++;
+    }
+    cluster.setSpeechUnits(keepU); cluster._speechCtx = keepC; cluster._mindFeats = keepM;
+    return taught;
+  }
+
+  /**
+   * COMPREHEND — given these words, is `answer` the word she says? The words
+   * are put to her as something said to her and the first word she would say
+   * is read the way a spoken word is read (her lit speech cells, how she
+   * feels, the floor she speaks above). Returns { got, said } — `said` is the
+   * word she would say, or null for nothing.
+   */
+  _fillsTheGap(promptWords, answer) {
+    const cluster = this.cluster;
+    const prompt = (Array.isArray(promptWords) ? promptWords : String(promptWords || '').split(/\s+/))
+      .map((w) => String(w || '').toLowerCase().replace(/[^a-z0-9']/g, '')).filter(Boolean);
+    const ans = String(answer || '').toLowerCase().replace(/[^a-z0-9']/g, '');
+    this._ensureWordBucketMap(this._currentGateSubject);
+    const list = cluster && cluster.wordBucketWords;
+    const n = Array.isArray(list) ? list.length : 0;
+    if (!prompt.length || !ans || !n || typeof cluster.speechStateFor !== 'function') return { got: false, said: null };
+    const rd = cluster.speechReadout();
+    const units = cluster.speechStateFor(rd.stateUnits(prompt.join(' '), []));
+    if (!units || !units.length) return { got: false, said: null };
+    const m = rd.bucketMeans(units, n);
+    let best = 0, bi = -1;
+    for (let b = 0; b < n; b++) if (m[b] > best) { best = m[b]; bi = b; }
+    const floor = typeof cluster.speechFloor === 'function' ? cluster.speechFloor() : 0.04;
+    const said = (bi >= 0 && best >= floor && !(m.end > 0 && m.end >= best)) ? list[bi] : null;
+    return { got: said === ans, said };
+  }
+
+  /**
+   * NOT YET TAUGHT — the same questions a gate asks, put to a lesson's own
+   * items BEFORE the lesson teaches them, so a gate can print what she reaches
+   * on her own beside what she recalls. The items are the lesson's, taken in
+   * the order the lesson has them (up to ten). Asked once per list — a second
+   * round of the same lesson is no longer "before". It never gates.
+   *   'vocab'    → READ (`_readsWord`) and TALK (`_talkNames`) on words she has
+   *                not been taught to read yet
+   *   'sentence' → COMPREHEND (`_fillsTheGap`, the middle word left out) and
+   *                TALK (`_talkContinues`) on the lesson's sentences
+   */
+  async _askBeforeTaught(kind, items) {
+    if (!Array.isArray(items) || !items.length) return null;
+    const store = this._beforeTaught || (this._beforeTaught = new Map());
+    const key = this._beforeTaughtKey(kind, items);
+    if (store.has(key)) return store.get(key);
+    const cluster = this.cluster;
+    let fig = null;
+    try {
+      if (kind === 'vocab') {
+        const known = cluster && cluster._readTaughtWords instanceof Map ? cluster._readTaughtWords : null;
+        const ask = [];
+        for (const it of items) {
+          const w = typeof it === 'string' ? it.toLowerCase().replace(/[^a-z']/g, '') : '';
+          if (!w || (known && known.has(w))) continue;
+          ask.push(w);
+          if (ask.length >= 10) break;
+        }
+        let read = 0, talk = 0;
+        for (const w of ask) { if ((await this._readsWord(w)).read) read++; if (this._talkNames(w)) talk++; }
+        fig = { kind, asked: ask.length, read, talk };
+      } else if (kind === 'sentence') {
+        let asked = 0, comprehend = 0, right = 0, steps = 0;
+        for (const it of items) {
+          const words = String(it || '').toLowerCase().split(/\s+/).map((w) => w.replace(/[^a-z']/g, '')).filter(Boolean);
+          if (words.length < 3) continue;
+          const mid = Math.floor(words.length / 2);
+          if (this._fillsTheGap(words.filter((_, j) => j !== mid), words[mid]).got) comprehend++;
+          const t = this._talkContinues(words.join(' '));
+          if (t && t.total > 0) { right += t.right; steps += t.total; }
+          if (++asked >= 10) break;
+        }
+        fig = { kind, asked, comprehend, talkRight: right, talkSteps: steps };
+      }
+    } catch (e) { fig = { kind, asked: 0, error: e && e.message ? e.message : String(e) }; }
+    store.set(key, fig);
+    if (store.size > 512) store.delete(store.keys().next().value);
+    return fig;
+  }
+
+  _beforeTaughtKey(kind, items) {
+    return `${kind}|${items.length}|${String(items[0]).slice(0, 48)}|${String(items[items.length - 1]).slice(0, 48)}`;
+  }
+
+  /** The words a gate prints for a list's not-yet-taught figure ('' when it was never asked). */
+  _beforeTaughtNote(kind, items) {
+    const f = this._beforeTaught && Array.isArray(items) && items.length ? this._beforeTaught.get(this._beforeTaughtKey(kind, items)) : null;
+    if (!f) return '';
+    if (f.error) return ` · before the lesson: could not be asked (${f.error})`;
+    if (!f.asked) return ' · before the lesson: nothing here was new to her';
+    return kind === 'vocab'
+      ? ` · before the lesson (not yet taught): READ ${f.read}/${f.asked}, TALK ${f.talk}/${f.asked}`
+      : ` · before the lesson (not yet taught): COMPREHEND ${f.comprehend}/${f.asked}, TALK ${f.talkRight}/${f.talkSteps} next words`;
+  }
+
+  /** READ, for a line: does she read every word of it? (False for an empty line.) */
+  async _readsAll(words) {
+    const list = (Array.isArray(words) ? words : String(words || '').split(/\s+/))
+      .map((w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '')).filter(Boolean);
+    if (!list.length) return false;
+    for (const w of list) { if (!(await this._readsWord(w)).read) return false; }
+    return true;
+  }
+
   // Reverse-lookup a region name from the {start,end} object. Cached
   // per-cluster so a curriculum run with thousands of _writeTiledPattern
   // calls doesn't re-scan cluster.regions on every call.
@@ -15422,7 +15916,7 @@ export class Curriculum {
     // The speaking state lives with sem, and the words a lesson lit live with
     // word_motor: clearing either region clears what rode on it.
     const _scoped = Array.isArray(regionNames) && regionNames.length > 0;
-    if (!_scoped || regionNames.includes('sem')) { cluster._speechUnits = null; cluster._speechCtx = null; cluster._mindFeats = null; }
+    if (!_scoped || regionNames.includes('sem')) { cluster.setSpeechUnits(null); cluster._speechCtx = null; cluster._mindFeats = null; }
     if (!_scoped || regionNames.includes('word_motor')) cluster._speechTargets = null;
     // WMB REGRESSION FIX 2 — scoped clear. When `regionNames` is a non-empty
     // array, zero ONLY those region spans + their GPU spike slices instead of
@@ -16165,6 +16659,12 @@ export class Curriculum {
   // clean comparisons the scan is skipped. `DREAM_LATERAL_HINT=0` opts out
   // entirely.
   async _teachLateralInhibition(lr, numBuckets = 26, opts = null) {
+    // Wiring that learns only-when-wrong already lowers every cell that fires
+    // when it should rest, in the lesson itself; this pass writes through the
+    // anti-Hebbian verb, which changes nothing on such wiring (host and card).
+    // Measured: 207 calls in one vocabulary + sentence lesson, 0 wires changed.
+    // So on that wiring it is skipped instead of scanning for nothing.
+    if (this.cluster && this.cluster.synapses && this.cluster.synapses.errorDriven) return;
     const _lp0 = Date.now();
     this._tstage('lateral:substrate');   // LOOPNAME
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
@@ -19794,7 +20294,7 @@ export class Curriculum {
     const about = h ? null : (opts.about || null);
     if (opts.unitsOnly) {
       if (!p.length && !h && !about) return false;
-      cluster._speechUnits = cluster.speechReadout().stateUnits(h, p, about);
+      cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p, about));
       cluster._speechCtx = { heard: h, prefix: p, about };
       cluster._mindFeats = null;
       cluster._speechTargets = null;
@@ -19820,7 +20320,7 @@ export class Curriculum {
     // in: the sparse unit list the speech readout builds from what was said and
     // her words so far. Set AFTER the sem writes above, which each mark sem as
     // holding a plain meaning; this is the explicit speaking state and wins.
-    cluster._speechUnits = cluster.speechReadout().stateUnits(h, p);
+    cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p));
     cluster._speechCtx = { heard: h, prefix: p };
     cluster._mindFeats = null;
     return true;
@@ -19843,13 +20343,13 @@ export class Curriculum {
     const keep = cluster._speechUnits;
     const said = ctx.prefix.slice();
     for (const w of targets) {
-      cluster._speechUnits = rd.stateUnits(ctx.heard, said, ctx.about || null);
+      cluster.setSpeechUnits(rd.stateUnits(ctx.heard, said, ctx.about || null));
       this._speechTeach(w);
       said.push(w);
     }
-    cluster._speechUnits = rd.stateUnits(ctx.heard, said, ctx.about || null);
+    cluster.setSpeechUnits(rd.stateUnits(ctx.heard, said, ctx.about || null));
     this._speechTeach(SPEECH_END);
-    cluster._speechUnits = keep;
+    cluster.setSpeechUnits(keep);
   }
 
   /** A thing in mind, to be named ("this thing → its word"): the naming lesson
@@ -19861,9 +20361,9 @@ export class Curriculum {
     if (!semR || !w) return false;
     this._clearSpikes(['sem', 'word_motor']);
     this._writeTiledPattern(semR, this._topKEmbedding(this._dictionaryPatternFor(w), 8), true);
-    cluster._speechUnits = cluster.speechReadout().conceptUnits(w);
+    cluster.setSpeechUnits(cluster.speechReadout().conceptUnits(w));
     cluster._mindFeats = null;
-    return cluster._speechUnits.length > 0;
+    return !!(cluster._speechUnits && cluster._speechUnits.length);
   }
 
   /** A meaning in mind with no word attached (a mood, a memory, a topic vector). */
@@ -19874,9 +20374,9 @@ export class Curriculum {
     this._clearSpikes(['sem', 'word_motor']);
     const f = Float64Array.from(emb);
     this._writeTiledPattern(semR, this._topKEmbedding(f, 8), true);
-    cluster._speechUnits = cluster.speechReadout().meaningUnits([f]);
+    cluster.setSpeechUnits(cluster.speechReadout().meaningUnits([f]));
     cluster._mindFeats = null;
-    return cluster._speechUnits.length > 0;
+    return !!(cluster._speechUnits && cluster._speechUnits.length);
   }
 
   /**
@@ -21255,6 +21755,7 @@ export class Curriculum {
     idx.sort((a, b) => emb[b] - emb[a]);
     const out = emb.constructor ? new emb.constructor(emb.length) : new Float64Array(emb.length);
     for (let i = 0; i < K; i++) out[idx[i]] = emb[idx[i]];
+    if (emb._word) out._word = emb._word;   // the vector still knows its word
     return out;
   }
 
@@ -21275,6 +21776,7 @@ export class Curriculum {
     for (let i = 0; i < feat.length; i++) {
       if (keep[i]) out[i] = feat[i];
     }
+    if (feat._word) out._word = feat._word;   // the vector still knows its word
     return out;
   }
 
@@ -21360,6 +21862,10 @@ export class Curriculum {
     const cluster = this.cluster;
     if (!cluster || !region || !feat || feat.length === 0) return;
     this._noteSemMeaning(region, feat);
+    // With the word-cell code on, a word laid over a region "at an offset" is
+    // simply that word's own cells — they do not collide with whatever else is
+    // lit, which is all the offset was for.
+    if (cluster.wordCellCode === true && typeof feat._word === 'string' && feat._word) { this._writeWordPattern(region, feat._word); return; }
     const size = region.end - region.start;
     const slideStart = region.start + Math.floor(size * (offset || 0));
     const slideSize = region.end - slideStart;
@@ -21373,15 +21879,21 @@ export class Curriculum {
           const idx = slideStart + d * gSize + n;
           if (idx < region.end) {
             cluster.lastSpikes[idx] = 1;
-            if (sparseIndices) sparseIndices.push(idx);
+            if (sparseIndices) sparseIndices.push(idx - region.start);
           }
         }
       }
     }
+    // ⛔ This used to call `writeSpikeSlice(sparseIndices)` — ONE argument, with
+    // cluster-absolute indices — while the card write takes (regionName,
+    // region-relative indices). So an offset pattern (the key word laid beside a
+    // question, the sentence-so-far beside her last word) was written on the
+    // host and never reached the card: lessons taught on the card without it.
     if (haveProxy && sparseIndices.length > 0) {
-      try {
-        cluster._gpuProxy.writeSpikeSlice(sparseIndices);
-      } catch { /* non-fatal — CPU shadow already written */ }
+      const regionName = this._resolveRegionName(cluster, region);
+      if (regionName) {
+        try { cluster._gpuProxy.writeSpikeSlice(regionName, sparseIndices); } catch { /* non-fatal — host copy already written */ }
+      }
     }
   }
 
@@ -28316,6 +28828,20 @@ export class Curriculum {
     const wordEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
       ? sharedEmbeddings.getEmbedding(cleanWord) : null;
 
+    // === READING BY SIGHT: the written word ⇄ its meaning ===
+    // Knowing a word includes knowing it on a page. The whole spelling (its
+    // letters in order) is taught onto the word's own meaning cells and back
+    // (`_teachReadingBySight`) — this is what the READ gates measure. It runs
+    // first so the per-letter layers below, which clear and rewrite `letter`,
+    // start from a clean sheet. Skipped (returns false) in a build without the
+    // letters→meaning pathway or the word-cell code.
+    if (wordEmb && wordEmb.length > 0) {
+      const _rT = Date.now();
+      try { await this._teachReadingBySight(cleanWord, { reps }); } catch (e) { console.warn(`[Curriculum] reading-by-sight lesson for "${cleanWord}" failed: ${e && e.message ? e.message : e}`); }
+      const _wr = this._wordIntReadMs || (this._wordIntReadMs = { ms: 0, words: 0 });
+      _wr.ms += Date.now() - _rT; _wr.words++;
+    }
+
     const firstLetterOneHot = encodeLetter(letters[0]);
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
 
@@ -28651,6 +29177,7 @@ export class Curriculum {
   async _teachVocabList(vocab, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: 'no cluster wired' };
+    await this._askBeforeTaught('vocab', vocab);   // what she reaches before this lesson — printed by the gate, never a pass condition
 
     // Delegates every word to `_teachWordIntegrated` — the unified
     // 5-layer word-learning primitive. Each word gets: full-spelling
@@ -28785,6 +29312,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -29016,35 +29545,10 @@ export class Curriculum {
         }
       }
 
-      // READ: letter → sem cross-projection → cosine vs word embedding
-      if (letterToSem && semRegion) {
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const semSize = semRegion.end - semRegion.start;
-        const SEM_DIM = 300;
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        const semReadout = new Float64Array(SEM_DIM);
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
-          }
-          semReadout[d] = sum / sGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < SEM_DIM; i++) mean += semReadout[i];
-        mean /= SEM_DIM;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] -= mean;
-        let norm = 0;
-        for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-
-        const wordEmb = sharedEmbeddings.getEmbedding(word);
-        if (wordEmb && cosine(semReadout, wordEmb) > 0.10) readPass++;
-      } else {
-        readPass++;
-      }
+      // READ: the written word, through letters→meaning, must bring up ITS
+      // meaning past threshold and more fully than any other word she knows
+      // (`_readsWord`). No pathway, or a word never taught, is a miss.
+      if ((await this._readsWord(word)).read) readPass++;
 
       // TALK: with this thing in mind, does she SAY its word? Read where she
       // speaks from (the speech readout, in the naming state the naming lesson
@@ -29063,8 +29567,8 @@ export class Curriculum {
 
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}`,
-      metrics: { readRate, talkRate, talkFails },
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${N} (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK fail: ' + talkFails.join(', ') + ']' : ''}${this._beforeTaughtNote('vocab', vocab)}`,
+      metrics: { readRate, talkRate, talkFails, beforeTaught: this._beforeTaught ? (this._beforeTaught.get(this._beforeTaughtKey('vocab', vocab)) || null) : null },
     };
   }
 
@@ -29577,6 +30081,7 @@ export class Curriculum {
   async _teachSentenceList(sentences, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: 'no cluster wired' };
+    await this._askBeforeTaught('sentence', sentences);   // what she reaches before this lesson — printed by the gate, never a pass condition
 
     // DIRECT PATTERN HEBBIAN — same approach as the ELA-K direct-
     // pattern path. For each sentence, for each word: build word
@@ -29663,6 +30168,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -29998,6 +30505,26 @@ export class Curriculum {
       }
     } catch { /* frame never blocks the sentence teach */ }
 
+    // THE WORD THAT GOES IN THE GAP — taught on these same sentences before
+    // they are asked about (`_teachFillTheGap`): every word of every sentence
+    // as the missing one. The gate below then leaves out a word at random.
+    // ⚠ RE-PRICE: Σ(words in a sentence) speech teaches a pass — measured
+    // 0.18 ms a teach at 751 words, so 1,000 sentences of 7 words ≈ 1.3 s.
+    // THREE passes over the list: a later sentence's gaps disturb an earlier
+    // one's, and one pass left this list's own gate at 7–10 of 10 from run to
+    // run; three passes is what measured 99.3 % of 1,967 gaps right. ≈ 4 s
+    // per 1,000 sentences.
+    try {
+      let _gaps = 0; const _gT = Date.now(); let _slice = Date.now();
+      for (let _pass = 0; _pass < 3; _pass++) {
+        for (const sentence of sentences) {
+          _gaps += await this._teachFillTheGap(sentence);
+          if (Date.now() - _slice > 30) { await _microtask(); _slice = Date.now(); }
+        }
+      }
+      this._hb(`[Curriculum] FILL-THE-GAP — ${_gaps} gaps taught (three passes) over ${sentences.length} sentence(s) in ${((Date.now() - _gT) / 1000).toFixed(1)}s`);
+    } catch (e) { console.warn(`[Curriculum] fill-the-gap lesson failed: ${e && e.message ? e.message : e}`); }
+
     // REAL HUMAN-GRADE GATE for sentences.
     // Fill-in-blank: given context words, find the missing word.
     // NOT identical to training — tests the SAME sentences but asks
@@ -30142,35 +30669,8 @@ export class Curriculum {
         }
       }
 
-      // READ: letter → sem via cross-projection → cosine vs first word embedding
-      if (letterToSem && semRegion) {
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const semSize = semRegion.end - semRegion.start;
-        const SEM_DIM = 300;
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        const semReadout = new Float64Array(SEM_DIM);
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
-          }
-          semReadout[d] = sum / sGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < SEM_DIM; i++) mean += semReadout[i];
-        mean /= SEM_DIM;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] -= mean;
-        let norm = 0;
-        for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-
-        const wordEmb = sharedEmbeddings.getEmbedding(firstWord);
-        if (wordEmb && cosine(semReadout, wordEmb) > 0.10) readPass++;
-      } else {
-        readPass++; // no letter→sem projection = skip READ (pass by default)
-      }
+      // READ: she reads the sentence when she reads EVERY word of it (`_readsAll`).
+      if (await this._readsAll(words)) readPass++;
 
       // TALK: given the sentence so far, does she say its next word? Every
       // in-sentence step is read where she speaks from, in the state compose
@@ -30189,7 +30689,7 @@ export class Curriculum {
 
     return {
       pass,
-      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${talkSteps} next words (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK first miss: ' + talkFails.slice(0, 10).join(', ') + ']' : ''}`,
+      reason: `READ ${readPass}/${N} (${(readRate * 100).toFixed(0)}%), TALK ${talkPass}/${talkSteps} next words (${(talkRate * 100).toFixed(0)}%)${talkFails.length > 0 ? ' [TALK first miss: ' + talkFails.slice(0, 10).join(', ') + ']' : ''}${this._beforeTaughtNote('sentence', sentences)}`,
       metrics: { readRate, talkRate, talkFails },
     };
   }
@@ -30203,7 +30703,9 @@ export class Curriculum {
     const n = Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords.length : 0;
     if (typeof idx !== 'number' || idx < 0 || !n) return false;
     const rd = cluster.speechReadout();
-    return rd.rank(rd.conceptUnits(w), idx, n) === 1;
+    // read from the state she would speak from with this thing in mind (`speechStateFor`)
+    const units = cluster.speechStateFor(rd.conceptUnits(w));
+    return !!(units && units.length) && rd.rank(units, idx, n) === 1;
   }
 
   /**
@@ -30226,9 +30728,9 @@ export class Curriculum {
     for (let i = 1; i < words.length; i++) {
       const idx = map.get(words[i]);
       if (typeof idx !== 'number' || idx < 0) continue;
-      const units = rd.stateUnits('', words.slice(0, i), about);
+      const units = cluster.speechStateFor(rd.stateUnits('', words.slice(0, i), about)) || [];
       out.total++;
-      if (rd.saysTaught(units, idx, n)) { out.right++; continue; }
+      if (units.length && rd.saysTaught(units, idx, n)) { out.right++; continue; }
       if (!out.firstMiss) {
         const t = rd.top(units, n);
         out.firstMiss = `${t >= 0 ? list[t] : (t === SPEECH_END ? '(stops)' : '(nothing)')}→${words[i]}`;
@@ -31443,6 +31945,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -31562,6 +32066,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -31594,34 +32100,8 @@ export class Curriculum {
         ? sharedEmbeddings.getSentenceEmbedding(name)
         : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
 
-      // READ: letter → sem → cosine vs concept name embedding
-      if (letterToSem && nameEmb && nameEmb.length > 0) {
-        const letterPat = buildPattern(letterSize, letterOneHot);
-        const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-        const semSize = semRegion.end - semRegion.start;
-        const SEM_DIM = 300;
-        const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-        const semReadout = new Float64Array(SEM_DIM);
-        for (let d = 0; d < SEM_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semOutput.length) sum += semOutput[idx];
-          }
-          semReadout[d] = sum / sGSize;
-        }
-        let mean = 0;
-        for (let i = 0; i < SEM_DIM; i++) mean += semReadout[i];
-        mean /= SEM_DIM;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] -= mean;
-        let norm = 0;
-        for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
-        norm = Math.sqrt(norm) || 1;
-        for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-        if (cosine(semReadout, nameEmb) > 0.10) readPass++;
-      } else {
-        readPass++;
-      }
+      // READ: she reads the name when she reads every word of it (`_readsAll`).
+      if (await this._readsAll(String(name).toLowerCase().split(/\s+/))) readPass++;
 
       // TALK: with this thing in mind, does she SAY its word? (see `_talkNames`)
       if (this._talkNames(name)) talkPass++;
@@ -33209,6 +33689,8 @@ export class Curriculum {
 
     function buildPattern(regionSize, feat) {
       const pat = new Float64Array(regionSize);
+      const _wc = _taggedWordCells(feat, regionSize);   // a word's own cells, when the vector knows its word
+      if (_wc) { for (let i = 0; i < _wc.length; i++) pat[_wc[i]] = 1; return pat; }
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
@@ -35585,11 +36067,13 @@ export class Curriculum {
 // ═══════════════════════════════════════════════════════════════════
 
   /**
-   * Comprehension gate — tests if Unity UNDERSTANDS associations.
-   * Given a prompt (sequence of words), checks if the sem readout
-   * after processing the prompt is closest to the expected answer's
-   * GloVe embedding. Like testing "what is 2+3?" and checking if
-   * Unity's semantic state is near "five".
+   * Comprehension gate — given some words, does she give the word that goes
+   * with them? Each question is put to her as something said to her and
+   * passes when the word she says is the answer (`_fillsTheGap`). It asks
+   * what the fill-the-gap lesson teaches (`_teachFillTheGap`), through the
+   * path every answer of hers takes; a question about a sentence she was
+   * never given is answered right far less often, and that is the point of
+   * asking.
    *
    * @param {Array<{prompt: string[], answer: string}>} questions
    *   Each question has a prompt (words to inject) and expected answer.
@@ -35597,38 +36081,7 @@ export class Curriculum {
    */
   async _gateComprehension(questions) {
     const cluster = this.cluster;
-    const allProjs = cluster.crossProjections || {};
-    const letterRegion = cluster.regions?.letter;
-    const semRegion = cluster.regions?.sem;
-    if (!letterRegion || !semRegion) return { pass: false, reason: 'missing regions' };
-
-    const letterSize = letterRegion.end - letterRegion.start;
-    const semSize = semRegion.end - semRegion.start;
-    const invSize = inventorySize();
-    const letterToSem = allProjs['letter_to_sem'];
-    if (!letterToSem) return { pass: false, reason: 'no letter_to_sem projection' };
-
-    function cosine(a, b) {
-      let dot = 0, na = 0, nb = 0;
-      const L = Math.min(a.length, b.length);
-      for (let i = 0; i < L; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
-      const d = Math.sqrt(na) * Math.sqrt(nb);
-      return d > 0 ? dot / d : 0;
-    }
-
-    function buildLetterPattern(letter) {
-      const oneHot = encodeLetter(letter);
-      const pat = new Float64Array(letterSize);
-      const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
-      for (let d = 0; d < oneHot.length; d++) {
-        if (oneHot[d] <= 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < letterSize) pat[idx] = 1.0;
-        }
-      }
-      return pat;
-    }
+    if (!cluster || typeof cluster.speechReadout !== 'function') return { pass: false, reason: 'no way to answer in this build' };
 
     // Sample up to 10 questions
     const sample = [];
@@ -35641,99 +36094,17 @@ export class Curriculum {
 
     let comprehendPass = 0;
     const fails = [];
-    const SEM_DIM = 300;
     const PATH_MIN = GATE_PATH_MIN;
 
     let _qi = 0;
     for (const { prompt, answer } of sample) {
       this._probeMark('comprehension', ++_qi, sample.length);
-      // Build accumulated sem state from the prompt words.
-      // For each word in the prompt, get its first letter, propagate
-      // through letter→sem, accumulate the sem readouts. This simulates
-      // "reading" the prompt through the trained cross-projections.
-      const accumSem = new Float64Array(SEM_DIM);
-      // Seed Crystal gate credit — the same readout split at the sem midpoint.
-      const accumL = new Float64Array(SEM_DIM), accumR = new Float64Array(SEM_DIM);
-      let wordCount = 0;
-      // ⛔ EVERY LETTER OF EVERY WORD. This probe read only the FIRST letter of
-      // each prompt word for its whole life, so "cat sat" and "car sun" were
-      // the same probe and every grade's comprehension gate measured the
-      // letter→meaning projection's pull toward the answer, not the sentence.
-      // Now each letter propagates through letter_to_sem and the word's readout
-      // is the mean over its letters (a bag of letters — still position-free,
-      // but no longer blind past the initial). `DREAM_GATE_READ=initial`
-      // restores the old probe for an A/B. RE-PRICE: ×len(word) propagates per
-      // word on the probe lane only; the walk's consolidation gate is untouched.
-      const _readInitialOnly = (typeof process !== 'undefined' && process.env && process.env.DREAM_GATE_READ === 'initial');
-      for (const word of prompt) {
-        const clean = word.replace(/[^a-z0-9]/g, '');
-        if (!clean) continue;
-        const letters = _readInitialOnly ? [clean[0]] : clean.split('');
-        const wordSem = new Float64Array(SEM_DIM);
-        const wordL = new Float64Array(SEM_DIM), wordR = new Float64Array(SEM_DIM);
-        let letterCount = 0;
-        for (const letter of letters) {
-          const letterPat = buildLetterPattern(letter);
-          const semOutput = await this._probePropagate('letter_to_sem', letterPat);
-          const sGSize = Math.max(1, Math.floor(semSize / SEM_DIM));
-          const semMid = Math.floor(semSize / 2);
-          for (let d = 0; d < SEM_DIM; d++) {
-            let sum = 0, sumL = 0, sumR = 0;
-            for (let n = 0; n < sGSize; n++) {
-              const idx = d * sGSize + n;
-              if (idx < semOutput.length) {
-                sum += semOutput[idx];
-                if (idx < semMid) sumL += semOutput[idx]; else sumR += semOutput[idx];
-              }
-            }
-            wordSem[d] += sum / sGSize;
-            wordL[d] += sumL / sGSize; wordR[d] += sumR / sGSize;
-          }
-          letterCount++;
-        }
-        if (letterCount === 0) continue;
-        for (let d = 0; d < SEM_DIM; d++) {
-          accumSem[d] += wordSem[d] / letterCount;
-          accumL[d] += wordL[d] / letterCount; accumR[d] += wordR[d] / letterCount;
-        }
-        wordCount++;
-      }
-      if (wordCount === 0) continue;
-
-      // Average and normalize
-      for (let i = 0; i < SEM_DIM; i++) accumSem[i] /= wordCount;
-      let mean = 0;
-      for (let i = 0; i < SEM_DIM; i++) mean += accumSem[i];
-      mean /= SEM_DIM;
-      for (let i = 0; i < SEM_DIM; i++) accumSem[i] -= mean;
-      let norm = 0;
-      for (let i = 0; i < SEM_DIM; i++) norm += accumSem[i] * accumSem[i];
-      norm = Math.sqrt(norm) || 1;
-      for (let i = 0; i < SEM_DIM; i++) accumSem[i] /= norm;
-
-      // Check if the accumulated sem state is closest to the answer's GloVe
-      const answerEmb = sharedEmbeddings.getEmbedding(answer);
-      if (!answerEmb) continue;
-      // 0.10 is derived, not tuned: a mean-centred 300-d readout against a unit
-      // vector has chance cosine ~N(0, 1/√300 = 0.058), so 0.10 is 1.7σ above
-      // chance; with the 80% gate over ≤10 questions the chance pass is ~1e-8.
-      const score = cosine(accumSem, answerEmb);
-      const passed = score > 0.10;
-      if (passed) {
-        comprehendPass++;
-      } else {
-        fails.push(`${prompt.join(' ')} → ${answer} (cos=${score.toFixed(3)})`);
-      }
-      // Seed Crystal — credit the side whose half of the readout was nearer.
-      try {
-        const brain = this.brain || this._brain || (cluster && cluster._brain) || null;
-        const host = (brain && typeof brain._crystalGateCredit === 'function') ? brain
-          : (typeof globalThis.__unityBrain === 'object' && typeof globalThis.__unityBrain._crystalGateCredit === 'function') ? globalThis.__unityBrain : null;
-        if (host) {
-          const centre = (v) => { let m = 0; for (let i = 0; i < v.length; i++) m += v[i]; m /= v.length; const o = new Float64Array(v.length); for (let i = 0; i < v.length; i++) o[i] = v[i] - m; return o; };
-          host._crystalGateCredit(cosine(centre(accumL), answerEmb), cosine(centre(accumR), answerEmb), passed);
-        }
-      } catch { /* credit is optional; the gate's own verdict is unaffected */ }
+      // The prompt is put to her as something said to her; she comprehends it
+      // when the word she says is the answer (`_fillsTheGap` — the same read a
+      // spoken word takes). Nothing said, or another word, is a miss.
+      const r = this._fillsTheGap(prompt, answer);
+      if (r.got) comprehendPass++;
+      else fails.push(`${prompt.join(' ')} → ${answer} (said ${r.said === null ? 'nothing' : '"' + r.said + '"'})`);
     }
 
     const N = sample.length;

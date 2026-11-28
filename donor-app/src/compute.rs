@@ -16,7 +16,7 @@ use crate::frames::Binding;
 /// `group == 0` → `list` is cell indices; `group > 0` → `list` is dims and the
 /// cells are each dim's tile (`frames::tile_indices`), clipped to `size`.
 pub type SpikeWrite = (String, String, Vec<u32>, bool, u32, u32);
-use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER, VOLTAGE_MEAN_SHADER};
+use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_ERROR_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER, VOLTAGE_MEAN_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -50,8 +50,10 @@ struct LifParams {
     entangle_rho: f32,
     /// v0.3.50 — spike-triggered adaptation: each spike lowers y by β.
     refract_beta: f32,
-    _pad1: u32,
-    _pad2: u32,
+    /// Gain on the delivered wiring input (`syn`); 0 = delivery off.
+    syn_gain: f32,
+    /// How far below sigma = -1 an undriven cell rests (0 = the map's default).
+    rest_shift: f32,
 }
 
 #[repr(C)]
@@ -129,6 +131,49 @@ struct BucketParams {
     grid_x: u32,
 }
 
+/// The row ranges an error-driven launch should sweep, as (start, count) with
+/// (0, 0) meaning every row. No spans known, or the verb does not know its lit
+/// post rows → every row. Otherwise each span that holds a lit post row, once.
+pub(crate) fn err_spans_hit(spans: Option<&Vec<(u32, u32)>>, post_idx: Option<&[u32]>) -> Vec<(u32, u32)> {
+    let (spans, post) = match (spans, post_idx) { (Some(s), Some(p)) if !s.is_empty() => (s, p), _ => return vec![(0, 0)] };
+    let mut hit: Vec<(u32, u32)> = Vec::new();
+    for &(start, count) in spans {
+        if count == 0 { continue; }
+        let end = start as u64 + count as u64;
+        if post.iter().any(|&r| (r as u64) >= start as u64 && (r as u64) < end) { hit.push((start, count)); }
+    }
+    // Overlapping spans (a sub-band inside its region) merge, so no row is swept twice.
+    hit.sort_unstable();
+    let mut merged: Vec<(u32, u32)> = Vec::new();
+    for (s, c) in hit {
+        if let Some(last) = merged.last_mut() {
+            let last_end = last.0 as u64 + last.1 as u64;
+            if (s as u64) <= last_end { let e = (s as u64 + c as u64).max(last_end); last.1 = (e - last.0 as u64) as u32; continue; }
+        }
+        merged.push((s, c));
+    }
+    merged
+}
+
+/// Uniform block for plasticity_error.wgsl — field order and padding match its `Params` (48 bytes).
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct ErrParams {
+    rows: u32,
+    nnz: u32,
+    eta: f32,
+    theta: f32,
+    margin: f32,
+    w_min: f32,
+    w_max: f32,
+    src_offset: u32,
+    dst_offset: u32,
+    /// First row to visit, and how many from there (0 = every row).
+    row_start: u32,
+    row_count: u32,
+    pad2: u32,
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct HebbParams {
@@ -175,6 +220,12 @@ struct Cluster {
     state: wgpu::Buffer,        // vec2<f32> per neuron
     spikes: wgpu::Buffer,       // u32 per neuron
     currents: wgpu::Buffer,     // f32 per neuron
+    /// f32 per neuron — the wiring's input this step: for every matrix bound
+    /// INTO this cluster, the summed weight from source cells that fired last
+    /// step. Cleared and refilled at the top of each step while `syn_gain` ≠ 0.
+    syn: wgpu::Buffer,
+    syn_gain: f32,
+    rest_shift: f32,
     region_gates: wgpu::Buffer, // [start,end,gate,pad] f32 per region (≥1 dummy)
     num_regions: u32,
     regions: HashMap<String, (u32, u32)>, // name → (start, end) for region ops
@@ -192,6 +243,8 @@ pub struct ComputeEngine {
     spike_pipeline: wgpu::ComputePipeline,
     propagate_pipeline: wgpu::ComputePipeline,
     plasticity_pipeline: wgpu::ComputePipeline,
+    /// Error-driven plasticity (a wire changes only when its cell is wrong).
+    plasticity_error_pipeline: wgpu::ComputePipeline,
     scatter_pipeline: wgpu::ComputePipeline,
     /// GATEGPU.2 (v0.3.28) — reduces post currents to per-word-bucket means on the card.
     bucket_mean_pipeline: wgpu::ComputePipeline,
@@ -208,6 +261,12 @@ pub struct ComputeEngine {
     volt_staging: wgpu::Buffer,
     clusters: HashMap<String, Cluster>,
     sparse: HashMap<String, SparseMatrix>,
+    /// Matrices that learn by the error-driven rule: name → (eta, theta, margin).
+    /// Every plasticity verb on such a matrix runs `plasticity_error` instead of
+    /// Oja (lr > 0), and skips anti-Hebbian (lr < 0) — set once, all lanes follow.
+    err_mode: HashMap<String, (f32, f32, f32)>,
+    /// Row spans an error-driven matrix's lessons lie in (see `plasticity_plan`).
+    err_spans: HashMap<String, Vec<(u32, u32)>>,
 }
 
 fn dispatch_dims(n: u32) -> (u32, u32, u32) {
@@ -255,6 +314,7 @@ impl ComputeEngine {
         let spike_pipeline = build_pipeline(&device, "spike_count", SPIKE_COUNT_SHADER);
         let propagate_pipeline = build_pipeline(&device, "synapse_propagate", SYNAPSE_PROPAGATE_SHADER);
         let plasticity_pipeline = build_pipeline(&device, "plasticity", PLASTICITY_SHADER);
+        let plasticity_error_pipeline = build_pipeline(&device, "plasticity_error", PLASTICITY_ERROR_SHADER);
         let scatter_pipeline = build_pipeline(&device, "scatter_ones", SCATTER_ONES_SHADER);
         let bucket_mean_pipeline = build_pipeline(&device, "bucket_mean", BUCKET_MEAN_SHADER);
         let current_max_pipeline = build_pipeline(&device, "current_max", CURRENT_MAX_SHADER);
@@ -282,6 +342,7 @@ impl ComputeEngine {
             spike_pipeline,
             propagate_pipeline,
             plasticity_pipeline,
+            plasticity_error_pipeline,
             scatter_pipeline,
             bucket_mean_pipeline,
             current_max_pipeline,
@@ -291,6 +352,8 @@ impl ComputeEngine {
             volt_staging,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
+            err_mode: HashMap::new(),
+            err_spans: HashMap::new(),
         })
     }
 
@@ -328,13 +391,20 @@ impl ComputeEngine {
         let spikes = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{name}-spikes")),
             contents: bytemuck::cast_slice(&zero_u32),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            // COPY_SRC: `readback_letter_buckets` copies this buffer out; without
+            // it that copy fails validation and the readback returns zeros.
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         });
         let zero_f32 = vec![0f32; n.max(1)];
         let currents = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{name}-currents")),
             contents: bytemuck::cast_slice(&zero_f32),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+        let syn = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{name}-syn")),
+            contents: bytemuck::cast_slice(&zero_f32),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         });
         // region_gates packed [start, end, gate, pad] per region; gate defaults to 1.0
         // (psi modulation is a later refinement). Needs ≥1 entry (no zero-size binding).
@@ -369,6 +439,9 @@ impl ComputeEngine {
                 state: state_buf,
                 spikes,
                 currents,
+                syn,
+                syn_gain: 0.0,
+                rest_shift: 0.0,
                 region_gates,
                 num_regions,
                 regions: regions.clone(),
@@ -490,8 +563,8 @@ impl ComputeEngine {
             tunnel_kappa: q.tunnel_kappa,
             entangle_rho: q.entangle_rho,
             refract_beta: q.refract_beta,
-            _pad1: 0,
-            _pad2: 0,
+            syn_gain: c.syn_gain,
+            rest_shift: c.rest_shift,
         };
         let lif_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("lif-params"),
@@ -507,8 +580,38 @@ impl ComputeEngine {
                 wgpu::BindGroupEntry { binding: 2, resource: c.spikes.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 3, resource: c.currents.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 4, resource: c.region_gates.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: c.syn.as_entire_binding() },
             ],
         });
+
+        // WIRING DELIVERY — one propagate pass per matrix bound into this
+        // cluster: syn[dst + row] += Σ weight over the row's source cells whose
+        // spike bit (left by the previous step, or written by a lesson) is set.
+        let mut deliver: Vec<(wgpu::BindGroup, u32)> = Vec::new();
+        if c.syn_gain != 0.0 {
+            for m in self.sparse.values() {
+                let b = match &m.binding { Some(b) if b.dst_cluster == name => b, _ => continue };
+                if m.rows == 0 || m.nnz == 0 { continue; }
+                let src = match self.clusters.get(&b.src_cluster) { Some(s) => s, None => continue };
+                if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { continue; }
+                if (b.dst_start as u64) + (m.rows as u64) > (c.size as u64) { continue; }
+                let p = PropagateParams { rows: m.rows, cols: m.cols, nnz: m.nnz, src_offset: b.src_start, dst_offset: b.dst_start };
+                let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("deliver-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM });
+                let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("deliver-bg"),
+                    layout: &self.propagate_pipeline.get_bind_group_layout(0),
+                    entries: &[
+                        wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 5, resource: c.syn.as_entire_binding() },
+                    ],
+                });
+                deliver.push((bg, (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM)));
+            }
+        }
 
         let spike_params = SpikeParams { n: c.size, grid_x, half, _pad: 0 };
         let spike_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -530,6 +633,17 @@ impl ComputeEngine {
         self.queue.write_buffer(&c.count, 0, &[0u8; 8]);
 
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("step") });
+        if c.syn_gain != 0.0 {
+            enc.clear_buffer(&c.syn, 0, None);
+            // One pass per matrix: two matrices bound into the same cluster both
+            // add into `syn`, and passes run in order.
+            for (bg, wg) in &deliver {
+                let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("deliver"), timestamp_writes: None });
+                cp.set_pipeline(&self.propagate_pipeline);
+                cp.set_bind_group(0, bg, &[]);
+                cp.dispatch_workgroups(*wg, 1, 1);
+            }
+        }
         {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("lif"), timestamp_writes: None });
             cp.set_pipeline(&self.lif_pipeline);
@@ -722,11 +836,121 @@ impl ComputeEngine {
         // buffers or the dispatch would read out of bounds.
         if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
         if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let (bg, pipe) = match self.plasticity_bind(name, m, lr, b.src_start, b.dst_start, &src.spikes, &dst.spikes) { Some(x) => x, None => return Ok(true) };
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-bound"), timestamp_writes: None });
+            cp.set_pipeline(pipe);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
+        // No blocking readback — same fire-and-forget contract as standalone hebbian.
+        Ok(true)
+    }
+
+    /// Set how strongly a cluster's cells feel their wiring (0 = not at all).
+    /// Returns whether the cluster is resident here.
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.syn_gain = gain; true } None => false }
+    }
+
+    /// Set how far below the map's default rest point this cluster's cells sit (0 = default).
+    pub fn set_rest_shift(&mut self, cluster: &str, shift: f32) -> bool {
+        match self.clusters.get_mut(cluster) { Some(c) => { c.rest_shift = shift; true } None => false }
+    }
+
+    /// Put a matrix into (Some) or out of (None) error-driven learning. Returns
+    /// whether the matrix is resident here.
+    pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
+        match mode { Some(m) => { self.err_mode.insert(name.to_string(), m); } None => { self.err_mode.remove(name); } }
+        self.sparse.contains_key(name)
+    }
+
+    /// The bind group + pipeline a plasticity verb should dispatch for this
+    /// matrix: Oja / anti-Hebbian by default; the error-driven kernel when the
+    /// matrix is in that mode and lr > 0; `None` (nothing to run) for an
+    /// anti-Hebbian call on an error-driven matrix — that rule already lowers a
+    /// cell that fires when it should not. One place, so every verb agrees.
+    #[allow(clippy::too_many_arguments)]
+    fn plasticity_bind<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer) -> Option<(wgpu::BindGroup, &'a wgpu::ComputePipeline)> {
+        self.plasticity_bind_rows(name, m, lr, src_offset, dst_offset, pre, post, (0, 0))
+    }
+
+    /// What a plasticity verb dispatches for this matrix: one (bind group,
+    /// pipeline, workgroup count) per row span the lesson touches. A matrix in
+    /// error-driven mode that was given spans (`set_plasticity_spans`) and a
+    /// verb that knows its lit post rows sweep only the spans holding one;
+    /// everything else is a single dispatch over every row. Empty = nothing to run.
+    #[allow(clippy::too_many_arguments)]
+    fn plasticity_plan<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer, post_idx: Option<&[u32]>) -> Vec<(wgpu::BindGroup, &'a wgpu::ComputePipeline, u32)> {
+        let ranges = if self.err_mode.contains_key(name) { err_spans_hit(self.err_spans.get(name), post_idx) } else { vec![(0, 0)] };
+        let mut out = Vec::with_capacity(ranges.len());
+        for r in ranges {
+            if let Some((bg, pipe)) = self.plasticity_bind_rows(name, m, lr, src_offset, dst_offset, pre, post, r) {
+                let n = if r.1 == 0 { m.rows } else { r.1 };
+                out.push((bg, pipe, (n.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM)));
+            }
+        }
+        out
+    }
+
+    /// Give an error-driven matrix the row spans its lessons lie in (her region
+    /// table for the wiring inside a cluster). Empty clears them.
+    pub fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
+        if spans.is_empty() { self.err_spans.remove(name); } else { self.err_spans.insert(name.to_string(), spans); }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn plasticity_bind_rows<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer, range: (u32, u32)) -> Option<(wgpu::BindGroup, &'a wgpu::ComputePipeline)> {
+        let (ub, pipe) = match self.err_mode.get(name) {
+            Some(&(eta, theta, margin)) => {
+                if lr <= 0.0 { return None; }
+                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, row_start: range.0, row_count: range.1, pad2: 0 };
+                (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-err-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_error_pipeline)
+            }
+            None => {
+                let p = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset, dst_offset };
+                (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_pipeline)
+            }
+        };
         let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-bound-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
+            label: Some("plasticity-bg"),
+            layout: &pipe.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: pre.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: post.as_entire_binding() },
+            ],
+        });
+        Some((bg, pipe))
+    }
+
+    /// Error-driven bound plasticity: like `hebbian_bound` (resident spike buffers
+    /// at the bound offsets), but a wire changes only where its target cell is
+    /// WRONG — should fire and its summed input is under theta + margin, or should
+    /// rest and it is over theta − margin. Every row is visited. Same
+    /// fire-and-forget contract; Ok(false) when the matrix is unbound or a window
+    /// does not fit.
+    pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
+        let params = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start, row_start: 0, row_count: 0, pad2: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("err-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("err-bound-bg"),
+            layout: &self.plasticity_error_pipeline.get_bind_group_layout(0),
             entries: &[
                 wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
@@ -737,15 +961,14 @@ impl ComputeEngine {
             ],
         });
         let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
-        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound") });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("error-bound") });
         {
-            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-bound"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("error-bound"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_error_pipeline);
             cp.set_bind_group(0, &bg, &[]);
             cp.dispatch_workgroups(wg, 1, 1);
         }
         self.queue.submit(std::iter::once(enc.finish()));
-        // No blocking readback — same fire-and-forget contract as standalone hebbian.
         Ok(true)
     }
 
@@ -925,22 +1148,9 @@ impl ComputeEngine {
             ],
         });
 
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: 0 };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-masked-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-masked-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
-            ],
-        });
+        let plan = self.plasticity_plan(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes, Some(post_idx));
+        if plan.is_empty() { return Ok(true); }
         let scatter_wg = ((post_idx.len() as u32).div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
-        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound-masked") });
         // Zero-then-scatter the post mask, all device-side. WebGPU orders
         // same-resource work within a queue submission, so the plasticity
@@ -953,10 +1163,12 @@ impl ComputeEngine {
             cp.dispatch_workgroups(scatter_wg, 1, 1);
         }
         for _ in 0..reps.max(1) {
-            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-masked"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
-            cp.set_bind_group(0, &bg, &[]);
-            cp.dispatch_workgroups(wg, 1, 1);
+            for (bg, pipe, wg) in plan.iter() {
+                let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-masked"), timestamp_writes: None });
+                cp.set_pipeline(pipe);
+                cp.set_bind_group(0, bg, &[]);
+                cp.dispatch_workgroups(*wg, 1, 1);
+            }
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // Fire-and-forget: no blocking readback, same contract as hebbian_bound.
@@ -1266,27 +1478,14 @@ impl ComputeEngine {
         }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
-            ],
-        });
-        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let plan = self.plasticity_plan(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices));
+        if plan.is_empty() { return Ok(()); }
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian") });
-        {
+        for (bg, pipe, wg) in plan.iter() {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
-            cp.set_bind_group(0, &bg, &[]);
-            cp.dispatch_workgroups(wg, 1, 1);
+            cp.set_pipeline(pipe);
+            cp.set_bind_group(0, bg, &[]);
+            cp.dispatch_workgroups(*wg, 1, 1);
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // No blocking readback — hebbian only needs an ack; the GPU runs the dispatch
@@ -1310,27 +1509,16 @@ impl ComputeEngine {
         }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
-        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
-        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-reps-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
-        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("hebb-reps-bg"),
-            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
-            ],
-        });
-        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let plan = self.plasticity_plan(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices));
+        if plan.is_empty() { return Ok(()); }
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-reps") });
         for _ in 0..reps.max(1) {
-            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-rep"), timestamp_writes: None });
-            cp.set_pipeline(&self.plasticity_pipeline);
-            cp.set_bind_group(0, &bg, &[]);
-            cp.dispatch_workgroups(wg, 1, 1);
+            for (bg, pipe, wg) in plan.iter() {
+                let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-rep"), timestamp_writes: None });
+                cp.set_pipeline(pipe);
+                cp.set_bind_group(0, bg, &[]);
+                cp.dispatch_workgroups(*wg, 1, 1);
+            }
         }
         self.queue.submit(std::iter::once(enc.finish()));
         Ok(())
@@ -1490,6 +1678,37 @@ impl Backend {
             Backend::Cuda(e) => e.hebbian_bound(name, lr),
         }
     }
+    /// How strongly a cluster's cells feel their wiring on this backend.
+    fn set_delivery(&mut self, cluster: &str, gain: f32, rest_shift: f32) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.set_delivery(cluster, gain) && e.set_rest_shift(cluster, rest_shift),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.set_delivery(cluster, gain) && e.set_rest_shift(cluster, rest_shift),
+        }
+    }
+    /// Put a matrix into / out of error-driven learning on this backend.
+    fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.set_plasticity_mode(name, mode),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.set_plasticity_mode(name, mode),
+        }
+    }
+    fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
+        match self {
+            Backend::Wgpu(e) => e.set_plasticity_spans(name, spans),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.set_plasticity_spans(name, spans),
+        }
+    }
+    /// Error-driven bound plasticity (a wire changes only when its cell is wrong).
+    fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.error_bound(name, eta, theta, margin),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.error_bound(name, eta, theta, margin),
+        }
+    }
     /// v0.3.26 — masked bound plasticity (resident pre, explicit sparse post mask).
     fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
         match self {
@@ -1645,6 +1864,8 @@ pub struct MultiEngine {
     ccs: Vec<String>,
     cluster_gpu: HashMap<String, usize>,
     matrix_gpu: HashMap<String, usize>,
+    /// Cluster name → (gain on the wiring's input, rest shift), as last sent.
+    delivery: HashMap<String, (f32, f32)>,
     next_cluster: usize,
     next_matrix: usize,
     /// v0.3.52 — the brain these resident matrices belong to (her RNG seed, the
@@ -1814,6 +2035,7 @@ impl MultiEngine {
             ccs,
             cluster_gpu: HashMap::new(),
             matrix_gpu: HashMap::new(),
+            delivery: HashMap::new(),
             next_cluster: 0,
             next_matrix: 0,
             lineage: None,
@@ -1899,6 +2121,9 @@ impl MultiEngine {
         let g = self.cluster_engine(name);
         let placed = self.engines[g].adapter_name().to_string();
         self.engines[g].init_cluster(name, size, regions, tonic, noise);
+        // The delivery setting is kept by cluster name, so a cluster built again
+        // (a move, a reconnect) steps the way the brain last asked.
+        if let Some(&(gain, rest)) = self.delivery.get(name) { self.engines[g].set_delivery(name, gain, rest); }
         println!("[multi] cluster '{name}' → GPU {g} ({placed})");
     }
 
@@ -1989,6 +2214,34 @@ impl MultiEngine {
     pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
         self.engines[g].hebbian_bound(name, lr)
+    }
+
+    /// Set how strongly a cluster's cells feel their wiring (0 = off) and how far
+    /// below the default rest point they sit (0 = default), on the engine holding
+    /// the cluster. Returns whether it is resident now. Kept by name either way:
+    /// a cluster initialised later, or again, takes the setting at init.
+    pub fn set_delivery(&mut self, cluster: &str, gain: f32, rest_shift: f32) -> bool {
+        self.delivery.insert(cluster.to_string(), (gain, rest_shift));
+        match self.cluster_gpu.get(cluster).copied() { Some(g) => self.engines[g].set_delivery(cluster, gain, rest_shift), None => false }
+    }
+
+    /// Put a matrix into / out of error-driven learning on EVERY engine (a row-sliced
+    /// matrix lives on several cards). Returns how many engines hold it.
+    pub fn set_plasticity_mode(&mut self, name: &str, mode: Option<(f32, f32, f32)>) -> usize {
+        let mut held = 0;
+        for e in self.engines.iter_mut() { if e.set_plasticity_mode(name, mode) { held += 1; } }
+        held
+    }
+
+    /// Give an error-driven matrix its row spans on every engine (see `plasticity_plan`).
+    pub fn set_plasticity_spans(&mut self, name: &str, spans: &[(u32, u32)]) {
+        for e in self.engines.iter_mut() { e.set_plasticity_spans(name, spans.to_vec()); }
+    }
+
+    /// Error-driven bound plasticity on the engine holding the matrix; Ok(false) = skipped.
+    pub fn error_bound(&self, name: &str, eta: f32, theta: f32, margin: f32) -> Result<bool, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
+        self.engines[g].error_bound(name, eta, theta, margin)
     }
 
     /// v0.3.26 — masked bound plasticity for a type-13 frame. Routes to the engine
@@ -2305,6 +2558,322 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         check(&[0], &eng)?;
         check(&[1, 3], &eng)?;
         println!("  predictive-error parity OK — the card reproduced the server's rule exactly.");
+    }
+
+    // ── ERROR-DRIVEN PLASTICITY PARITY — `error_bound` writes weights, so the
+    // card must reproduce the host rule (SparseMatrix.errorUpdate) exactly.
+    // An 8-cell cluster with cells {0,1,2} lit is both the input and the
+    // teaching pattern. The rows cover every branch:
+    //   row 0  should fire, active sum 0.2  (< 0.75) → +eta on cols 1,2 ; col 5 untouched
+    //   row 1  should fire, active sum 1.0  (≥ 0.75) → unchanged
+    //   row 2  should fire, active sum 0.3           → +eta on col 0
+    //   row 3  should rest, active sum 0.9  (> 0.25) → −eta on cols 0,1 ; col 6 untouched
+    //   row 4  should rest, active sum 0.1  (≤ 0.25) → unchanged
+    //   rows 5–7 have no wires
+    macro_rules! error_parity {
+        ($eng:expr, $label:expr) => {{
+            let mut regions = HashMap::new();
+            regions.insert("all".to_string(), (0u32, 8u32));
+            $eng.init_cluster("errcluster", 8, &regions, 0.0, 0.0);
+            $eng.write_spike_slice("errcluster", "all", &[0, 1, 2])?;
+            let row_ptr = [0u32, 3, 5, 6, 9, 11, 11, 11, 11];
+            let values = [0.1f32, 0.1, 0.7, 0.5, 0.5, 0.3, 0.5, 0.4, 0.9, 0.1, 0.9];
+            let col_idx = [1u32, 2, 5, 0, 2, 0, 0, 1, 6, 2, 7];
+            let binding = crate::frames::Binding {
+                src_cluster: "errcluster".to_string(), dst_cluster: "errcluster".to_string(),
+                src_start: 0, src_end: 8, dst_start: 0, dst_end: 8,
+            };
+            $eng.upload_sparse("errmat", 8, 8, &row_ptr, &values, &col_idx, Some(binding));
+            // eta 0.5: half the gap, so the test also catches a kernel that ignores eta.
+            let (eta, theta, margin) = (0.5f32, 0.5f32, 0.25f32);
+            let lit = [1u32, 1, 1, 0, 0, 0, 0, 0];
+            // the host rule: a wrong cell's lit wires share out eta × what it is short of (or over by)
+            let gap_step = |should_fire: bool, sum: f32, n: f32| -> f32 {
+                if n == 0.0 { return 0.0; }
+                let (hi, lo) = (theta + margin, theta - margin);
+                if should_fire { if sum < hi { eta * (hi - sum) / n } else { 0.0 } } else if sum > lo { eta * (lo - sum) / n } else { 0.0 }
+            };
+            let mut want = values;
+            for i in 0..8usize {
+                let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                let (mut sum, mut n) = (0.0f32, 0.0f32);
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values[k]; n += 1.0; } }
+                let d = gap_step(lit[i] != 0, sum, n);
+                if d == 0.0 { continue; }
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { want[k] = (want[k] + d).clamp(-2.0, 2.0); } }
+            }
+            let carried = $eng.error_bound("errmat", eta, theta, margin)?;
+            if !carried { return Err(format!("error_bound refused a properly bound matrix ({})", $label)); }
+            // read every stored weight back through propagate, one input cell at a time
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("error-plasticity parity MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            let changed = want.iter().zip(values.iter()).filter(|(a, b)| a != b).count();
+            println!("  {} — all 11 weights match the host rule ({} changed, {} left alone)", $label, changed, 11 - changed);
+            // THE PER-MATRIX MODE: a fresh copy of the same matrix put into
+            // error-driven learning must give the SAME weights from a plain
+            // `hebbian_bound` (the verb every lesson already uses), and an
+            // anti-Hebbian call on it must change nothing.
+            let binding2 = crate::frames::Binding {
+                src_cluster: "errcluster".to_string(), dst_cluster: "errcluster".to_string(),
+                src_start: 0, src_end: 8, dst_start: 0, dst_end: 8,
+            };
+            $eng.upload_sparse("errmat2", 8, 8, &row_ptr, &values, &col_idx, Some(binding2));
+            if !$eng.set_plasticity_mode("errmat2", Some((eta, theta, margin))) { return Err(format!("set_plasticity_mode did not find the matrix ({})", $label)); }
+            $eng.hebbian_bound("errmat2", 0.01)?;
+            $eng.hebbian_bound("errmat2", -0.01)?;
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat2", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("per-matrix mode MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            println!("  {} — a matrix in error-driven mode: plain hebbian_bound gave the error-rule weights, anti-Hebbian changed nothing", $label);
+            // ROW SPANS: the matrix is told its rows fall in two spans (0..4 and
+            // 4..8). A lesson whose lit target rows are all in the first span must
+            // apply the host rule there and leave the second span alone — row 4
+            // is given a weight the full sweep WOULD lower, so an unranged launch fails this.
+            let mut values3 = values;
+            values3[9] = 0.6;
+            $eng.upload_sparse("errmat3", 8, 8, &row_ptr, &values3, &col_idx, None);
+            $eng.set_plasticity_mode("errmat3", Some((eta, theta, margin)));
+            $eng.set_plasticity_spans("errmat3", vec![(0, 4), (4, 4)]);
+            $eng.hebbian("errmat3", &[0, 1, 2], &[0, 1, 2], 0.01)?;
+            let mut want3 = values3;
+            let mut full_sweep_would_change_row4 = false;
+            for i in 0..8usize {
+                let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                let (mut sum, mut n) = (0.0f32, 0.0f32);
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { sum += values3[k]; n += 1.0; } }
+                let d = gap_step(lit[i] != 0, sum, n);
+                if d == 0.0 { continue; }
+                if i >= 4 { full_sweep_would_change_row4 = true; continue; }   // outside the lesson's span
+                for k in s..e { if lit[col_idx[k] as usize] != 0 { want3[k] = (want3[k] + d).clamp(-2.0, 2.0); } }
+            }
+            if !full_sweep_would_change_row4 { return Err(format!("row-span test is not discriminating ({})", $label)); }
+            for pre in 0u32..8 {
+                let got = $eng.propagate("errmat3", &[pre])?;
+                let mut exp = [0.0f32; 8];
+                for i in 0..8usize {
+                    let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                    for k in s..e { if col_idx[k] == pre { exp[i] += want3[k]; } }
+                }
+                let bad = got.len() != 8 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-5);
+                if bad { return Err(format!("row-span MISMATCH ({}) for input cell {pre}: card={got:?} host={exp:?}", $label)); }
+            }
+            let changed3 = want3.iter().zip(values3.iter()).filter(|(a, b)| a != b).count();
+            println!("  {} — row spans: the lesson's span matches the host rule ({} weights changed), the other span was left alone though a full sweep would have changed it", $label, changed3);
+        }};
+    }
+    println!("self-test: error-driven plasticity parity...");
+    error_parity!(eng, "wgpu");
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("  CUDA skipped — no CUDA engine here ({e})"),
+            Ok(mut ce) => { error_parity!(ce, "cuda"); }
+        }
+    }
+
+    // ── WIRING DELIVERY — do taught cells FIRE from their wiring? A 4,000-cell
+    // cluster, source region 0..2000 and target region 2000..4000, joined by a
+    // pathway of 300 wires a target cell at the brain's starting weights. Twenty
+    // (source pattern → target pattern) pairs, 54 cells each (2.7 %), are taught
+    // by the error-driven kernel. Then for each pair: the cluster runs free, the
+    // source pattern is lit, ONE step runs with delivery on, and the target
+    // region is read — how many of the pair's 54 target cells fired, against how
+    // many of the other 1,946. Gain 0 is the step as it was (drive and noise only).
+    // Then the same cluster with inside wiring too, 400 free steps: fired share.
+    macro_rules! delivery_check {
+        ($eng:expr, $label:expr) => {{
+            let (half_n, n, fan, lit_n, pairs) = (2000u32, 4000u32, 300u32, 54usize, 20usize);
+            let mut regions = HashMap::new();
+            regions.insert("src".to_string(), (0u32, half_n));
+            regions.insert("dst".to_string(), (half_n, n));
+            $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
+            let xs = std::cell::Cell::new(0x1234_5678u32);
+            let rnd = || { let mut x = xs.get(); x ^= x << 13; x ^= x >> 17; x ^= x << 5; xs.set(x); x };
+            // pos_pct = share of positive starting weights; scale multiplies their size.
+            let build = |rows: u32, cols: u32, pos_pct: u32, scale: f32| -> (Vec<u32>, Vec<f32>, Vec<u32>) {
+                let (mut rp, mut vals, mut ci) = (Vec::with_capacity(rows as usize + 1), Vec::new(), Vec::new());
+                for r in 0..rows {
+                    rp.push(r * fan);
+                    let mut seen = std::collections::HashSet::new();
+                    while (seen.len() as u32) < fan { seen.insert(rnd() % cols); }
+                    let mut row: Vec<u32> = seen.into_iter().collect(); row.sort_unstable();
+                    for c in row {
+                        ci.push(c);
+                        let sign = if rnd() % 100 < pos_pct { 1.0f32 } else { -1.0 };
+                        vals.push(sign * (0.1 + (rnd() % 10_000) as f32 / 10_000.0 * 0.4) * 0.3 * scale);
+                    }
+                }
+                rp.push(rows * fan);
+                (rp, vals, ci)
+            };
+            let (rp, vals, ci) = build(half_n, half_n, 80, 1.0);
+            let path = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: half_n, dst_start: half_n, dst_end: n };
+            $eng.upload_sparse("dlvpath", half_n, half_n, &rp, &vals, &ci, Some(path));
+            $eng.set_plasticity_mode("dlvpath", Some((1.0, 0.5, 0.25)));
+            let pick = |k: usize| -> Vec<u32> { let mut s = std::collections::HashSet::new(); while s.len() < k { s.insert(rnd() % half_n); } let mut v: Vec<u32> = s.into_iter().collect(); v.sort_unstable(); v };
+            let lessons: Vec<(Vec<u32>, Vec<u32>)> = (0..pairs).map(|_| (pick(lit_n), pick(lit_n))).collect();
+            for _round in 0..3 {
+                for (s, d) in &lessons {
+                    $eng.write_spike_slice("dlv", "src", s)?;
+                    $eng.write_spike_slice("dlv", "dst", d)?;
+                    $eng.hebbian_bound("dlvpath", 0.01)?;
+                }
+            }
+            // The step as the brain actually sends it: tunnelling, twin noise,
+            // refractoriness and cortex noise at their running values.
+            let q = Quantum { tunnel_a: 0.002, tunnel_kappa: 2.0, entangle_rho: 0.3, refract_beta: 0.016 };
+            let noise = 8.0f32;
+            let mut seed: u32 = 1;
+            // rest shift 0 = the map's default rest point (cells burst on their own);
+            // 1 = an undriven cell sits below the firing point and is silent.
+            // (The wider sweep that chose these — rest 0 / 1 / 1.5 / 1.75, gains 0–8,
+            // four starting sizes — is recorded in the release notes; a donor's
+            // self-test checks the setting the brain sends and its two neighbours.)
+            for &shift in &[0.0f32, 1.75] {
+            $eng.free_sparse("dlvin");
+            $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
+            $eng.set_rest_shift("dlv", shift);
+            $eng.set_delivery("dlv", 0.0);
+            for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
+            println!("  {} · rest shift {shift} — one step after the source pattern is lit (taught cells fired of {}, other cells fired of {}), mean over {} pairs:", $label, lit_n, half_n as usize - lit_n, pairs);
+            // drive 18 = her cortex's nominal tonic drive with the controller at 1
+            for &ed in &[0.0f32, 18.0] {
+                let mut line = format!("    drive {ed:>4}:");
+                for &g in &[0.0f32, 3.0, 5.0] {
+                    let (mut hit, mut stray) = (0usize, 0usize);
+                    for (s, d) in &lessons {
+                        $eng.set_delivery("dlv", 0.0);
+                        for _ in 0..20 { seed += 1; $eng.step("dlv", ed, ed, n, noise, seed, q)?; }
+                        $eng.write_spike_slice("dlv", "src", s)?;
+                        $eng.set_delivery("dlv", g);
+                        seed += 1; $eng.step("dlv", ed, ed, n, noise, seed, q)?;
+                        let fired = $eng.readback_letter_buckets("dlv", "dst", half_n, half_n, 0)?;
+                        let all: usize = fired.iter().filter(|&&f| f != 0).count();
+                        let h: usize = d.iter().filter(|&&i| fired[i as usize] != 0).count();
+                        hit += h; stray += all - h;
+                    }
+                    line.push_str(&format!("  g{g}: {:.1}/{:.1}", hit as f64 / pairs as f64, stray as f64 / pairs as f64));
+                }
+                println!("{line}");
+            }
+            // inside wiring too — every cell hears every region; does firing stay in range?
+            // What follows a lit pattern, step by step (pathway only, gain 4): cells
+            // firing in the source region / taught target cells / other target cells.
+            {
+                $eng.set_delivery("dlv", 0.0);
+                for _ in 0..200 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
+                let (s, d) = &lessons[0];
+                $eng.write_spike_slice("dlv", "src", s)?;
+                $eng.set_delivery("dlv", 4.0);
+                let mut line = format!("  {} · rest shift {shift} — the 8 steps after a source pattern is lit (source cells / taught target cells / other target cells firing):", $label);
+                for _ in 0..8 {
+                    seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?;
+                    let fs = $eng.readback_letter_buckets("dlv", "src", half_n, half_n, 0)?;
+                    let fd = $eng.readback_letter_buckets("dlv", "dst", half_n, half_n, 0)?;
+                    let h: usize = d.iter().filter(|&&i| fd[i as usize] != 0).count();
+                    line.push_str(&format!("  {}/{}/{}", fs.iter().filter(|&&f| f != 0).count(), h, fd.iter().filter(|&&f| f != 0).count() - h));
+                }
+                println!("{line}");
+                $eng.set_delivery("dlv", 0.0);
+            }
+            // Inside starting weights tried: as the brain builds them today (80 %
+            // positive), balanced (50 % positive), a tenth the size, and zero.
+            println!("  {} · rest shift {shift} — 400 steps with pathway + inside wiring delivering, a taught source pattern lit every 50th step, zero drive, share of cells firing a step (min / mean / max %):", $label);
+            for &(what, pos_pct, scale) in &[("the old starting size", 80u32, 1.0f32), ("near nothing (as built)", 80, 0.1)] {
+                $eng.free_sparse("dlvin");
+                // Fresh cell state for every variant: a cluster that has just been
+                // through an avalanche carries it in its slow variable for thousands
+                // of steps, and the next variant would be measured on that hangover.
+                $eng.init_cluster("dlv", n, &regions, 0.0, 0.0);
+                $eng.set_rest_shift("dlv", shift);
+                $eng.set_delivery("dlv", 0.0);
+                for _ in 0..3000 { seed += 1; $eng.step("dlv", 0.0, 0.0, n, noise, seed, q)?; }
+                let (rp2, vals2, ci2) = build(n, n, pos_pct, scale);
+                let inside = crate::frames::Binding { src_cluster: "dlv".to_string(), dst_cluster: "dlv".to_string(), src_start: 0, src_end: n, dst_start: 0, dst_end: n };
+                $eng.upload_sparse("dlvin", n, n, &rp2, &vals2, &ci2, Some(inside));
+                let ed = 0.0f32;
+                let mut line = format!("    inside {what:>26}:");
+                for &g in &[0.0f32, 5.0] {
+                    $eng.set_delivery("dlv", g);
+                    let (mut lo, mut hi, mut sum) = (u32::MAX, 0u32, 0u64);
+                    for t in 0..400usize {
+                        if t % 50 == 0 { $eng.write_spike_slice("dlv", "src", &lessons[(t / 50) % pairs].0)?; }
+                        seed += 1; let (l, r) = $eng.step("dlv", ed, ed, n, noise, seed, q)?; let c = l + r; lo = lo.min(c); hi = hi.max(c); sum += c as u64;
+                    }
+                    let pct = |c: f64| c * 100.0 / n as f64;
+                    line.push_str(&format!("  g{g}: {:.2}/{:.2}/{:.2}", pct(lo as f64), pct(sum as f64 / 400.0), pct(hi as f64)));
+                }
+                println!("{line}");
+            }
+            $eng.set_delivery("dlv", 0.0);
+            }
+        }};
+    }
+    println!("self-test: wiring delivery...");
+    delivery_check!(eng, "wgpu");
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("  CUDA skipped — no CUDA engine here ({e})"),
+            Ok(mut ce) => { delivery_check!(ce, "cuda"); }
+        }
+    }
+
+    // ── WHAT THE ERROR-DRIVEN RULE COSTS ON THIS CARD. Oja's kernel leaves a row
+    // at once when its cell is not lit; the error-driven kernel sums every row's
+    // active inputs, so its cost follows the whole matrix (rows × wires), not the
+    // lit cells. Timed here on a 1,000,000-cell bound matrix at 30 wires a cell
+    // (the shape of her inside wiring) with 2.7 % of cells lit, so the walk can
+    // be priced from a measurement instead of a guess.
+    #[cfg(feature = "cuda")]
+    {
+        match crate::cuda::CudaEngine::new(gpu_index) {
+            Err(e) => println!("self-test: plasticity cost — skipped, no CUDA engine here ({e})"),
+            Ok(mut ce) => {
+                let rows: u32 = 1_000_000; let fan: u32 = 30;
+                let mut regions = HashMap::new();
+                regions.insert("all".to_string(), (0u32, rows));
+                ce.init_cluster("costcluster", rows, &regions, 0.0, 0.0);
+                let lit: Vec<u32> = (0..rows).filter(|i| i.wrapping_mul(2654435761) % 1000 < 27).collect();
+                ce.write_spike_slice("costcluster", "all", &lit)?;
+                let nnz = (rows * fan) as usize;
+                let mut row_ptr = Vec::with_capacity(rows as usize + 1);
+                let mut col_idx = Vec::with_capacity(nnz);
+                let mut x: u32 = 0x9E3779B9;
+                for r in 0..rows { row_ptr.push(r * fan); for _ in 0..fan { x ^= x << 13; x ^= x >> 17; x ^= x << 5; col_idx.push(x % rows); } }
+                row_ptr.push(rows * fan);
+                let values = vec![0.01f32; nnz];
+                let bind = |c: &str| crate::frames::Binding { src_cluster: c.to_string(), dst_cluster: c.to_string(), src_start: 0, src_end: rows, dst_start: 0, dst_end: rows };
+                ce.upload_sparse("costmat", rows, rows, &row_ptr, &values, &col_idx, Some(bind("costcluster")));
+                ce.sync();
+                let reps = 50u32;
+                let t0 = std::time::Instant::now();
+                for _ in 0..reps { ce.hebbian_bound("costmat", 0.001)?; }
+                ce.sync();
+                let oja_ms = t0.elapsed().as_secs_f64() * 1000.0 / reps as f64;
+                ce.set_plasticity_mode("costmat", Some((1.0, 0.5, 0.25)));
+                let t1 = std::time::Instant::now();
+                for _ in 0..reps { ce.hebbian_bound("costmat", 0.001)?; }
+                ce.sync();
+                let err_ms = t1.elapsed().as_secs_f64() * 1000.0 / reps as f64;
+                println!("self-test: plasticity cost (CUDA, {rows} cells × {fan} wires = {} M wires, {} cells lit): Oja {oja_ms:.3} ms a call · only-when-wrong {err_ms:.3} ms a call ({:.2} ms per 100 M wires)", nnz / 1_000_000, lit.len(), err_ms * 100.0 / (nnz as f64 / 1e6));
+            }
+        }
     }
 
     // ── v0.3.51 — the batched lesson write must leave exactly the spikes the

@@ -27,6 +27,21 @@ import { LIFPopulation } from './neurons.js';
 // synapses.js stays as a reference implementation for brain-equations.html
 // and docs/EQUATIONS.md cross-references — see the header comment there.
 import { SparseMatrix } from './sparse-matrix.js';
+import { SPEECH_LAYOUT } from './speech-readout.js';
+
+// The build of her language cortex (see the constructor). Measured at her
+// production size: taught cells past threshold 95.8–100 % on every pathway and
+// 99.9 % inside each region; naming 900/900; reading 200/200.
+const CORTEX_BUILD = Object.freeze({
+  targetFanout: 300,
+  crossTargetFanout: 300,
+  betweenClusterDensityScale: 1,
+  crossDensityCap: 1,
+  regionWiring: true,
+  errorDrivenProjections: true,
+  errorDrivenIntra: true,
+  speechUnitCells: true,
+});
 
 // Shared zero-length pre-spike payload for CLUSTER-BOUND matrices. The donor
 // reads those matrices' pre-spikes from its own resident cluster buffer and
@@ -323,6 +338,19 @@ export class NeuronCluster {
   constructor(name, size, opts = {}) {
     this.name = name;
     this.size = size;
+    // HER LANGUAGE CORTEX IS BUILT ONE WAY. A cluster named 'cortex' large
+    // enough to hold the cell-per-unit speaking state gets the build her
+    // lessons, reading and speech were measured on, without a caller having to
+    // ask for it: 300 wires a cell inside and on every pathway at full fan-out,
+    // inside wires drawn from a cell's own region, every wire changed only
+    // where a cell is wrong, a cell for every unit of the speaking state, and
+    // one code for a word in every lesson. An explicit option still wins (the
+    // measuring instruments thin the inside wiring to build quickly). Smaller
+    // cortexes (the in-page stand-in) and every other cluster are untouched.
+    if (name === 'cortex' && size - SPEECH_LAYOUT.G >= 10000) {
+      opts = { ...CORTEX_BUILD, ...opts };
+      if (this.wordCellCode === undefined) this.wordCellCode = true;
+    }
 
     // T17.3.d — GPU proxy for cross-region operations. When present,
     // `_propagateCrossRegions` and `_crossRegionHebbian` dispatch to
@@ -649,9 +677,20 @@ export class NeuronCluster {
         size - 1,
       );
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (small-world topology) ${size.toLocaleString()}×${size.toLocaleString()} fanout=${fanout} radiusLocal=${this.smallWorldRadiusLocal} radiusMed=${this.smallWorldRadiusMed} (~${(size * fanout).toLocaleString()} nnz)...`);
-      this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1.0, {
+      // Starting size of an inside wire. Wiring that learns only-when-wrong is
+      // given its strength by lessons, and on the card every cell feels the
+      // summed weight of the cells that just fired — so untaught wires start
+      // near nothing (0.003–0.015). Measured on the card: at the old starting
+      // size a single lit pattern set 85 % of the cluster firing; at this size
+      // only the taught cells fire (1.35 % peak) at every gain tried.
+      const _startStrength = opts.errorDrivenIntra ? 0.03 : 1.0;
+      this.synapses.initSmallWorld(fanout, this.excitatoryRatio, _startStrength, {
         radiusLocal: this.smallWorldRadiusLocal,
         radiusMed: this.smallWorldRadiusMed,
+        // the speaking-state cells at the end of the cortex take no inside wires
+        wired: (name === 'cortex' && opts.speechUnitCells) ? size - SPEECH_LAYOUT.G : 0,
+        // `opts.regionWiring`: a cell's inside wires come from its own region
+        spans: opts.regionWiring ? this._regionSpans() : null,
       });
     } else {
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}×${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
@@ -664,7 +703,18 @@ export class NeuronCluster {
       if (_logIntra) console.log(`[Cluster ${name}] intra-synapse topology DEFERRED — a matching checkpoint is queued and would overwrite it anyway (saves the full construction pass at ${size.toLocaleString()} neurons). ensureIntraTopology() builds it if the restore does not deliver.`);
     } else {
       this._intraTopologyThunk = null;
-      _buildIntraTopology();
+      // The cortex is wired once its regions are known (a region's cells take
+      // their inside wires from that region); every other cluster is wired now.
+      if (name === 'cortex') this._buildIntraAfterRegions = _buildIntraTopology;
+      else _buildIntraTopology();
+    }
+    // `opts.errorDrivenIntra` (true, or { eta, theta, margin }) puts the wiring
+    // INSIDE the cluster in the only-when-wrong mode: a lesson's lit target cells
+    // are what should fire for its lit source cells, and a wire changes only
+    // where a cell gets that wrong. Off unless asked for.
+    if (opts.errorDrivenIntra) {
+      const m = opts.errorDrivenIntra;
+      this.synapses.errorDriven = { eta: m.eta ?? 1, theta: m.theta ?? 0.5, margin: m.margin ?? 0.25 };
     }
 
     // Per-region attention gain map. Posner attention
@@ -751,7 +801,16 @@ export class NeuronCluster {
     // clusters get an empty regions object for API symmetry.
     this.regions = {};
     if (name === 'cortex') {
-      const s = size;
+      // With a cell for every unit of the speaking state (`opts.speechUnitCells`)
+      // those cells are a FIXED run at the end of the cortex: the regions below
+      // are laid out over the cells before it, by the same shares as always. So
+      // the speaking state costs its own cells and nothing else, however small
+      // the rest of the cortex has to be on a given machine.
+      const _speechRun = opts.speechUnitCells ? SPEECH_LAYOUT.G : 0;
+      if (_speechRun && size - _speechRun < 10000) {
+        throw new Error(`[Cluster ${name}] ${size.toLocaleString()} cells cannot hold the ${_speechRun.toLocaleString()} speaking-state cells and a language cortex beside them.`);
+      }
+      const s = size - _speechRun;
       // Fractions per T14.4 spec PLUS iter21 architectural redesign per
       // operator 2026-05-05 "motor argmax is fucked if it ever just relplies
       // with letters and not words" — added word_motor as PRIMARY emission
@@ -866,6 +925,21 @@ export class NeuronCluster {
         word_motor_art:  wmBands.art,
         word_motor_life: wmBands.life,
       };
+      // ONE CELL FOR EVERY UNIT OF THE SPEAKING STATE (`opts.speechUnitCells`).
+      // The state her next word is read from — what was said, her words so
+      // far, the thing in mind, how she feels — is a set of units; here each
+      // unit IS a cell of her cortex, so the state is cells lit in her spike
+      // sheet and what she says is read from the cells that are lit. Clear
+      // them and she has nothing to say. They are the fixed run after every
+      // other region (see `_speechRun` above); `wiredCells` is where it starts.
+      this._speechUnitCells = false;
+      this.wiredCells = s;
+      if (_speechRun) {
+        this.regions.speech = { start: s, end: size };
+        this._speechUnitCells = true;
+      }
+      // the inside wiring, now that the regions exist (see `_buildIntraAfterRegions`)
+      if (this._buildIntraAfterRegions) { const build = this._buildIntraAfterRegions; this._buildIntraAfterRegions = null; build(); }
 
       // Region-boundary respect for microcolumns/six-layer lamination/hub neurons. The
       // earlier microcolumns/six-layer lamination/hub neurons assignment block ran BEFORE regions
@@ -1030,6 +1104,12 @@ export class NeuronCluster {
         ['sem',      'motor'],
         ['motor',    'letter'],
         ['auditory', 'phon'],
+        // READING BY SIGHT. A written word's letters-in-order code in `letter`
+        // (`Curriculum._spellingCells`) onto the word's own cells in `sem`, and
+        // back (meaning → how it is spelled). The sounding-out route
+        // (letter → phon → sem) stays; this is the direct one, and it is the
+        // pathway the READ gates measure.
+        ['letter',   'sem'],
         // ⛔ NO `['sem', 'word_motor']` PAIR. What she says is read by the speech
         // readout (`speech-readout.js`): active units of the speaking state →
         // word slots, every slot reading every unit. As a cell-to-cell sheet
@@ -1087,7 +1167,9 @@ export class NeuronCluster {
       // a single pair, 10 is sparse but functional with the contrastive
       // Hebbian + top-K-per-row pruning that keeps basins separable).
       // Must stay in sync with brain-server.js CROSS_TARGET_FANOUT.
-      const crossTargetFanout = 10;
+      // `opts.crossTargetFanout` lets a caller build the projections at a
+      // chosen wiring (the whole-brain instrument measures recall against it).
+      const crossTargetFanout = (opts.crossTargetFanout > 0) ? opts.crossTargetFanout : 10;
       // sem↔motor projections init with 50/50 excitatory/inhibitory
       // (zero-mean random weights) instead of default 70/30. Killed
       // the positive-bias baseline that drowned Hebbian training on
@@ -1214,10 +1296,17 @@ export class NeuronCluster {
         try { return process?.env?.DREAM_SEM_TOPOGRAPHIC === '1'; }
         catch { return false; }
       })();
+      // ⛔ `letter-phon` IS NOT ALIGNED, and is off the list (the note above said
+      // it was). A letter is laid out by which letter it is (26 blocks); its
+      // sound is laid out by which of 24 sound features it has. Block 'a' of
+      // `letter` sits opposite an arbitrary slice of `phon`, so 70 % of a sound
+      // cell's wires pointed at one letter that mostly has nothing to do with
+      // it. Measured with the patterns the letter lessons write, 300 wires:
+      // letter → sound 58.5 % of taught cells past threshold and 17 of 26
+      // letters ranked right; sound → letter 53.3 %, 13 of 26. `letter-motor`
+      // (the same 26 blocks on both sides) is aligned: 100 %, 26 of 26.
       const TOPOGRAPHIC_PAIRS = new Set([
         'letter-motor', 'motor-letter',
-        'letter-phon', 'phon-letter',
-        'phon-motor', 'motor-phon',
       ]);
       if (_semTopographic) {
         for (const k of ['sem-motor', 'motor-sem']) TOPOGRAPHIC_PAIRS.add(k);
@@ -1263,8 +1352,11 @@ export class NeuronCluster {
         // Density cap — 0.005 is the default; motor-bound pairs get a
         // matching 0.01 cap (2×) so the fanout term can actually land
         // at smaller source sizes.
-        const abCap = MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 0.005;
-        const baCap = MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 0.005;
+        // `opts.crossDensityCap` replaces both caps (the instrument uses it so a
+        // chosen wiring is not silently capped on a small cortex).
+        const _capOpt = (opts.crossDensityCap > 0) ? opts.crossDensityCap : 0;
+        const abCap = _capOpt || (MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 0.005);
+        const baCap = _capOpt || (MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 0.005);
         // Hierarchical cluster organization. Between-
         // cluster density gets scaled down so 70% of cross-region
         // routing stays within functional clusters, 30% crosses
@@ -1392,6 +1484,17 @@ export class NeuronCluster {
         } else {
           ab.initRandom(abDensity, abExcitatory, 0.2);
         }
+        // `opts.errorDrivenProjections` (true, or { eta, theta, margin }) puts every
+        // cross-projection on the only-when-wrong rule; the flag rides on the
+        // matrix so the host path and the card (one message per matrix) agree.
+        const _edMode = opts.errorDrivenProjections
+          ? { eta: opts.errorDrivenProjections.eta ?? 1, theta: opts.errorDrivenProjections.theta ?? 0.5, margin: opts.errorDrivenProjections.margin ?? 0.25 }
+          : null;
+        // An error-driven pathway keeps the weight limits the CARD applies to it
+        // (±2 in the kernel's parameters), so the host copy and the card clamp
+        // alike. The 0.4 above was a ceiling for the old rule's runaway growth;
+        // this rule stops a cell at its margin by itself.
+        if (_edMode) { ab.errorDriven = _edMode; ab.wMin = -2; ab.wMax = 2; }
         this.crossProjections[`${a}_to_${b}`] = ab;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? ' [topographic]' : ''} (${bSize.toLocaleString()}×${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
@@ -1409,6 +1512,7 @@ export class NeuronCluster {
         } else {
           ba.initRandom(baDensity, baExcitatory, 0.2);
         }
+        if (_edMode) { ba.errorDriven = { ..._edMode }; ba.wMin = -2; ba.wMax = 2; }
         this.crossProjections[`${b}_to_${a}`] = ba;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${b}_to_${a} (${aSize.toLocaleString()}×${bSize.toLocaleString()}, nnz=${ba.nnz.toLocaleString()}) in ${Date.now() - baTime}ms`);
@@ -1746,7 +1850,7 @@ export class NeuronCluster {
       this._mindFeats.push(emb);
       if (this._mindFeats.length > 4) this._mindFeats.shift();
       this._mindFeatsAt = now;
-      this._speechUnits = null;
+      this.setSpeechUnits(null);
       this._speechCtx = null;
     }
     const groupSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -4502,6 +4606,18 @@ export class NeuronCluster {
    * @param {string} reason — logged when the build actually has to happen
    * @returns {boolean} true if the topology was built here
    */
+  /**
+   * The cortex's regions as [[start, end), …] in order: every region that no
+   * other region contains (so `sem`, not `sem_ela`), leaving out the
+   * speaking-state run, which has no inside wires. Null when there are none.
+   */
+  _regionSpans() {
+    const all = Object.entries(this.regions || {}).filter(([n, r]) => n !== 'speech' && r && r.end > r.start);
+    const top = all.filter(([n, r]) => !all.some(([m, q]) => m !== n && q.start <= r.start && q.end >= r.end && (q.end - q.start) > (r.end - r.start)));
+    const spans = top.map(([, r]) => [r.start, r.end]).sort((a, b) => a[0] - b[0]);
+    return spans.length ? spans : null;
+  }
+
   ensureIntraTopology(reason = 'unspecified') {
     const thunk = this._intraTopologyThunk;
     if (!thunk) return false;
@@ -4991,8 +5107,11 @@ export class NeuronCluster {
     let _d0 = -1;
     let _exitRep = reps;
     for (let i = 0; i < reps; i++) {
-      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true }) || 0;
-      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true }) || 0;
+      // The row range is this region: both patterns lie inside it, so it changes
+      // nothing for a rule that walks lit rows, and it is the whole sweep for a
+      // matrix whose rule must also visit resting cells.
+      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true, rowStart: region.start, rowEnd: region.end }) || 0;
+      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true, rowStart: region.start, rowEnd: region.end }) || 0;
       if (_d0 < 0) _d0 = _d;
       if (_d === 0 || (_d0 > 0 && _d < _d0 * 1e-9)) { _exitRep = i + 1; break; }
       if (i + 1 < reps && (Date.now() - _sliceT0) >= 60) {

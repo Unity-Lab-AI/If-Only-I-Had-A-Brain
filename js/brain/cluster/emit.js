@@ -89,6 +89,7 @@ export const CLUSTER_EMIT_MIXIN = {
    * sem currently holds. Null when nothing is in mind.
    */
   currentSpeechUnits() {
+    if (this._speechUnitCells) return this._speechCellsLit();
     let base = null;
     if (Array.isArray(this._speechUnits) && this._speechUnits.length) base = this._speechUnits;
     else if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
@@ -101,6 +102,63 @@ export const CLUSTER_EMIT_MIXIN = {
     // feeling afterwards, so the same moment can come out differently.
     const live = this.feelingUnits();
     return live.length ? base.concat(live) : base;
+  },
+
+  /** How much of what a lesson gives must be present before she says a first word (see SPEECH_FLOOR). */
+  speechFloor() { return SPEECH_FLOOR; },
+
+  /**
+   * Put the speaking state in mind. Every writer of the state calls this. In
+   * a cortex built with a cell for every unit, the units are LIT in her spike
+   * sheet (and on the card), replacing whatever state was lit before; `null`
+   * clears it.
+   */
+  setSpeechUnits(units) {
+    this._speechUnits = (Array.isArray(units) && units.length) ? units : null;
+    if (!this._speechUnitCells) return;
+    this._lightSpeechCells('_speechLit', this._speechUnits);
+  },
+
+  /** Clear the cells a previous call lit under `slot`, light `units` (unit id = cell of the speech region), mirror to the card. */
+  _lightSpeechCells(slot, units) {
+    const r = this.regions.speech; const sheet = this.lastSpikes; const n = r.end - r.start;
+    const prev = this[slot];
+    if (prev) for (let i = 0; i < prev.length; i++) sheet[r.start + prev[i]] = 0;
+    const lit = [];
+    if (units) for (let i = 0; i < units.length; i++) { const u = units[i]; if (u >= 0 && u < n) { sheet[r.start + u] = 1; lit.push(u); } }
+    this[slot] = lit.length ? lit : null;
+    // cells lit under the other slot stay lit (a feeling under a spoken state, and the reverse)
+    const other = this[slot === '_speechLit' ? '_feelingLit' : '_speechLit'];
+    if (other) for (let i = 0; i < other.length; i++) sheet[r.start + other[i]] = 1;
+    if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.writeSpikeSlice === 'function') {
+      try { this._gpuProxy.writeSpikeSlice('speech', other ? lit.concat(other) : lit); } catch { /* the host sheet is what is read */ }
+    }
+  },
+
+  /**
+   * The speaking state, READ FROM HER CELLS: the cells of the speech region
+   * that are lit in the spike sheet right now. A meaning held in sem with no
+   * spoken state lights its cells first, and so does how she feels. Null when
+   * no cell is lit — then there is nothing to say.
+   */
+  _speechCellsLit() {
+    if (!(Array.isArray(this._speechUnits) && this._speechUnits.length) && Array.isArray(this._mindFeats) && this._mindFeats.length) {
+      const key = this._mindFeats[this._mindFeats.length - 1];
+      if (this._mindLitFor !== key || !this._speechLit) {       // a meaning in mind lights its cells once
+        this._lightSpeechCells('_speechLit', this.speechReadout().meaningUnits(this._mindFeats));
+        this._mindLitFor = key;
+      }
+    }
+    const r = this.regions.speech; const sheet = this.lastSpikes;
+    // is any state cell lit at all? (how she feels alone is not something to say)
+    let any = false;
+    const sl = this._speechLit;
+    if (sl) for (let i = 0; i < sl.length; i++) if (sheet[r.start + sl[i]]) { any = true; break; }
+    if (!any) return null;
+    this._lightSpeechCells('_feelingLit', this.feelingUnits());
+    const out = []; const reg = sheet.subarray(r.start, r.end);
+    for (let i = reg.indexOf(1); i !== -1; i = reg.indexOf(1, i + 1)) out.push(i);
+    return out.length ? out : null;
   },
 
   /**
@@ -116,11 +174,30 @@ export const CLUSTER_EMIT_MIXIN = {
     const rd = this.speechReadout();
     const units = rd.stateUnits(said, []);
     if (!units.length) return false;
-    const live = this.feelingUnits();
-    const all = live.length ? units.concat(live) : units;
-    const s = rd.scores(all, n);
+    // The line is put in mind the way a reply to it would be, and read back
+    // from there (her cells, where she has them) — so this answers for the
+    // state she would actually speak from. What was in mind is put back.
+    const all = this.speechStateFor(units);
+    if (!all || !all.length) return false;
+    // `bucketMeans` is on the scale the floor is stated in, whichever store holds what she says.
+    const s = rd.bucketMeans(all, n);
     let best = 0; for (let b = 0; b < n; b++) if (s[b] > best) best = s[b];
-    return best / all.length >= SPEECH_FLOOR;
+    return best >= SPEECH_FLOOR;
+  },
+
+  /**
+   * "If this were in mind, what state would she speak from?" — lights `units`
+   * as the speaking state, reads the state back the way a spoken word is read
+   * (her lit cells and how she feels), then restores what was in mind before.
+   * Probes and gates use this, so they measure the path speech takes.
+   */
+  speechStateFor(units) {
+    const keepU = this._speechUnits, keepC = this._speechCtx, keepM = this._mindFeats;
+    this.setSpeechUnits(units); this._speechCtx = null; this._mindFeats = null;
+    const got = this.currentSpeechUnits();
+    this.setSpeechUnits(keepU); this._speechCtx = keepC; this._mindFeats = keepM;
+    if (this._speechUnitCells) this._mindLitFor = null;   // a meaning in mind lights its cells again on the next read
+    return got;
   },
 
   /** How she feels right now, as speaking-state units (empty when no mood is known). */
