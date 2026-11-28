@@ -15300,7 +15300,7 @@ export class Curriculum {
   _noteSemMeaning(region, feat) {
     const cluster = this.cluster;
     if (!cluster.regions || region !== cluster.regions.sem || feat.length !== 300) return;
-    cluster._speechUnits = null;
+    cluster.setSpeechUnits(null);
     cluster._speechCtx = null;
     const m = cluster._mindFeats || (cluster._mindFeats = []);
     m.push(feat);
@@ -15544,7 +15544,7 @@ export class Curriculum {
     // The speaking state lives with sem, and the words a lesson lit live with
     // word_motor: clearing either region clears what rode on it.
     const _scoped = Array.isArray(regionNames) && regionNames.length > 0;
-    if (!_scoped || regionNames.includes('sem')) { cluster._speechUnits = null; cluster._speechCtx = null; cluster._mindFeats = null; }
+    if (!_scoped || regionNames.includes('sem')) { cluster.setSpeechUnits(null); cluster._speechCtx = null; cluster._mindFeats = null; }
     if (!_scoped || regionNames.includes('word_motor')) cluster._speechTargets = null;
     // WMB REGRESSION FIX 2 — scoped clear. When `regionNames` is a non-empty
     // array, zero ONLY those region spans + their GPU spike slices instead of
@@ -19916,7 +19916,7 @@ export class Curriculum {
     const about = h ? null : (opts.about || null);
     if (opts.unitsOnly) {
       if (!p.length && !h && !about) return false;
-      cluster._speechUnits = cluster.speechReadout().stateUnits(h, p, about);
+      cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p, about));
       cluster._speechCtx = { heard: h, prefix: p, about };
       cluster._mindFeats = null;
       cluster._speechTargets = null;
@@ -19942,7 +19942,7 @@ export class Curriculum {
     // in: the sparse unit list the speech readout builds from what was said and
     // her words so far. Set AFTER the sem writes above, which each mark sem as
     // holding a plain meaning; this is the explicit speaking state and wins.
-    cluster._speechUnits = cluster.speechReadout().stateUnits(h, p);
+    cluster.setSpeechUnits(cluster.speechReadout().stateUnits(h, p));
     cluster._speechCtx = { heard: h, prefix: p };
     cluster._mindFeats = null;
     return true;
@@ -19965,13 +19965,13 @@ export class Curriculum {
     const keep = cluster._speechUnits;
     const said = ctx.prefix.slice();
     for (const w of targets) {
-      cluster._speechUnits = rd.stateUnits(ctx.heard, said, ctx.about || null);
+      cluster.setSpeechUnits(rd.stateUnits(ctx.heard, said, ctx.about || null));
       this._speechTeach(w);
       said.push(w);
     }
-    cluster._speechUnits = rd.stateUnits(ctx.heard, said, ctx.about || null);
+    cluster.setSpeechUnits(rd.stateUnits(ctx.heard, said, ctx.about || null));
     this._speechTeach(SPEECH_END);
-    cluster._speechUnits = keep;
+    cluster.setSpeechUnits(keep);
   }
 
   /** A thing in mind, to be named ("this thing → its word"): the naming lesson
@@ -19983,9 +19983,9 @@ export class Curriculum {
     if (!semR || !w) return false;
     this._clearSpikes(['sem', 'word_motor']);
     this._writeTiledPattern(semR, this._topKEmbedding(this._dictionaryPatternFor(w), 8), true);
-    cluster._speechUnits = cluster.speechReadout().conceptUnits(w);
+    cluster.setSpeechUnits(cluster.speechReadout().conceptUnits(w));
     cluster._mindFeats = null;
-    return cluster._speechUnits.length > 0;
+    return !!(cluster._speechUnits && cluster._speechUnits.length);
   }
 
   /** A meaning in mind with no word attached (a mood, a memory, a topic vector). */
@@ -19996,9 +19996,9 @@ export class Curriculum {
     this._clearSpikes(['sem', 'word_motor']);
     const f = Float64Array.from(emb);
     this._writeTiledPattern(semR, this._topKEmbedding(f, 8), true);
-    cluster._speechUnits = cluster.speechReadout().meaningUnits([f]);
+    cluster.setSpeechUnits(cluster.speechReadout().meaningUnits([f]));
     cluster._mindFeats = null;
-    return cluster._speechUnits.length > 0;
+    return !!(cluster._speechUnits && cluster._speechUnits.length);
   }
 
   /**

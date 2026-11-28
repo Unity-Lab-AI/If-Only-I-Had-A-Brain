@@ -27,6 +27,7 @@ import { LIFPopulation } from './neurons.js';
 // synapses.js stays as a reference implementation for brain-equations.html
 // and docs/EQUATIONS.md cross-references — see the header comment there.
 import { SparseMatrix } from './sparse-matrix.js';
+import { SPEECH_LAYOUT } from './speech-readout.js';
 
 // Shared zero-length pre-spike payload for CLUSTER-BOUND matrices. The donor
 // reads those matrices' pre-spikes from its own resident cluster buffer and
@@ -888,6 +889,24 @@ export class NeuronCluster {
           this.regions.speech = { start: fr.start, end: fr.start + n };
           this.regions.free = { start: fr.start + n, end: fr.end };
         }
+      }
+      // ONE CELL FOR EVERY UNIT OF THE SPEAKING STATE (`opts.speechUnitCells`).
+      // The state her next word is read from — what was said, her words so
+      // far, the thing in mind, how she feels — is a set of units; here each
+      // unit IS a cell of her cortex, so the state is cells lit in her spike
+      // sheet and what she says is read from the cells that are lit. Clear
+      // them and she has nothing to say. Taken whole from the head of `free`;
+      // a cortex too small to hold it is not built this way.
+      this._speechUnitCells = false;
+      if (opts.speechUnitCells) {
+        const G = SPEECH_LAYOUT.G;
+        const fr = this.regions.free;
+        if (this.regions.speech || fr.end - fr.start < G) {
+          throw new Error(`[Cluster ${name}] speechUnitCells needs ${G.toLocaleString()} free cells for the speaking state; this build has ${(fr.end - fr.start).toLocaleString()}${this.regions.speech ? ' and already carved a speech region another way' : ''}.`);
+        }
+        this.regions.speech = { start: fr.start, end: fr.start + G };
+        this.regions.free = { start: fr.start + G, end: fr.end };
+        this._speechUnitCells = true;
       }
 
       // Region-boundary respect for microcolumns/six-layer lamination/hub neurons. The
@@ -1802,7 +1821,7 @@ export class NeuronCluster {
       this._mindFeats.push(emb);
       if (this._mindFeats.length > 4) this._mindFeats.shift();
       this._mindFeatsAt = now;
-      this._speechUnits = null;
+      this.setSpeechUnits(null);
       this._speechCtx = null;
     }
     const groupSize = Math.max(1, Math.floor(regionSize / emb.length));

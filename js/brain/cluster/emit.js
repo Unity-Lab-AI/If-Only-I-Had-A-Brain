@@ -95,6 +95,7 @@ export const CLUSTER_EMIT_MIXIN = {
    * sem currently holds. Null when nothing is in mind.
    */
   currentSpeechUnits() {
+    if (this._speechUnitCells) return this._speechCellsLit();
     let base = null;
     if (Array.isArray(this._speechUnits) && this._speechUnits.length) base = this._speechUnits;
     else if (Array.isArray(this._mindFeats) && this._mindFeats.length) {
@@ -107,6 +108,60 @@ export const CLUSTER_EMIT_MIXIN = {
     // feeling afterwards, so the same moment can come out differently.
     const live = this.feelingUnits();
     return live.length ? base.concat(live) : base;
+  },
+
+  /**
+   * Put the speaking state in mind. Every writer of the state calls this. In
+   * a cortex built with a cell for every unit, the units are LIT in her spike
+   * sheet (and on the card), replacing whatever state was lit before; `null`
+   * clears it.
+   */
+  setSpeechUnits(units) {
+    this._speechUnits = (Array.isArray(units) && units.length) ? units : null;
+    if (!this._speechUnitCells) return;
+    this._lightSpeechCells('_speechLit', this._speechUnits);
+  },
+
+  /** Clear the cells a previous call lit under `slot`, light `units` (unit id = cell of the speech region), mirror to the card. */
+  _lightSpeechCells(slot, units) {
+    const r = this.regions.speech; const sheet = this.lastSpikes; const n = r.end - r.start;
+    const prev = this[slot];
+    if (prev) for (let i = 0; i < prev.length; i++) sheet[r.start + prev[i]] = 0;
+    const lit = [];
+    if (units) for (let i = 0; i < units.length; i++) { const u = units[i]; if (u >= 0 && u < n) { sheet[r.start + u] = 1; lit.push(u); } }
+    this[slot] = lit.length ? lit : null;
+    // cells lit under the other slot stay lit (a feeling under a spoken state, and the reverse)
+    const other = this[slot === '_speechLit' ? '_feelingLit' : '_speechLit'];
+    if (other) for (let i = 0; i < other.length; i++) sheet[r.start + other[i]] = 1;
+    if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.writeSpikeSlice === 'function') {
+      try { this._gpuProxy.writeSpikeSlice('speech', other ? lit.concat(other) : lit); } catch { /* the host sheet is what is read */ }
+    }
+  },
+
+  /**
+   * The speaking state, READ FROM HER CELLS: the cells of the speech region
+   * that are lit in the spike sheet right now. A meaning held in sem with no
+   * spoken state lights its cells first, and so does how she feels. Null when
+   * no cell is lit — then there is nothing to say.
+   */
+  _speechCellsLit() {
+    if (!(Array.isArray(this._speechUnits) && this._speechUnits.length) && Array.isArray(this._mindFeats) && this._mindFeats.length) {
+      const key = this._mindFeats[this._mindFeats.length - 1];
+      if (this._mindLitFor !== key || !this._speechLit) {       // a meaning in mind lights its cells once
+        this._lightSpeechCells('_speechLit', this.speechReadout().meaningUnits(this._mindFeats));
+        this._mindLitFor = key;
+      }
+    }
+    const r = this.regions.speech; const sheet = this.lastSpikes;
+    // is any state cell lit at all? (how she feels alone is not something to say)
+    let any = false;
+    const sl = this._speechLit;
+    if (sl) for (let i = 0; i < sl.length; i++) if (sheet[r.start + sl[i]]) { any = true; break; }
+    if (!any) return null;
+    this._lightSpeechCells('_feelingLit', this.feelingUnits());
+    const out = []; const reg = sheet.subarray(r.start, r.end);
+    for (let i = reg.indexOf(1); i !== -1; i = reg.indexOf(1, i + 1)) out.push(i);
+    return out.length ? out : null;
   },
 
   /**
