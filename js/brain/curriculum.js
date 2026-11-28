@@ -13624,13 +13624,17 @@ export class Curriculum {
           // The pointer now counts only when that subject actually trained at
           // the pointed grade (a phase of `subject/grade` in passedPhases) —
           // the pre-ledger history this fallback exists for has exactly that.
-          const _pointerGrade = cluster.grades[subject] || null;
-          const _pp = Array.isArray(cluster.passedPhases) ? cluster.passedPhases : [];
-          const _pointerTrained = !!_pointerGrade && _pp.some((k) => typeof k === 'string' && k.startsWith(`${subject}/${_pointerGrade}:`));
-          const _pointerIdx = _pointerTrained ? GRADE_ORDER.indexOf(_pointerGrade) : -1;
-          const currentIdx = _lastPassedIdx >= 0
-            ? _lastPassedIdx
-            : Math.max(_pointerIdx, _introIdx - 1);
+          // ⛔⛔ AND "TRAINED AT A GRADE" IS NOT "PASSED IT". The fallback above
+          // counted the pointer as cleared once any phase of that cell had run —
+          // so on a fresh walk, every restart skipped each pre-K cell that had
+          // STARTED but not passed its gate: ela/pre-K was mid-lesson, a restart
+          // went straight to math/pre-K, the next one to science/pre-K, while she
+          // could not yet speak. Gee 2026-11-28: "well wtf how is she going to
+          // learn science if she hasnt learned to speak yet". Every walk on this
+          // code records each pass in the ledger (`passedCells`), so the ledger
+          // alone says where a subject is: a cell with no ledger entry is owed,
+          // and a restart resumes it (its finished phases stay skipped).
+          const currentIdx = _lastPassedIdx >= 0 ? _lastPassedIdx : _introIdx - 1;
           if (currentIdx >= i) continue; // already past this grade
           // DESYNC GUARD — a subject left behind (force-advance refused at a
           // lower grade) must NOT be taught the walk's current (too-high)
