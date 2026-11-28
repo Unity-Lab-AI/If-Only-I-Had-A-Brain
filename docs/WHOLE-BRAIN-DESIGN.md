@@ -3,7 +3,7 @@
 # ⚠ This page is a DESIGN built from measurements. Every number on it came out
 # of an instrument that is named beside it. Nothing here is implemented until
 # the "Status" column says so.
-status: draft
+status: verified
 sources:
   - js/brain/cluster.js
   - js/brain/curriculum.js
@@ -11,7 +11,7 @@ sources:
   - donor-app/src/shaders/plasticity.wgsl
   - donor-app/src/cuda_kernels.cu
   - server/brain-server.js
-last-verified: "2026-11-27 — written from the instruments below; no code changed yet"
+last-verified: "2026-11-27 (night) — §4 to §6 rewritten from the instruments after the design was built; she has not been started"
 ---
 
 # Whole-Brain Design — how her cells learn, and what has to change
@@ -151,17 +151,31 @@ So about **276 weights per taught pair** holds 2,000 pairs perfectly and 3,000 p
 
 | Part | Change | Status |
 |---|---|---|
-| **Word code** | One function gives a word its cells: meaning (value-ranked embedding dimensions) in one part of a region, identity (cells chosen independently per word) in the other. Every lesson, every probe, every pathway uses it. | **the function exists** (`Curriculum._wordCells`, `_writeWordPattern`) and measures as the model did — 200 lit cells, overlap 7.2 % / 10.8 %, 400 / 400 with the new rule. **No lesson uses it yet.** |
-| **Learning rule** | "Only when wrong" as a new mode of the existing plasticity kernel — on the card (WGSL and CUDA) and on the host. The kernel already holds everything the rule needs; it has to visit every target cell instead of only the lit ones. | **on the host: built** (`SparseMatrix.errorUpdate`; through the real class 289 → 400 of 400). **In her teaching path on the host: built** (`_crossRegionHebbian`'s `errorDriven`). **On the card: the kernel is written for both backends and the WebGPU engine method compiles** (`error_bound`); the CUDA launch, the wire verb and the card-vs-host parity check are not done, and it needs a donor release. No lesson calls it yet. |
-| **Wiring** | 300 wires per target cell; language cortex sized from §3 instead of from free memory. | not built |
-| **Speech** | The state she speaks from is activity in her own cells; the word she says is her word-motor cells firing; the host-side table is removed. **Test: silence her cells and she goes silent.** | not built |
-| **Reading** | A pathway from letters to meaning that is taught and tested. | not designed yet |
-| **Gates** | Every figure a gate prints measures what it names, on something she was not handed. | not built |
+| **Word code** | One function gives a word its cells: meaning (value-ranked embedding dimensions) in one part of a region, identity (cells chosen independently per word) in the other. Every lesson, every probe, every pathway uses it. | **built, and every lesson uses it.** A word lights 2.67 % of a region. It is the default for her language cortex. |
+| **Learning rule** | "Only when wrong": a wire changes only when its cell is wrong, by as much as closes the gap (`docs/EQUATIONS.md` §4). | **built on the host and on the card, both backends; it is the rule for every pathway and for the wiring inside her cortex.** Card and host agree on all 11 test weights. |
+| **Wiring** | 300 wires per target cell, inside a region and on every pathway, at full fan-out; a cell's inside wires drawn from its own region; her cell count derived from the card that holds her. | **built.** At her production size (1,328,482 cells) 95.8–100 % of taught cells pass threshold on every pathway and 99.9 % inside each region. |
+| **Cells firing from wiring** | On the card each cell hears the cells that just fired (`docs/EQUATIONS.md` §3); her cortex cells rest silent. | **built on the card, both backends, and sent by the server.** From rest, 54.0 of 54 taught cells fire one step after their source pattern is lit, and 0.7 of 1,946 others. Reaches her with the next card release. |
+| **Speech** | The state she speaks from is activity in her own cells — one cell for every unit of that state — and the word she says is read from the cells that are lit. **Test: silence her cells and she goes silent.** | **built.** Seven taught answers: 7 of 7; with her speech cells dark, 0 of 7; relit, 7 of 7. Naming 900 of 900. |
+| **Reading** | A pathway from letters straight to a word's own meaning cells, taught inside her word lesson; after each new word she looks back at earlier words and re-teaches only one the new word broke. | **built.** Taught words read 200 of 200, untaught 0 of 200; two sets of 200 taught one after the other, each word met once: 200 and 198 of 200. |
+| **Gates** | Every figure a gate prints measures what it names; beside it, the same questions asked of the lesson's own items before it taught them. | **built.** READ taught 200 / untaught 0 of 200; COMPREHEND taught 99.3 % / untaught 12.2 %; both list gates print the before-the-lesson figure and never gate on it. |
 
 ---
 
-## 5. What is not known yet
+## 5. What was not known, and what was found
 
-- Whether the pathway *inside* a region (meaning → meaning, where definitions live) has the same fault. Not measured.
-- Whether her neurons stay in range when they run together. One test saw a burst of 67 % of cells in a single step with no controller attached; that may be the test.
-- Whether a brain built this way **composes** — answers what it was never taught word for word — or only recalls. Nothing above measures that.
+- **The wiring inside a region had the same fault** (8 of 100), and the same three changes fix it (§2). At her production size it now learns 99.9 %.
+- **Her neurons, run together.** The 67 % burst was real, and it was the wiring: with every cell hearing every cell that fires, inside wiring at its old starting size set 85–88 % of a cluster firing from one lit pattern. Started near nothing (0.003–0.015), only the taught cells fire — 1.35 % at the peak over 400 steps.
+- **Does she compose, or only recall?** She answers a taught question put in other words 50 times in 60. A sentence she was never taught, with one word left out, she completes 12 % of the time. So: she holds up under rewording of what she was taught; she does not yet produce what she was never taught. The gates print that second figure so it can be watched as she walks.
+
+---
+
+## 6. What she is built as now
+
+| | |
+|---|---|
+| Language cortex | sized from the card that holds her: 624,194 wired cells on a 4 GB card, 936,958 on 6 GB, 2,499,584 on 16 GB, plus 391,524 speech cells |
+| Wires per cell | 300 inside its region, 300 on every pathway |
+| A word | 2.67 % of a region — half from its meaning, half its own |
+| Learning | only when wrong, everywhere in the language cortex |
+| At rest | silent; a cell fires when its wiring, a lesson or drive pushes it |
+| A fresh cortex | comes out this way with no settings at all |

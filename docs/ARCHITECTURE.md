@@ -101,6 +101,43 @@ last-verified: "4bc99291 2026-08-31"
 >
 > ⛔ **KNOWN LAYOUT DEBT, STATED RATHER THAN HIDDEN:** these entries are single-paragraph walls carrying internal ticket and branch identifiers, and **68 of them exist nowhere else in the project** — not in the ledger, not in the resume brief. They cannot be deleted, and relocating them is a migration rather than a formatting pass. **The most recent entries have been rebuilt into readable form; the older ones are still walls.**
 
+### 2026-11-27 (night) — her cells were not learning what they were taught anywhere, and her language cortex was rebuilt around what measured
+
+The speech fix below raised a wider question, and the answer was yes: taught 100 pairs and asked for them back, every cell-to-cell pathway of her language cortex returned **6 to 54 of 100**, and after one repetition 1 to 5. Her speech answered the same with every cell silenced — it was a table beside the brain. The reading score in three gates read a pathway that did not exist and counted the word as read.
+
+**Three causes, each isolated, and one found later:**
+
+| Cause | Measured | What replaced it |
+|---|---|---|
+| The code a word was written in — its identity lit for one word in ten | two unrelated words overlapped 9.7 %, two alike in meaning 9.5 % | a word's own cells: half from its meaning, half its own, 2.67 % of a region; the same code in every lesson |
+| The learning rule — each lesson partly overwrote the last | 242 of 400 pairs | a wire changes only when its cell is wrong, by as much as closes the gap ([EQUATIONS §4](EQUATIONS.md)) |
+| The wiring — 3 to 10 wires a cell | a cell saw a lit input 0.16 times a pattern | 300 wires a cell inside a region and on every pathway, at full fan-out; a cell's inside wires drawn from its own region |
+| On the card, a cell never heard its wiring — it stepped on drive and noise alone | — | each cell receives the summed weight of the cells that just fired, and her cortex cells rest silent ([EQUATIONS §3](EQUATIONS.md)) |
+
+**Measured on her production code** (her language cortex at 1,328,482 cells unless a line says otherwise):
+
+| | Before | Now |
+|---|---|---|
+| Taught cells that pass their firing threshold, every pathway | 2 % at 30 wires | **95.8–100 %** |
+| The same, inside a region | 8 of 100 pairs | **99.9 %** |
+| Her real pair lesson | 0 of 100 | **100 of 100** |
+| A taught pattern on the card: taught cells firing / other cells firing | none fired from wiring | **54.0 of 54 / 0.7 of 1,946** (card self-test) |
+| One lit pattern with the inside wiring delivering | 85–88 % of the cluster fired | **1.35 %** — the taught cells |
+| Speech with her speech cells dark | 7 of 7 answers still given | **0 of 7**; relit, 7 of 7 |
+| Words read: taught / untaught | counted as read with no pathway | **200 of 200 / 0 of 200** |
+| Sentence with a word left out: taught / untaught | — | **99.3 % / 12.2 %** |
+
+**Also in this change:**
+
+- Her language cortex's size is derived from the card that holds it, at this wiring: 624,194 wired cells on a 4 GB card, 936,958 on 6 GB, 2,499,584 on 16 GB, beside 391,524 speech cells.
+- A cortex built with no settings comes out this way. Nothing has to be switched on.
+- The firing controller no longer pushes her language cortex; it still holds every other cluster.
+- Reading has its own pathway, letters to meaning, taught inside her word lesson; after each new word she looks back at earlier ones and re-teaches only a word the new one broke.
+- Each list gate prints, beside its score, the same questions asked of the lesson's own items before it taught them. That figure never decides a pass.
+- Saved weights from before are refused at boot; this takes effect on a fresh walk. The card build that carries the card side is not released yet.
+
+⚠ Every number is her production code in an instrument, or the card's own self-test. **She has not been started.**
+
 ### 2026-11-27 — she passed two classes without being able to say a taught word, and the path from meaning to speech was rebuilt
 
 A 15-hour pre-K reading class and a pre-K math class both passed on completion with the gate's speaking score at 0/10 and 1/10; every inner thought from first to last was a dozen unrelated words from the same small set; asked her name she answered "Writing." The lessons were running — nothing was skipped and the card was busy — and nothing reached her mouth.
@@ -1142,7 +1179,11 @@ Language is a **developmental pipeline**, not a generator: letters → phonemes 
 | **Cortex sub-regions** | **11** top-level, plus **12** nested sub-bands (six meaning bands, six whole-word bands) = **23** region keys. Verified against the live brain. |
 | **Cross-region projections** | **16** — eight pairs, both directions. ⛔ This said 14 until 2026-08-27. **The missing pair was meaning ↔ whole-word, which is the pair everything about her speech rides on.** |
 | **Embedding width** | 300 dimensions, with subword encoding for words the table has never seen |
-| **Teaching path** | Direct-pattern Hebbian, which deliberately bypasses the chaotic neuron dynamics *during teaching only* |
+| **A word in her cortex** | its own cells — 2.67 % of a region, half chosen from its meaning, half its own — the same in every lesson |
+| **Wiring** | 300 wires a cell inside its region and 300 on every pathway, at full fan-out. A pathway from letters to meaning was added for reading. |
+| **Learning** | a wire changes only when its cell is wrong ([EQUATIONS §4](EQUATIONS.md)) — every pathway and the wiring inside |
+| **Running** | her cortex cells rest silent and fire from their wiring ([EQUATIONS §3](EQUATIONS.md)); the firing controller holds the other clusters, not this one |
+| **Teaching path** | Direct-pattern lessons, which deliberately bypass the chaotic neuron dynamics *during teaching only* |
 | **Curriculum shape** | A roster that grows the way a real school's does, across 20 grades — see [§ Developmental Curriculum](#developmental-curriculum--pre-k-through-phd-across-a-growing-roster) |
 
 ⭐ **The life track is taught in two layers at once**, which is what makes it identity rather than trivia: an **emotional attractor** (an 8-dimensional `[joy, pain, trust, fear, anger, love, independence, identity]` vector) *and* a **recallable memory sentence**. The first shapes where she lands when she thinks about a thing; the second is how she can tell you about it.
@@ -1195,6 +1236,8 @@ betweenClusterDensityScale = 0.3   ← applies when the two regions sit in
 abDensity = min(densityCap, crossTargetFanout / sourceSize) × betweenScale
 ```
 
+> ⛔ **SUPERSEDED 2026-11-27 (night) for her language cortex: the block above is what she WAS built with.** Every pathway now has 300 wires a target cell, with no cut for crossing between cluster groups and no density ceiling — measured, a cell with 6 wires saw a lit input 0.16 times a pattern and 2 % of taught cells could reach threshold; at 300, 95.8–100 %. The values above still describe a cortex too small to hold the speech cells (the in-page stand-in).
+
 > ⚠ **This block read `20` and `40` until 2026-09-04 and the code has said `10` and `20` since the language-cortex resize.** The doc was describing a brain twice as wired as the one that runs.
 
 > ⛔⛔ **AND THE BETWEEN-CLUSTER TERM IS THE ONE THAT MATTERS MOST, BECAUSE IT LANDS ON WORD PRODUCTION.** `sem` is an `association` region and `motor` / `word_motor` are `output` regions, so every sem→motor projection pays the 0.3 haircut. **Measured on the real construction at the deployed geometry: `sem_to_word_motor` came out at 3 wires per row — half of `sem_to_motor`'s 6 — so the projection asked to discriminate tens of thousands of WORDS had half the wiring of the one that picks between 26 letters.** `word_motor` was on neither whitelist because the band was created after both lists were written. **Fixed 2026-09-04: 3 → 6 per row, and with 202 cells per word bucket, 606 → 1,212 wires per word.** ⛔ **Superseded 2026-11-27: doubling the wires did not reach the problem.** At the geometry the next walk ran at (24 cells per word, 144 wires) a slot still read her last word's identity through about one wire, and no amount of fixed random wiring measured above 20 % recall. The `sem ↔ word_motor` matrices no longer exist; word production is the speech readout below, where every word slot reads every unit.
@@ -1204,6 +1247,8 @@ abDensity = min(densityCap, crossTargetFanout / sourceSize) × betweenScale
 `js/brain/speech-readout.js`, one per cortex (`cluster.speechReadout()`), saved as `brain-weights.speech`.
 
 **The read.** `score(word) = Σ over active units of W[unit][word]`; the highest score is the word she says; "the line is finished" is a slot like any word's, and when it is highest she stops. A slot's index is the word's position in the cluster's append-only word list, so it is stable as her vocabulary grows.
+
+**The state lives in her cells.** Her cortex ends in a run of 391,524 cells, one for every unit of the speaking state. Being in a state means those cells are lit, and the word she says is read from the cells that are lit — darken them and she says nothing (measured: 7 of 7 taught answers, 0 of 7 with the cells dark, 7 of 7 relit). The weights below are the wiring from those cells to her word slots, held on the server.
 
 **The state** (`stateUnits(heard, prefix, about)`) is the list of active units — about 57 of 391,524 — built from stripes that do not overlap. Some are **exact** (one particular run of words), so a taught line comes back as taught; the rest are **shared** between moments that are alike, so a line worded differently still lands near what was taught:
 
