@@ -184,6 +184,7 @@ pub struct CudaEngine {
     sparse: HashMap<String, CudaSparse>,
     /// Matrices that learn by the error-driven rule: name → (eta, theta, margin).
     err_mode: HashMap<String, (f32, f32, f32)>,
+    err_spans: HashMap<String, Vec<(u32, u32)>>,
 }
 
 impl CudaEngine {
@@ -257,6 +258,7 @@ impl CudaEngine {
             clusters: HashMap::new(),
             sparse: HashMap::new(),
             err_mode: HashMap::new(),
+            err_spans: HashMap::new(),
         })
     }
 
@@ -545,7 +547,7 @@ impl CudaEngine {
         self.dev_zero_u32(&m.post_spikes, 0, rows)?;
         self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
-        self.launch_plasticity(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes).map_err(|e| format!("hebbian launch: {e}"))?;
+        self.launch_plasticity_rows(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices)).map_err(|e| format!("hebbian launch: {e}"))?;
         // No readback — ack-only, like the wgpu path (don't block the worker).
         Ok(())
     }
@@ -570,7 +572,7 @@ impl CudaEngine {
         self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
         for _ in 0..reps.max(1) {
-            self.launch_plasticity(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes).map_err(|e| format!("hebbian-reps launch: {e}"))?;
+            self.launch_plasticity_rows(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices)).map_err(|e| format!("hebbian-reps launch: {e}"))?;
         }
         Ok(())
     }
@@ -609,16 +611,31 @@ impl CudaEngine {
     /// on this engine launches through here, so they all agree.
     #[allow(clippy::too_many_arguments)]
     fn launch_plasticity(&self, name: &str, m: &CudaSparse, lr: f32, src_off: u32, dst_off: u32, pre: &CudaSlice<u32>, post: &CudaSlice<u32>) -> Result<(), String> {
+        self.launch_plasticity_rows(name, m, lr, src_off, dst_off, pre, post, None)
+    }
+
+    /// Give an error-driven matrix the row spans its lessons lie in. Empty clears them.
+    pub fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
+        if spans.is_empty() { self.err_spans.remove(name); } else { self.err_spans.insert(name.to_string(), spans); }
+    }
+
+    /// `launch_plasticity` for a verb that knows its lit post rows: an
+    /// error-driven matrix with spans sweeps only the spans holding one.
+    #[allow(clippy::too_many_arguments)]
+    fn launch_plasticity_rows(&self, name: &str, m: &CudaSparse, lr: f32, src_off: u32, dst_off: u32, pre: &CudaSlice<u32>, post: &CudaSlice<u32>, post_idx: Option<&[u32]>) -> Result<(), String> {
         let rows = m.rows;
         let (w_min, w_max) = (-2.0f32, 2.0f32);
         if let Some(&(eta, theta, margin)) = self.err_mode.get(name) {
             if lr <= 0.0 { return Ok(()); }
-            let mut bld = self.stream.launch_builder(&self.f_hebb_err);
-            let (row_start, row_count) = (0u32, 0u32);   // every row
-            bld.arg(&rows).arg(&eta).arg(&theta).arg(&margin).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
-                .arg(&row_start).arg(&row_count)
-                .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
-            return unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| e.to_string());
+            for (row_start, row_count) in crate::compute::err_spans_hit(self.err_spans.get(name), post_idx) {
+                let n = if row_count == 0 { rows } else { row_count };
+                let mut bld = self.stream.launch_builder(&self.f_hebb_err);
+                bld.arg(&rows).arg(&eta).arg(&theta).arg(&margin).arg(&w_min).arg(&w_max).arg(&src_off).arg(&dst_off)
+                    .arg(&row_start).arg(&row_count)
+                    .arg(&m.values).arg(&m.col_idx).arg(&m.row_ptr).arg(pre).arg(post);
+                unsafe { bld.launch(cfg(n)) }.map(|_| ()).map_err(|e| e.to_string())?;
+            }
+            return Ok(());
         }
         let reward = 1.0f32;
         let mut bld = self.stream.launch_builder(&self.f_hebb);
@@ -695,7 +712,7 @@ impl CudaEngine {
         let m = self.sparse.get(name).unwrap();
         let src = self.clusters.get(&b.src_cluster).unwrap();
         for _ in 0..reps.max(1) {
-            self.launch_plasticity(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes).map_err(|e| format!("masked bound hebbian launch: {e}"))?;
+            self.launch_plasticity_rows(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes, Some(post_idx)).map_err(|e| format!("masked bound hebbian launch: {e}"))?;
         }
         Ok(true)
     }

@@ -129,6 +129,30 @@ struct BucketParams {
     grid_x: u32,
 }
 
+/// The row ranges an error-driven launch should sweep, as (start, count) with
+/// (0, 0) meaning every row. No spans known, or the verb does not know its lit
+/// post rows → every row. Otherwise each span that holds a lit post row, once.
+pub(crate) fn err_spans_hit(spans: Option<&Vec<(u32, u32)>>, post_idx: Option<&[u32]>) -> Vec<(u32, u32)> {
+    let (spans, post) = match (spans, post_idx) { (Some(s), Some(p)) if !s.is_empty() => (s, p), _ => return vec![(0, 0)] };
+    let mut hit: Vec<(u32, u32)> = Vec::new();
+    for &(start, count) in spans {
+        if count == 0 { continue; }
+        let end = start as u64 + count as u64;
+        if post.iter().any(|&r| (r as u64) >= start as u64 && (r as u64) < end) { hit.push((start, count)); }
+    }
+    // Overlapping spans (a sub-band inside its region) merge, so no row is swept twice.
+    hit.sort_unstable();
+    let mut merged: Vec<(u32, u32)> = Vec::new();
+    for (s, c) in hit {
+        if let Some(last) = merged.last_mut() {
+            let last_end = last.0 as u64 + last.1 as u64;
+            if (s as u64) <= last_end { let e = (s as u64 + c as u64).max(last_end); last.1 = (e - last.0 as u64) as u32; continue; }
+        }
+        merged.push((s, c));
+    }
+    merged
+}
+
 /// Uniform block for plasticity_error.wgsl — field order and padding match its `Params` (48 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -233,6 +257,8 @@ pub struct ComputeEngine {
     /// Every plasticity verb on such a matrix runs `plasticity_error` instead of
     /// Oja (lr > 0), and skips anti-Hebbian (lr < 0) — set once, all lanes follow.
     err_mode: HashMap<String, (f32, f32, f32)>,
+    /// Row spans an error-driven matrix's lessons lie in (see `plasticity_plan`).
+    err_spans: HashMap<String, Vec<(u32, u32)>>,
 }
 
 fn dispatch_dims(n: u32) -> (u32, u32, u32) {
@@ -319,6 +345,7 @@ impl ComputeEngine {
             clusters: HashMap::new(),
             sparse: HashMap::new(),
             err_mode: HashMap::new(),
+            err_spans: HashMap::new(),
         })
     }
 
@@ -778,10 +805,39 @@ impl ComputeEngine {
     /// cell that fires when it should not. One place, so every verb agrees.
     #[allow(clippy::too_many_arguments)]
     fn plasticity_bind<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer) -> Option<(wgpu::BindGroup, &'a wgpu::ComputePipeline)> {
+        self.plasticity_bind_rows(name, m, lr, src_offset, dst_offset, pre, post, (0, 0))
+    }
+
+    /// What a plasticity verb dispatches for this matrix: one (bind group,
+    /// pipeline, workgroup count) per row span the lesson touches. A matrix in
+    /// error-driven mode that was given spans (`set_plasticity_spans`) and a
+    /// verb that knows its lit post rows sweep only the spans holding one;
+    /// everything else is a single dispatch over every row. Empty = nothing to run.
+    #[allow(clippy::too_many_arguments)]
+    fn plasticity_plan<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer, post_idx: Option<&[u32]>) -> Vec<(wgpu::BindGroup, &'a wgpu::ComputePipeline, u32)> {
+        let ranges = if self.err_mode.contains_key(name) { err_spans_hit(self.err_spans.get(name), post_idx) } else { vec![(0, 0)] };
+        let mut out = Vec::with_capacity(ranges.len());
+        for r in ranges {
+            if let Some((bg, pipe)) = self.plasticity_bind_rows(name, m, lr, src_offset, dst_offset, pre, post, r) {
+                let n = if r.1 == 0 { m.rows } else { r.1 };
+                out.push((bg, pipe, (n.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM)));
+            }
+        }
+        out
+    }
+
+    /// Give an error-driven matrix the row spans its lessons lie in (her region
+    /// table for the wiring inside a cluster). Empty clears them.
+    pub fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
+        if spans.is_empty() { self.err_spans.remove(name); } else { self.err_spans.insert(name.to_string(), spans); }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn plasticity_bind_rows<'a>(&'a self, name: &str, m: &SparseMatrix, lr: f32, src_offset: u32, dst_offset: u32, pre: &wgpu::Buffer, post: &wgpu::Buffer, range: (u32, u32)) -> Option<(wgpu::BindGroup, &'a wgpu::ComputePipeline)> {
         let (ub, pipe) = match self.err_mode.get(name) {
             Some(&(eta, theta, margin)) => {
                 if lr <= 0.0 { return None; }
-                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, row_start: 0, row_count: 0, pad2: 0 };
+                let p = ErrParams { rows: m.rows, nnz: m.nnz, eta, theta, margin, w_min: -2.0, w_max: 2.0, src_offset, dst_offset, row_start: range.0, row_count: range.1, pad2: 0 };
                 (self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("plasticity-err-params"), contents: bytemuck::bytes_of(&p), usage: wgpu::BufferUsages::UNIFORM }), &self.plasticity_error_pipeline)
             }
             None => {
@@ -1022,9 +1078,9 @@ impl ComputeEngine {
             ],
         });
 
-        let (bg, pipe) = match self.plasticity_bind(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes) { Some(x) => x, None => return Ok(true) };
+        let plan = self.plasticity_plan(name, m, lr, b.src_start, 0, &src.spikes, &m.post_spikes, Some(post_idx));
+        if plan.is_empty() { return Ok(true); }
         let scatter_wg = ((post_idx.len() as u32).div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
-        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound-masked") });
         // Zero-then-scatter the post mask, all device-side. WebGPU orders
         // same-resource work within a queue submission, so the plasticity
@@ -1037,10 +1093,12 @@ impl ComputeEngine {
             cp.dispatch_workgroups(scatter_wg, 1, 1);
         }
         for _ in 0..reps.max(1) {
-            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-masked"), timestamp_writes: None });
-            cp.set_pipeline(pipe);
-            cp.set_bind_group(0, &bg, &[]);
-            cp.dispatch_workgroups(wg, 1, 1);
+            for (bg, pipe, wg) in plan.iter() {
+                let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-masked"), timestamp_writes: None });
+                cp.set_pipeline(pipe);
+                cp.set_bind_group(0, bg, &[]);
+                cp.dispatch_workgroups(*wg, 1, 1);
+            }
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // Fire-and-forget: no blocking readback, same contract as hebbian_bound.
@@ -1350,14 +1408,14 @@ impl ComputeEngine {
         }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
-        let (bg, pipe) = match self.plasticity_bind(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes) { Some(x) => x, None => return Ok(()) };
-        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let plan = self.plasticity_plan(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices));
+        if plan.is_empty() { return Ok(()); }
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian") });
-        {
+        for (bg, pipe, wg) in plan.iter() {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian"), timestamp_writes: None });
             cp.set_pipeline(pipe);
-            cp.set_bind_group(0, &bg, &[]);
-            cp.dispatch_workgroups(wg, 1, 1);
+            cp.set_bind_group(0, bg, &[]);
+            cp.dispatch_workgroups(*wg, 1, 1);
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // No blocking readback — hebbian only needs an ack; the GPU runs the dispatch
@@ -1381,14 +1439,16 @@ impl ComputeEngine {
         }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
-        let (bg, pipe) = match self.plasticity_bind(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes) { Some(x) => x, None => return Ok(()) };
-        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let plan = self.plasticity_plan(name, m, lr, 0, 0, &m.pre_spikes, &m.post_spikes, Some(post_indices));
+        if plan.is_empty() { return Ok(()); }
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-reps") });
         for _ in 0..reps.max(1) {
-            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-rep"), timestamp_writes: None });
-            cp.set_pipeline(pipe);
-            cp.set_bind_group(0, &bg, &[]);
-            cp.dispatch_workgroups(wg, 1, 1);
+            for (bg, pipe, wg) in plan.iter() {
+                let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-rep"), timestamp_writes: None });
+                cp.set_pipeline(pipe);
+                cp.set_bind_group(0, bg, &[]);
+                cp.dispatch_workgroups(*wg, 1, 1);
+            }
         }
         self.queue.submit(std::iter::once(enc.finish()));
         Ok(())
@@ -1554,6 +1614,13 @@ impl Backend {
             Backend::Wgpu(e) => e.set_plasticity_mode(name, mode),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.set_plasticity_mode(name, mode),
+        }
+    }
+    fn set_plasticity_spans(&mut self, name: &str, spans: Vec<(u32, u32)>) {
+        match self {
+            Backend::Wgpu(e) => e.set_plasticity_spans(name, spans),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.set_plasticity_spans(name, spans),
         }
     }
     /// Error-driven bound plasticity (a wire changes only when its cell is wrong).
@@ -2071,6 +2138,11 @@ impl MultiEngine {
         let mut held = 0;
         for e in self.engines.iter_mut() { if e.set_plasticity_mode(name, mode) { held += 1; } }
         held
+    }
+
+    /// Give an error-driven matrix its row spans on every engine (see `plasticity_plan`).
+    pub fn set_plasticity_spans(&mut self, name: &str, spans: &[(u32, u32)]) {
+        for e in self.engines.iter_mut() { e.set_plasticity_spans(name, spans.to_vec()); }
     }
 
     /// Error-driven bound plasticity on the engine holding the matrix; Ok(false) = skipped.
