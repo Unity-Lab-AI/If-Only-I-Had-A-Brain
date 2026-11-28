@@ -5012,8 +5012,11 @@ export class NeuronCluster {
     let _d0 = -1;
     let _exitRep = reps;
     for (let i = 0; i < reps; i++) {
-      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true }) || 0;
-      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true }) || 0;
+      // The row range is this region: both patterns lie inside it, so it changes
+      // nothing for a rule that walks lit rows, and it is the whole sweep for a
+      // matrix whose rule must also visit resting cells.
+      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true, rowStart: region.start, rowEnd: region.end }) || 0;
+      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true, rowStart: region.start, rowEnd: region.end }) || 0;
       if (_d0 < 0) _d0 = _d;
       if (_d === 0 || (_d0 > 0 && _d < _d0 * 1e-9)) { _exitRep = i + 1; break; }
       if (i + 1 < reps && (Date.now() - _sliceT0) >= 60) {
