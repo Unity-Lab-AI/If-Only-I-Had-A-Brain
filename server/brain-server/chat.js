@@ -1298,6 +1298,24 @@ const SERVER_CHAT_MIXIN = {
     }
     this._chatStamp('respond:curiosity');
 
+    // A QUESTION OF HERS DOES NOT WAIT FOR EVER. A line that comes long after
+    // she asked is not its answer (`DREAM_QUESTION_ANSWER_WINDOW_MS`, five
+    // minutes): the question is let go, and a word she was asking the meaning
+    // of goes back among the words she has yet to ask about.
+    if (this._pendingQuestionConcept) {
+      const _win = Number((typeof process !== 'undefined' && process.env && process.env.DREAM_QUESTION_ANSWER_WINDOW_MS) || 300000);
+      if (_win > 0 && Date.now() - (Number(this._pendingQuestionAt) || 0) > _win) {
+        const _stale = this._pendingQuestionConcept;
+        this._pendingQuestionConcept = null;
+        if (this._pendingQuestionIsNewWord === true) {
+          if (!Array.isArray(this._wordsToAskAbout)) this._wordsToAskAbout = [];
+          if (!this._wordsToAskAbout.includes(_stale)) this._wordsToAskAbout.push(_stale);
+        }
+        this._pendingQuestionIsNewWord = false;
+        const _st = this._newWordStats; if (_st) _st.questionsExpired = (_st.questionsExpired || 0) + 1;
+      }
+    }
+
     // WORDS SHE WAS JUST GIVEN AND DOES NOT KNOW — noticed here, after the
     // reply is on its way, and taken in on the lane that teaches between teach
     // calls. Skipped when this line is the ANSWER to a question she asked: its
@@ -1329,8 +1347,9 @@ const SERVER_CHAT_MIXIN = {
       this._pendingQuestionConcept = null;
       try {
         const curric = this.cortexCluster && this.cortexCluster._curriculum;
-        const answerWords = text.toLowerCase().split(/\s+/)
-          .filter(w => /^[a-z]{2,}$/.test(w)).slice(0, 8);
+        // the words of the answer, whole: punctuation around a word is dropped
+        // ("screws." is "screws"), a word with letters outside a–z is left out
+        const answerWords = this._plainWords(text).filter((w) => w.length >= 2 && w !== concept).slice(0, 8);
         // SHE ASKED WHAT A WORD MEANS AND THIS IS THE ANSWER — it goes through
         // the one door for a new word, told: the answer's words become what
         // the word means to her, weighed first (`Curriculum._meetNewWord`).
@@ -8085,17 +8104,17 @@ const SERVER_CHAT_MIXIN = {
     if (!concept) return false;
     let composed = null;
     // She speaks of it in the feeling of not knowing — the feeling the
-    // questions in her own reading were taught in (`_unsureAbout`).
-    cluster._unsureAbout = true;
+    // questions in her own reading were taught in. `unsure` rides in each
+    // state the line is spoken from; nothing is switched on the cluster.
     try {
       composed = await cluster.composeSentence(concept, {
         questionMode: true,
+        unsure: true,
         intentConcept: concept,
         coherenceCandidates: this._curriculumInProgress ? 1 : 2,   // donor-drop fix — rerank is idle-only
         ...this._affectDecoder(),   // temperature + topK from live affect/chemical state
       });
     } catch { composed = null; }
-    finally { cluster._unsureAbout = false; }
     const sentence = composed && composed.sentence ? composed.sentence.trim() : '';
     if (!sentence) {
       // Nothing came: she does not ask this time, and the word goes to the
@@ -8147,10 +8166,13 @@ const SERVER_CHAT_MIXIN = {
     if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
     const q = this._chatTeachJobQueue;
     if (q.some((j) => j && j.kind === 'newWord' && j.word === w && !(opts && opts.told))) return false;
-    q.push({ kind: 'newWord', word: w, opts: opts || {} });
     const st = this._newWordStats || (this._newWordStats = { met: 0, lookedUp: 0, asked: 0, toAsk: 0, noAnswer: 0, last: null });
+    // The lane is shared with her other chat-time lessons. A full lane turns
+    // THIS word away (she will meet it again) — it does not push out a lesson
+    // of another kind that was already waiting.
+    if (q.length >= 32) { st.laneFull = (st.laneFull || 0) + 1; return false; }
+    q.push({ kind: 'newWord', word: w, opts: opts || {} });
     st.queued = (st.queued || 0) + 1;
-    while (q.length > 32) { q.shift(); st.dropped = (st.dropped || 0) + 1; }
     return true;
   },
 
@@ -8163,15 +8185,75 @@ const SERVER_CHAT_MIXIN = {
     const cur = this.curriculum;
     if (!cur || typeof cur._holdsWord !== 'function' || typeof text !== 'string') return 0;
     const seen = new Set(); let n = 0;
-    for (const raw of text.toLowerCase().split(/[^a-z']+/)) {
-      const w = raw.replace(/^'+|'+$/g, '');
+    for (const w of this._plainWords(text)) {
       if (w.length < 2 || seen.has(w)) continue;
       seen.add(w);
       if (cur._holdsWord(w)) continue;
+      // a word she already judged to be of another language is not looked at again
+      const _refused = this.cortexCluster && this.cortexCluster._wordsRefused;
+      if (_refused instanceof Map && _refused.has(w)) continue;
       if (this._queueNewWord(w)) n++;
       if (n >= 4) break;
     }
     return n;
+  },
+
+  /**
+   * Everything she holds about words she took in herself, in the shape it is
+   * saved in beside her weights. Without the last three a word she kept but
+   * was never told the meaning of comes back from a restart looking known,
+   * and is never asked about again.
+   *   newWordsTakenIn      [word, how, when, doubted]
+   *   wordsMeaningUnknown  words she holds without a meaning
+   *   newWordsHeld         words she holds on purpose (so she can say them)
+   *   wordsToAskAbout      words waiting to be asked about, in order
+   */
+  _newWordStateForSave() {
+    const cortex = this.cortexCluster || {};
+    return {
+      newWordsTakenIn: cortex._newWordsTakenIn instanceof Map
+        ? Array.from(cortex._newWordsTakenIn, ([w, v]) => [w, v && v.how, v && v.at, !!(v && v.doubted)]) : [],
+      wordsMeaningUnknown: cortex._wordsMeaningUnknown instanceof Set ? Array.from(cortex._wordsMeaningUnknown) : [],
+      newWordsHeld: cortex._newWordsHeld instanceof Set ? Array.from(cortex._newWordsHeld) : [],
+      wordsToAskAbout: Array.isArray(this._wordsToAskAbout) ? this._wordsToAskAbout.slice(0, 16) : [],
+    };
+  },
+
+  /** Put back what `_newWordStateForSave` wrote. A file from before any of it was saved leaves that part as it is. */
+  _newWordStateRestore(saved) {
+    const cortex = this.cortexCluster;
+    if (!cortex || !saved) return;
+    if (Array.isArray(saved.newWordsTakenIn)) {
+      const m = new Map();
+      for (const e of saved.newWordsTakenIn) {
+        if (!Array.isArray(e) || typeof e[0] !== 'string') continue;
+        const v = { how: typeof e[1] === 'string' ? e[1] : 'looked up', at: Number(e[2]) || Date.now() };
+        if (e[3] === true) v.doubted = true;
+        m.set(e[0], v);
+      }
+      cortex._newWordsTakenIn = m;
+    }
+    const strs = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string' && x) : null);
+    const unk = strs(saved.wordsMeaningUnknown); if (unk) cortex._wordsMeaningUnknown = new Set(unk);
+    const held = strs(saved.newWordsHeld); if (held) cortex._newWordsHeld = new Set(held);
+    const ask = strs(saved.wordsToAskAbout); if (ask) this._wordsToAskAbout = ask.slice(0, 16);
+  },
+
+  /**
+   * The words of a line, each whole: split where there is space, the
+   * punctuation around a word dropped, lower case. A word that has any
+   * character left that is not a–z or an apostrophe is LEFT OUT whole — a word
+   * written with letters outside English is not cut into pieces that look like
+   * words (and a number, a link, an address is not a word).
+   */
+  _plainWords(text) {
+    const out = [];
+    for (const raw of String(text || '').toLowerCase().split(/\s+/)) {
+      const w = raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+      if (w && /^[a-z']+$/.test(w)) out.push(w.replace(/^'+|'+$/g, ''));
+      else if (w && /[^\x00-\x7f]/.test(w)) { const st = this._newWordStats; if (st) st.notEnglishSeen = (st.notEnglishSeen || 0) + 1; }
+    }
+    return out.filter(Boolean);
   },
 
   /**

@@ -62015,4 +62015,49 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** the commit carrying this entry.
 - **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, RESUME, EQUATIONS, EQUATIONS-TECHNICAL, ARCHITECTURE, WHOLE-BRAIN-DESIGN · `README.md` · `html/` — dashboard (row + tooltip), brain-equations, unity-guide · `.claude/CLAUDE.md` · `js/app.bundle.js` rebuilt · `deploy/` unaffected (no launcher, service or script changed) · `wiki/` stamped locally.
 
+---
+
+## 2026-11-27 (night) — NEWWORDS.5–.10: the merged new-words work was reviewed the same night and hardened before any start (branch `feature/new-words-hardening`, nothing booted)
+
+**Gee's words that govern this entry (verbatim):** "use ask me question then finish all things needed (remembr if there is something needed added fixed, we do it before a start fresh walk and and proof the brains equations" · "okay lets get it done, whats still to do and lets get this girl ready to start up" · "make sure to check off completed items and finalized.md them". His three answers, asked with options: who may teach her a new word through chat — **"Everyone, everything"** · when a kept word becomes permanent — **"option two but only with meanings, and she should decern if non english and refuse non english"** · a non-answer to her question — **"Keep the quarter dose"**.
+
+**How it started.** He ran a review on the work merged an hour earlier. It found what my own instruments had not: I had measured the happy path, on the host, and called it finished.
+
+**NEWWORDS.6 — the not-knowing feeling is one shared switch. CLOSED.** Row text and verdict stay on the board.
+- It was a switch on the cluster, held on while her wondering waited on the card; the walk's lessons read it and the sentence lesson cleared it. It now rides in the record of the state it was written for.
+- Measured: her wondering's state reads 6 of 6 not-knowing units · a lesson's state written in between reads 0 · her wondering's next state reads 6. Asking after the change: a question 67 % not knowing vs 17 % sure, the word in her line 98–100 %.
+
+**NEWWORDS.9 — three new groups of units share cells with their neighbours. CLOSED.**
+- Said-already and not-said-yet shared 1 unit of 4; said-already shared 1 with a place in the line; not-knowing shared 1 of 6 with a mood step. Each now has units of its own, checked when the module loads. Speech file version 5.
+
+**NEWWORDS.10 — the rest of the review. CLOSED.**
+- Teaching her own line twice, priced: 3,162 → 2,612 steps a second (−17 %), 14.6 → 22.9 MB (×1.57) on 1,200 sentences. Kept.
+- Counters no longer mislabel; a full lane turns the new word away instead of pushing out another lesson; the dashboard row shows doubted and refused.
+- Traced: a word she took in could not be said in a reply at all — the reply vocabulary set is rebuilt only at boot and on a grade change. A word taken in is added to it at once.
+
+**NEWWORDS.5 — what she is holding does not survive a restart. CLOSED.**
+- The words taken in with the doubted mark, the words held without a meaning, the words held on purpose and the words waiting to be asked about are saved and restored by two functions the server calls. Round trip through JSON: all four read back equal, the doubted mark included.
+
+**NEWWORDS.7 — "with discernment" was a coin flip. CLOSED.**
+- The bar is the `0.9^(1/k)` point of how close her own words sit to the word. Counted on 300 of her words: random words doubted 92.7 %, another word's definition 79.0 %, the word's own definition 35.7 %.
+- A doubted word re-opens: "toaster" doubted on a nonsense answer → asked about again on the next meeting → settled by "machine that browns bread".
+- Her question expires after five minutes (read in the code; not exercised — it needs a clock and a chat).
+
+**NEWWORDS.8 — "she should decern if non english and refuse non english", and a word only slang or an encyclopedia knows. CLOSED.**
+- My earlier fix had thrown away every meaning from the slang dictionary and the encyclopedia, against his standing word. Learned again: "glorfin" → looked up, definition · place · reads · says all yes.
+- Found while measuring: the one-letter-away misspelling guess turned "danke" into *dance* and "porque" into *torque*. A misspelling is swapped for its real word only when a dictionary itself names it one.
+- Refused: 48 of 49 sample words of other languages; 1 of 300 of her own words. A foreign word an English dictionary lists ("bonjour") is still learned — refusing those would also refuse "omg" and "haha".
+
+**NEWWORDS.11 — her lessons swap a corpus word for a real word one letter away, and it is swapping NAMES. CLOSED (2026-11-28).** Found by his question — *"uh she still gets and does foriegn langues corpus correctly right??? she just doesnt take users not speaking english but lets it slide and says aor asks about it  , right?"* — and fixed on his word: *"figure it out correctly as a correct fix, do u nered to read workflow files and update them before u decide and the files the workflow lists"*. (On a user's foreign word: *"cognition should already have her inqusitive. so... dont worry about it???"* — left as built.)
+- Her corpus was untouched by the new-word door. But the same one-letter-away guess I had just fixed for chat was live in her lessons: her saved dictionary held 340 strings marked a misspelling, nearly all names — alice → slice, julia → julian, claude → clause — and she was taught the other word in its place.
+- The guess is now made only when the encyclopedia answered and has no page titled the string itself. 32 of 37 known misspellings still get the guess; six of six marked names asked directly have a page of their own.
+- The saved marks are re-decided (914 misses looked at once more); a mark due that look is not served.
+
+**Every NEWWORDS row, .1 through .11, is closed.**
+
+**Not provable without starting her, and written on the first-start list in `docs/RESUME.md`:** the new-word lessons running on the card · the dashboard row in a browser · the weights file carrying the new-word state through a real save and load · her question's five-minute expiry.
+
+- **Commits:** the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, RESUME, EQUATIONS, EQUATIONS-TECHNICAL, ARCHITECTURE, WHOLE-BRAIN-DESIGN, THRESHOLD-DERIVATION · `README.md` · `html/` — dashboard (row, tooltip, render), brain-equations, unity-guide · `.claude/CLAUDE.md` · `js/app.bundle.js` rebuilt · `deploy/` unaffected (no launcher, service file or script changed) · `wiki/` stamped locally.
+
 

@@ -763,6 +763,84 @@ Size follows what she has learned, not units × vocabulary: 56 MB for her whole 
 
 A card that returns invalid results five times is dropped from the pool. Measured on the 2026-11-26 walk: the donor's own watchdog relaunched it, it registered under a new id, and her cortex was moved straight back onto it — two full re-uploads, about 4 minutes of paused teaching each, so **≈ 8 minutes lost per bounce**. With a 30-minute hold a card that fails on every return costs at most 8 minutes in every 38 (≈ 21 %); doubling brings a second offence to 8 in 68 (≈ 12 %) and a fifth to 8 in 488 (< 2 %). A hold shorter than the bounce itself would not bound anything; a permanent one would shut out a card whose driver was fixed.
 
+## A told meaning — when she doubts it (2026-11-27)
+
+`doubted ⇔ closest(answer) < F⁻¹(q)`, `q = 0.9^(1/k)` — `curriculum.js _toldAnswerIsDoubtful`.
+
+**What is compared.** The answer's closest word to the word (cosine in the word-vector table), against `F`: how close single words of her own sit to that word (up to 256 of them, taken evenly from her list). `k` = the answer's words that have a vector.
+
+**Why `0.9^(1/k)` and not 0.9.** The closest of `k` words picked at random falls below the `q`-th point of `F` with chance `q^k`. For unrelated answers to clear the bar one time in ten whatever their length, `q^k = 0.9`. The first version used the 0.9 point for every `k`, so unrelated answers cleared it with chance `1 − 0.9^k`: 34 % for four words, 57 % for eight. A threshold on a maximum needs the maximum's distribution.
+
+| Measured on 300 words of her stories that have a dictionary definition (she knows 2,641 words) | doubted |
+|---|---|
+| that many words picked at random from her own words | **92.7 %** (designed: 90 %) |
+| another word's definition, said as the answer | **79.0 %** |
+| the word's own definition (its first 8 words) | **35.7 %** |
+| the word's own definition, said short (3 words) | 50.3 % |
+
+So it catches four wrong answers in five and doubts one right answer in three. That is why a doubted answer is still taken in — at a quarter of the dose — and the word is opened again the next time she meets it, instead of being thrown away. Tried and not used: closeness to the answer's mean vector (right 20.0 %, wrong 60.0 % — it lets through twice as many wrong answers for the right ones it saves).
+
+**When there is nothing to weigh:** the word has no vector of its own in the table (a made-up word), no word of the answer has one, or she knows fewer than 40 words. The answer is then taken as told.
+
+## Not English — the word is refused (2026-11-27)
+
+`NOT_ENGLISH_NEAR = 0.30` — `curriculum.js _notEnglishWord`. Asked only of a word no English dictionary holds.
+
+**The measure.** Her meaning space puts a word beside the words it is used with, so a word of another language sits among other words of that language. Of the word's 12 nearest words, the share the offline English dictionary holds; under 30 % it is taken as not English — never learned, never asked about.
+
+| Test sample (instrument only — nothing in her code is a list) | under 30 % |
+|---|---|
+| 49 words of other languages (German, French, Spanish, Italian, Portuguese, Japanese) | **48 of 49** — 0–25 %, one at 58 % ("buenos", which sits among place names) |
+| 300 words from her own stories | **1 of 300** (a name, 25 %); of the 29 the offline dictionary does not hold, **0** |
+| 22 things people say that the offline dictionary does not hold (iphone, gonna, haha, …) | 14 of 22 |
+| 11 misspellings her meaning space holds | 10 of 11 |
+
+**Why the neighbours are judged by the offline dictionary and not by everything she can look up.** Two measurements. Judged by what was on hand, the same word's share moved as more words were looked up ("pero" 0 % → 33 % within one run). Judged after looking each neighbour up online, the other-language sample rose (25 of 49 under 20 %, from 38) because an online English dictionary lists many words of other languages. The offline dictionary gives the same answer every time.
+
+**What it does not do — stated, not hidden.**
+- A word of another language that an English dictionary *does* list is learned with that dictionary's meaning: 15 of the 49 ("bonjour", "gracias", "hola", "merci", "oui", …). Asking the question of every word outside the offline dictionary would refuse those — and with them 14 of 22 things people say ("omg", "haha", "hmm", "dunno"), which she is meant to learn.
+- A misspelling her meaning space holds sits among other misspellings, so it is refused like any string that is not an English word, unless a dictionary itself names it a misspelling ("recieve" → receive), in which case she meets the real word.
+- A word her meaning space has no vector for cannot be judged this way; it is kept and asked about.
+- The one-letter-away spelling guess is asked only after this check: it turned "danke" into *dance* and "porque" into *torque*.
+
+**Cost.** One pass over the 400,000-word table, about 170 ms, handing the loop back every 40,000 words; only for a word no English dictionary holds.
+
+## A name is not a misspelling (2026-11-28)
+
+Not a number — a condition on when the one-letter-away misspelling guess may be made (`server/definition-service.js _fetchBeyondDictionaries`): **only when the encyclopedia answered and has no page titled the string itself.**
+
+**What was wrong.** The guess takes a string no dictionary knows and, if a real word sits one edit away, records it as a misspelling of that word; her lessons then teach the real word in its place. It was built for typos in her reading. Her reading is published text. In her saved dictionary the guess had marked **340** strings, and read through at every level of commonness nearly every one is a **name**: alice → slice, julia → julian, claude → clause, marie → marine, gordon → cordon, crofton → croton, felix → helix (65 of them in her language course alone). Wherever a story says "alice" she was taught *slice*, and the string itself was never given a meaning.
+
+**What does not separate them.** How common the string is in the word-vector table (which is ordered by it). Names sit at every level — "gordon" among the 3,500 commonest strings, "crofton" past 80,000 — and so do real misspellings ("teh" at 19,882, "definately" at 356,206). No rank or ratio divides them.
+
+**What does.** The encyclopedia's page for the exact string. A name has a page *titled that string* (an article, or its list of the things that go by the name — which is why "alice" used to return nothing: that list was not counted as a page). A misspelling has no page of its own:
+
+| 37 known misspellings that got an answer (test sample) | |
+|---|---|
+| redirects to another title ("seperate" ⇒ separate, "goverment" ⇒ government) | 23 |
+| no page at all ("untill", "begining", "succesful") | 9 |
+| **a page titled the string itself** ("teh", "adn", "wich", "freind", "calender" — each also the name of something) | 5 |
+
+So the guess is still made for 32 of the 37, and the 5 it is no longer made for are swapped anyway whenever a dictionary itself names them a misspelling (that check runs first). No answer from the encyclopedia is not read as "no page": the guess is not made, and the string is left unmarked.
+
+**Through the real lookup after the change:** alice, julia, claude, gordon, crofton, keith → not marked, each given the meaning the slang dictionary has for the name; recieve → receive, untill → until, jumpin → jumping still swapped.
+
+**The saved marks.** `NODEF_GEN` 2 → 3: every miss decided under the old rule (914 in her saved dictionary, 340 of them carrying such a mark) is looked at once more, and a mark on a miss that is due that look is not served in the meantime. Price: 914 lookups, once.
+
+## Teaching her own line twice — the price (2026-11-27)
+
+Each step of a line of her own is taught once in its exact state and once more on the units lines share (what lets a line about a thing she was taught no line about come out at all). Measured on 1,200 of her sentences, four passes, 37,240 steps, the second teach turned off in the instrument only:
+
+| | without | with (her code) |
+|---|---|---|
+| steps a second | 3,162 | **2,612** (−17 %) |
+| corrections made | 42,671 | 117,468 |
+| moments remembered for rehearsal | 8,369 | 15,712 (×1.88) |
+| weights held | 713,801 · 14.6 MB | 1,172,634 · **22.9 MB** (×1.57) |
+| last pass, said before corrected | 99.9 % | 99.8 % |
+
+The sentence lesson is about a fifth slower and what she can say takes about 1.6 times the room (her whole-life figure of 56 MB becomes roughly 90 MB). The rehearsal sample is capped at 200,000 moments either way; it fills nearly twice as fast.
+
 ## Teach lane recovery (2026-11-27)
 
 Not a threshold — a count that shows why one was not needed. On a 20-hour walk **33** teach-pattern frames were shed at the 16 MB lane cap and **11,356** teach updates were skipped: about 344 per shed. The cap was not the cause. A shed marks the lane stale so no update trains on a broken pattern, and stale cleared only when some lesson's own region clear happened to go out — rare. Now the first skipped update clears every cortex region on the card itself, which is the known state the flag waits for, so one shed costs the updates of one iteration. `boundHebbian.laneRecoveries` counts them.

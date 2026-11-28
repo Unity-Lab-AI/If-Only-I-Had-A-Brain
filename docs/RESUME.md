@@ -26,7 +26,18 @@
 >             time (a first word just under the speech floor is withheld; the word waits)
 > ```
 >
-> **On the first fresh start, add to the list below:** `newWords` in the state (dashboard row "new words she took in") moves when a line with a word she does not hold is said to her; `[Brain] ❓ curious-question (about=<word>)` carries that word in its text; the speech file saves as version 4.
+> **Reviewed the same night and hardened (`NEWWORDS.5–.10`, branch `feature/new-words-hardening`)** — Gee: *"use ask me question then finish all things needed (remembr if there is something needed added fixed, we do it before a start fresh walk and and proof the brains equations"*. What she holds about new words is saved; not-knowing rides in the state it was written for; a told answer is weighed against the right baseline and a doubted word re-opens; her question expires after five minutes; slang-dictionary and encyclopedia meanings are learned again; another language is refused; a word she takes in can be used in her replies.
+>
+> **On the first fresh start, add to the list below — these two things could NOT be proven without starting her:**
+>
+> | Look for | It reached her | It did not |
+> |---|---|---|
+> | A line said to her with a word she does not hold | `newWords` in the state moves (dashboard row "new words she took in" — looked up · asked · doubted · waiting to ask · refused), and the lane's `lastJobLabel` reads `NEW-WORD` | the row reads "not published", or `noticed` climbs while `total` never does (the lesson is not landing on the card) |
+> | She wonders about a word nothing has an entry for | `[Brain] ❓ curious-question (about=<word>)` with that word in its text | the word sits in `waitingToAsk` and `askFailed` climbs with no question ever printed |
+> | A word of another language said to her | `refused` goes up by one and the word never appears in `waitingToAsk` | she asks what it means |
+> | The speech file | saves and loads as version 5 | a load line refusing the speech file on a Savestart of a walk begun on this build |
+> | A Savestart after she has kept a word without a meaning | `waitingToAsk` and the taken-in counts come back as they were; a doubted word is still doubted | the counts come back as zero, or a kept word is never asked about again |
+> | She asks, and nobody answers for more than five minutes | the next line said to her is NOT taken as the answer; `questionsExpired` goes up and the word is back in `waitingToAsk` | the late line is bound as the word's meaning |
 
 > # 🛑 2026-11-27 (55th) — HER CELLS WERE NOT LEARNING WHAT THEY WERE TAUGHT, ANYWHERE. THE LANGUAGE CORTEX WAS REBUILT ON WHAT MEASURED. NOT BOOTED.
 >
