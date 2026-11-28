@@ -30925,10 +30925,34 @@ export class Curriculum {
             // Heard: only meaning is written; letter/sound/motor are cleared and stay silent.
             const feats = hearOnly ? [null, null, null, semFeat, _spkFeat]
               : [letterOneHot, phonRegion ? phonFeat : null, motorRegion ? letterOneHot : null, semFeat, _spkFeat];
-            const groups = _plRegions.map((rg, i) => (rg && feats[i] && feats[i].length) ? Math.max(1, Math.floor((rg.end - rg.start) / feats[i].length)) : 1);
+            // ⭐⭐ ONE CODE FOR A WORD ON THE CARD LANE TOO. The direct writes in
+            // this file now go through `_writeTiledPattern`, which gives a word its
+            // own cells; this batched lane does not go through it — it hands the
+            // card active dims plus a tile size — so the same code has to be
+            // expressed in that shape: **the word's cells ARE the dims, with a tile
+            // size of 1.** Without this, the card lane would keep teaching the
+            // GloVe pattern while every other lane taught her cells, which is the
+            // split this row exists to end.
+            //
+            // ⚠ Only where the old code would have written at all (`semFeat`
+            // present), so the change is strictly "same words, different code" and
+            // stays measurable. A word with no vector of its own still gets no sem
+            // write here, exactly as before — her cells would not need one, and
+            // changing that too would make the before/after read two changes at
+            // once.
+            const semCells = (cluster.wordCellCode === true && semFeat && semRegion && typeof word === 'string' && word)
+              ? Array.from(this._wordCells(word, semRegion))
+              : null;
+            const groups = _plRegions.map((rg, i) => {
+              if (i === 3 && semCells) return 1;   // cells, not tiles
+              return (rg && feats[i] && feats[i].length) ? Math.max(1, Math.floor((rg.end - rg.start) / feats[i].length)) : 1;
+            });
             if (_pl.items.length && groups.some((g, i) => g !== _pl.groups[i])) await _plFlush();
             _pl.groups = groups;
-            _pl.items.push(feats.map((f) => { const d = []; if (f) for (let k = 0; k < f.length; k++) if (f[k] > 0) d.push(k); return d; }));
+            _pl.items.push(feats.map((f, i) => {
+              if (i === 3 && semCells) return semCells;
+              const d = []; if (f) for (let k = 0; k < f.length; k++) if (f[k] > 0) d.push(k); return d;
+            }));
             if (_pl.items.length >= _plMax) await _plFlush();
             continue;
           }
@@ -34233,8 +34257,18 @@ export class Curriculum {
             if (iMot !== undefined && motorRegion) dims[iMot] = dimsOf(oneHot);
             const hasSem = iSem !== undefined && semRegion && wEmb && wEmb.length > 0;
             if (hasSem) {
-              if (!semGroupSet) { R[iSem][1] = Math.max(1, Math.floor((semRegion.end - semRegion.start) / wEmb.length)); semGroupSet = true; }
-              dims[iSem] = dimsOf(wEmb);
+              // One code for a word on the card lane too — her own cells ARE the
+              // dims, at a tile size of 1. The group size is latched once for the
+              // whole batch, and word cells keep it at 1 for every item, so the
+              // batch stays consistent. See the note on the other batched lane.
+              const _semCells = (cluster.wordCellCode === true)
+                ? Array.from(this._wordCells(word.split(/\s+/)[0], semRegion))
+                : null;
+              if (!semGroupSet) {
+                R[iSem][1] = _semCells ? 1 : Math.max(1, Math.floor((semRegion.end - semRegion.start) / wEmb.length));
+                semGroupSet = true;
+              }
+              dims[iSem] = _semCells || dimsOf(wEmb);
             }
             const writeNow = [[1, iLet]];
             if (iPh !== undefined && phonRegion) writeNow.push([1, iPh]);
