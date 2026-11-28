@@ -177,12 +177,30 @@ export const CLUSTER_EMIT_MIXIN = {
     const rd = this.speechReadout();
     const units = rd.stateUnits(said, []);
     if (!units.length) return false;
-    const live = this.feelingUnits();
-    const all = live.length ? units.concat(live) : units;
+    // The line is put in mind the way a reply to it would be, and read back
+    // from there (her cells, where she has them) — so this answers for the
+    // state she would actually speak from. What was in mind is put back.
+    const all = this.speechStateFor(units);
+    if (!all || !all.length) return false;
     // `bucketMeans` is on the scale the floor is stated in, whichever store holds what she says.
     const s = rd.bucketMeans(all, n);
     let best = 0; for (let b = 0; b < n; b++) if (s[b] > best) best = s[b];
     return best >= SPEECH_FLOOR;
+  },
+
+  /**
+   * "If this were in mind, what state would she speak from?" — lights `units`
+   * as the speaking state, reads the state back the way a spoken word is read
+   * (her lit cells and how she feels), then restores what was in mind before.
+   * Probes and gates use this, so they measure the path speech takes.
+   */
+  speechStateFor(units) {
+    const keepU = this._speechUnits, keepC = this._speechCtx, keepM = this._mindFeats;
+    this.setSpeechUnits(units); this._speechCtx = null; this._mindFeats = null;
+    const got = this.currentSpeechUnits();
+    this.setSpeechUnits(keepU); this._speechCtx = keepC; this._mindFeats = keepM;
+    if (this._speechUnitCells) this._mindLitFor = null;   // a meaning in mind lights its cells again on the next read
+    return got;
   },
 
   /** How she feels right now, as speaking-state units (empty when no mood is known). */

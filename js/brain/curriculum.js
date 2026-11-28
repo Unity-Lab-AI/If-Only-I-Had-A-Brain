@@ -30341,7 +30341,9 @@ export class Curriculum {
     const n = Array.isArray(cluster.wordBucketWords) ? cluster.wordBucketWords.length : 0;
     if (typeof idx !== 'number' || idx < 0 || !n) return false;
     const rd = cluster.speechReadout();
-    return rd.rank(rd.conceptUnits(w), idx, n) === 1;
+    // read from the state she would speak from with this thing in mind (`speechStateFor`)
+    const units = cluster.speechStateFor(rd.conceptUnits(w));
+    return !!(units && units.length) && rd.rank(units, idx, n) === 1;
   }
 
   /**
@@ -30364,9 +30366,9 @@ export class Curriculum {
     for (let i = 1; i < words.length; i++) {
       const idx = map.get(words[i]);
       if (typeof idx !== 'number' || idx < 0) continue;
-      const units = rd.stateUnits('', words.slice(0, i), about);
+      const units = cluster.speechStateFor(rd.stateUnits('', words.slice(0, i), about)) || [];
       out.total++;
-      if (rd.saysTaught(units, idx, n)) { out.right++; continue; }
+      if (units.length && rd.saysTaught(units, idx, n)) { out.right++; continue; }
       if (!out.firstMiss) {
         const t = rd.top(units, n);
         out.firstMiss = `${t >= 0 ? list[t] : (t === SPEECH_END ? '(stops)' : '(nothing)')}→${words[i]}`;
