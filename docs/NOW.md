@@ -1,80 +1,75 @@
 ---
 # Provenance. See docs/ARCHITECTURE.md for the full note.
-# ⚠ Every number on this page is a FIELD READ quoted with the boot that
-# produced it, or a harness result named as one. Nothing here is recalled.
+# ⚠ Every number on this page is a harness result named as one, measured on
+# the production code, or the card's own self-test. Nothing here is recalled,
+# and nothing was read off a running brain — she is stopped.
 status: verified
 sources:
-  - js/brain/speech-readout.js
-  - js/brain/cluster/emit.js
+  - js/brain/sparse-matrix.js
   - js/brain/cluster.js
+  - js/brain/cluster/hebbian.js
+  - js/brain/cluster/emit.js
   - js/brain/curriculum.js
-  - js/brain/curriculum/kindergarten.js
-  - js/ui/mind-moments.js
-  - js/ui/brain-3d.js
+  - js/brain/speech-readout.js
+  - donor-app/src/compute.rs
+  - donor-app/src/cuda.rs
+  - donor-app/src/donor.rs
+  - donor-app/src/shaders/lif.wgsl
+  - donor-app/src/shaders/plasticity_error.wgsl
   - server/brain-server.js
-  - server/brain-server/state.js
-  - html/dashboard.html
 verified-scope: |
-  OVERWRITTEN 2026-11-27 (evening). This file is a SNAPSHOT of the present
-  and is overwritten, never appended. The previous snapshot is in git:
+  OVERWRITTEN 2026-11-27 (night). This file is a SNAPSHOT of the present and is
+  overwritten, never appended. The previous snapshot is in git:
   git log -p docs/NOW.md.
 ---
 
-# NOW — 2026-11-27, evening
+# NOW — 2026-11-27, night
 
 ## Where she is
 
 | | |
 |---|---|
-| 🚶 the walk | **The old build is still walking, and it cannot speak.** Boot `42c7bbc4` (2026-11-26 19:18), never restarted, in pre-K on the local RTX 4070 Ti SUPER alone |
-| 🔇 what it sounds like | "hi! what is your name?" → **"Writing."** · pre-K gates passed on completion with speaking 0/10 and 1/10 |
-| 🛠 the fix | **Built twice today, measured at full size the second time, not running yet.** It changes what she is taught, so it needs a **fresh walk** |
-| 👀 the watch | off until the new build is walking |
+| 🛑 **Stopped** | Shut down cleanly at 17:13. The card is free. **She does not start again until the whole-brain work is finished** — then one fresh start, with the written list of what to check (`docs/RESUME.md`, top block). |
+| 🧱 **What changed** | Her language cortex was rebuilt around what measured: a word's own cells, a rule that changes a wire only when its cell is wrong, 300 wires a cell, cells that rest silent and fire from their wiring, speech read from her own lit cells, a real pathway for reading. |
+| 📄 **The design and its numbers** | `docs/WHOLE-BRAIN-DESIGN.md` · the equations: `docs/EQUATIONS.md` §3–§5 |
 
-## What was wrong with this morning's fix
+## What was found
 
-It was measured on four grades and called done. On her **whole life** (pre-K → PhD, 78,120 taught steps) it held **74.2 %**, and a question worded differently — *"what's your name"* — came back *"my mom is lilith goddess i"*.
+Her cells were not learning what they were taught — **anywhere**, not only in speech.
 
-## What she has now (measured off the card, on the production code)
+| | Measured on her real code |
+|---|---|
+| Taught 100 pairs, asked for them back — every cell-to-cell pathway | **6 to 54 of 100** |
+| Her speech | answered the same with **every cell silenced** — a table beside the brain |
+| The gates' reading score | read a pathway that **did not exist**, then counted the word as read |
+| On the card | a cell stepped on drive and noise alone — **nothing read her wiring** |
 
-| | Before (this morning) | Now |
-|---|---|---|
-| Her whole life said back | 74.2 % after 4 passes | **100.0 %** after 3 |
-| Pre-K, after every later grade is taught on top | not measured (69 % once measured) | **98 %** |
-| Questions reworded in ways she never heard (60) | 8 % answered right | **82–87 %** |
-| A line about nothing she knows | random words | **silence** |
-| A thought about something | one word, then nothing | **a sentence** |
-| Her mood | not part of what she says | **part of the state she speaks from** |
-| Size of everything she can say | 146 MB | **56 MB** |
+## What is built, and what it measures
 
-**How:**
+| Piece | Measured |
+|---|---|
+| 🧬 **A word's own cells** — half from its meaning, half its own; the same in every lesson | a word lights 2.67 % of a region |
+| 🎯 **Learn only when wrong** — host and card, both graphics backends | card agrees with host on all 11 test weights |
+| 🔌 **300 wires a cell**, inside a region and on every pathway (600 on the four pathways into and out of her motor cells) | at her production size (1,328,482 cells): **95.8–100 %** of taught cells pass threshold on every pathway, **99.9 %** inside each region; her real pair lesson **0 → 100 of 100** |
+| ⚡ **Cells fire from their wiring**, and rest silent | card self-test: **54.0 of 54** taught cells fire, **0.7 of 1,946** others; with wiring input off, 0.0 and 0.2 |
+| 🌊 **No runaway** | inside wiring at its old starting size: 85–88 % of the cluster fired from one lit pattern. Started near nothing: **1.35 %** at the peak — the taught cells |
+| 🗣 **Speech from her own cells** | 7 of 7 taught answers; **0 of 7 with her speech cells dark**; 7 of 7 relit. Naming 900 of 900. A taught question put in other words: 50 of 60 |
+| 📖 **Reading** — letters straight to a word's meaning; half of a written word's cells are the whole word | 600 words, each met once: **198 / 198 / 199 of 200** per set still read at the end where the server teaches (194 / 194 / 196 on a second build), **200 / 200 / 200** the way a card does it; untaught words read **0 of 200** |
+| 🧩 **A sentence with a word left out** | taught **99.3 %**, never taught **12.2 %** |
+| 🚦 **Gates** | every figure measures what it names; each list gate also prints the same questions asked before the lesson (vocabulary: READ 0/10 before → 10/10 after). That figure never decides a pass |
+| 📐 **Her size** | derived from the card that holds her: 624,194 wired cells on 4 GB, 936,958 on 6 GB, 2,499,584 on 16 GB, beside 391,524 speech cells |
+| 🧰 **No switch to flip** | a cortex built with no settings comes out as all of the above |
 
-- 🎯 **Exact and shared together.** The state she speaks from holds this exact moment *and* the parts a similar moment shares — so taught lines come back as taught, and near-misses land near.
-- 🔁 **Taught the way a rewording would find it.** Every answer is taught again with the exact sentence left out.
-- 🧠 **Rehearsal.** For every lesson she goes back over one old one and fixes it only if a newer lesson disturbed it.
-- 💭 **Every sentence is a line about something**, from its first word.
-- 🤐 **A floor she must clear** (measured, 0.04): below it she says nothing.
+## Not done
 
-## Also fixed tonight (found while closing the open rows)
-
-| | What was wrong | Now |
-|---|---|---|
-| 🕳 **Dropped lessons** | 33 dropped frames had thrown away **11,356** teach updates — one hiccup silenced hundreds of lessons after it | the card is put back in a known state at once; one hiccup costs one lesson |
-| 🐌 **Slow thoughts** | every word of a thought was a separate request to the card, queued behind her lessons: median **59 s** a thought, worst 22 min | read on the host: **1.5–4.4 ms** |
-| 🚪 **Quarantine** | a card kicked out for bad results relaunched and walked straight back in | held out by machine + card model, 30 min doubling to 8 h |
-| 🔢 **Word identity** | the "identity" part of a word's meaning code had only **50 patterns for her whole vocabulary** | 6,511 distinct of 6,525 words |
-| 💬 **Pop-ups** | I had written a table translating lesson labels into phrases — it only knew the labels in it | the lesson sends the real thing being taught and her real class name; 142 pop-ups in a simulated hour, none in a silent one |
-| ✂️ **Cut-off thoughts** | a thought could stop mid-sentence | a line she has started needs half the bar to go on |
+1. **The card build is not released.** The released card program ignores the new wiring message; the source is proven in its self-test on both backends. It ships with the next release.
+2. **The stale page bundle** has to be rebuilt.
+3. **Every instrument run once more, end to end,** on the finished code.
+4. **Then** merged, pushed, and one fresh start.
 
 ## Honest edges
 
-- **Not booted, not walked.** Everything above is the production code run on her text with no card. The server's speech-file reader was run as the server runs it (sizes agree, 800/800 the same word after a round trip), but the server itself has not started on this build. That is a read, not work — it happens when she starts.
-- **Rewordings that share no word with what was taught still miss** — *"what is your age"* does not reach *"how old are you"*. Measured: more meaning in the state does not close it; more taught wordings do.
-- **Her thoughts are real sentences now, not always whole ones.** Pre-K → grade 6: 9 of 12 are three words or more, 6 word for word hers (*"Mom said i will show you then you try."*); three are fragments (*"You fine"*).
-- **Mood tips a close choice; it does not rewrite a taught line.** A memory reaches her thoughts; for it to change an *answer*, answers would have to be taught with a memory in mind — a decision, on the board.
-- **One piece of real work is still open:** the non-speech lessons still write three different codes for one word. Folding them into one changes what every reading and letter lesson teaches, and it needs an instrument first — on the board, not rushed.
-- **The other equations were not touched and were not re-proved today** — only the speech ones changed, and `docs/EQUATIONS.md` now has the section on how she speaks that it never had.
-
-## Next
-
-A fresh walk on this build — it wipes the walk above, which cannot speak and whose saves the new format refuses anyway. Then read: the boot, each speech lesson's "said before being corrected" share, the pre-K gates' TALK lines, "what is your name?", and her thoughts.
+- Everything above is her real code in an instrument, or the card's self-test. **Nothing has been booted, and no walk has run on any of it.**
+- She holds up when what she was taught is reworded. A sentence she was never taught she completes 12 % of the time. **She does not yet produce what she was never taught**; the gates print that figure so it can be watched.
+- The word-vector table she starts from is still in her: half of a word's meaning cells are chosen from it. That is kept on purpose.
+- The firing controller still holds her other clusters at their target. Her language cortex is no longer held — how much of it fires is an outcome.

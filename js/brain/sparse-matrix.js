@@ -417,8 +417,14 @@ export class SparseMatrix {
       this.nnz = 0;
       return;
     }
-    const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(cols / 4));
-    const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(cols / 2));
+    // `opts.wired` — only the first `wired` cells take part: rows past it get no
+    // wires and no wire comes FROM a cell past it. (A cluster can end in a run
+    // of cells that are wired some other way, and they must not cost inside
+    // wires they never use.) Default: every cell.
+    const wired = (opts.wired > 0 && opts.wired < rows && rows === cols) ? Math.floor(opts.wired) : rows;
+    const ring = wired < rows ? wired : cols;
+    const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(ring / 4));
+    const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(ring / 2));
     const localFrac = opts.localFrac ?? 0.70;
     const medFrac = opts.medFrac ?? 0.25;
     // longFrac = 1 - localFrac - medFrac (5% Watts-Strogatz rewire)
@@ -426,7 +432,7 @@ export class SparseMatrix {
     const medCount = Math.max(0, Math.round(effFanout * medFrac));
     const longCount = Math.max(0, effFanout - localCount - medCount);
 
-    const totalPre = rows * effFanout;
+    const totalPre = wired * effFanout;
     this.values = new WEIGHT_ARRAY(totalPre);
     this.colIdx = new Uint32Array(totalPre);
     this.rowPtr = new Uint32Array(rows + 1);
@@ -437,11 +443,54 @@ export class SparseMatrix {
     const rowBufCol = new Uint32Array(effFanout);
     const rowBufVal = new WEIGHT_ARRAY(effFanout);
 
+    // `opts.spans` — [[start, end), …] ascending, not overlapping: the regions
+    // of the cluster. A cell inside a span takes `spanFrac` (0.95) of its
+    // wires from cells of ITS OWN span, picked evenly across it, and the rest
+    // from anywhere wired. This is what "the wiring inside a region" has to
+    // be for one pattern in a region to bring up another: the two patterns'
+    // cells sit anywhere in the region, so a cell needs wires from all over
+    // it. (Neighbour-only wiring gave a cell 4.2 lit inputs of 300 for a word;
+    // measured 78.8 % of taught cells past threshold against 99 % on the
+    // pathways between regions, which are wired evenly.)
+    const spans = Array.isArray(opts.spans) ? opts.spans : null;
+    const spanFrac = opts.spanFrac ?? 0.95;
+    let spanAt = 0;
+
     let idx = 0;
     this.rowPtr[0] = 0;
     for (let i = 0; i < rows; i++) {
+      if (i >= wired) { this.rowPtr[i + 1] = idx; continue; }
       picks.clear();
       let filled = 0;
+
+      if (spans) {
+        while (spanAt < spans.length && i >= spans[spanAt][1]) spanAt++;
+        const sp = (spanAt < spans.length && i >= spans[spanAt][0]) ? spans[spanAt] : null;
+        const len = sp ? sp[1] - sp[0] : 0;
+        if (sp && len > effFanout * 2) {
+          const inSpan = Math.round(effFanout * spanFrac);
+          let tries = 0; const maxTries = effFanout * 6;
+          while (filled < inSpan && tries < maxTries) {
+            const col = sp[0] + Math.floor(_initRand() * len);
+            tries++;
+            if ((col === i && noSelfConnect) || picks.has(col)) continue;
+            picks.add(col);
+            rowBufCol[filled] = col;
+            rowBufVal[filled] = (_initRand() < excitatoryRatio ? 1 : -1) * (0.1 + _initRand() * 0.4) * strength;
+            filled++;
+          }
+          tries = 0;
+          while (filled < effFanout && tries < maxTries) {
+            const col = Math.floor(_initRand() * ring);
+            tries++;
+            if ((col === i && noSelfConnect) || picks.has(col)) continue;
+            picks.add(col);
+            rowBufCol[filled] = col;
+            rowBufVal[filled] = (_initRand() < excitatoryRatio ? 1 : -1) * (0.1 + _initRand() * 0.4) * strength;
+            filled++;
+          }
+        }
+      }
 
       // Tier 1: local — sample localCount from [i-radiusLocal, i+radiusLocal]
       let attempts = 0;
@@ -449,8 +498,8 @@ export class SparseMatrix {
       while (filled < localCount && attempts < maxAttempts) {
         const offset = Math.floor((_initRand() * 2 - 1) * radiusLocal);
         let col = i + offset;
-        if (col < 0) col += cols;
-        else if (col >= cols) col -= cols;
+        if (col < 0) col += ring;
+        else if (col >= ring) col -= ring;
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
@@ -466,8 +515,8 @@ export class SparseMatrix {
       while (filled < localCount + medCount && attempts < maxAttempts) {
         const offset = Math.floor((_initRand() * 2 - 1) * radiusMed);
         let col = i + offset;
-        if (col < 0) col += cols;
-        else if (col >= cols) col -= cols;
+        if (col < 0) col += ring;
+        else if (col >= ring) col -= ring;
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
@@ -478,10 +527,10 @@ export class SparseMatrix {
         attempts++;
       }
 
-      // Tier 3: long-range — uniform from full [0, cols) (Watts-Strogatz)
+      // Tier 3: long-range — uniform from the wired cells (Watts-Strogatz)
       attempts = 0;
       while (filled < effFanout && attempts < maxAttempts) {
-        const col = Math.floor(_initRand() * cols);
+        const col = Math.floor(_initRand() * ring);
         if (col === i && noSelfConnect) { attempts++; continue; }
         if (picks.has(col)) { attempts++; continue; }
         picks.add(col);
@@ -903,7 +952,27 @@ export class SparseMatrix {
   /**
    * Hebbian: ΔW = η · post · pre
    */
+  /**
+   * A matrix that carries `errorDriven` learns by ONE rule whichever teaching
+   * call reaches it — the same contract the card keeps by matrix name. A
+   * strengthening call becomes `errorUpdate` with the matrix's own numbers
+   * (every row in the caller's row range: a resting cell can be wrong, so a
+   * list of lit rows is not enough); a weakening call does nothing, because
+   * the rule already lowers a cell that fires for the wrong input.
+   * Returns undefined when the matrix is not in the mode.
+   */
+  _errorDrivenInstead(preSpikes, postSpikes, lr, opts) {
+    const m = this.errorDriven;
+    if (!m) return undefined;
+    if (!(lr > 0)) return 0;
+    return this.errorUpdate(preSpikes, postSpikes, m.eta, {
+      theta: m.theta, margin: m.margin,
+      rowStart: opts && opts.rowStart, rowEnd: opts && opts.rowEnd,
+    });
+  }
+
   hebbianUpdate(preSpikes, postSpikes, lr, opts) {
+    if (this.errorDriven) { this._errorDrivenInstead(preSpikes, postSpikes, lr, opts); return; }
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     // Null-CSR guard — post CPU CSR free this call would crash at
     // `rowPtr[i]` / `values[k]`. Silent no-op keeps teach paths safe
@@ -956,6 +1025,10 @@ export class SparseMatrix {
    * replacement for the per-projection Hebbian call in the teach paths.
    */
   ojaUpdate(preSpikes, postSpikes, lr, opts) {
+    if (this.errorDriven) {
+      const changed = this._errorDrivenInstead(preSpikes, postSpikes, lr, opts);
+      return (opts && opts.trackDelta) ? changed * this.errorDriven.eta : undefined;
+    }
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return;
 
@@ -1061,6 +1134,7 @@ export class SparseMatrix {
    * together — push-pull discrimination instead of passive superposition.
    */
   antiHebbianUpdate(preSpikes, postSpikes, lr, opts) {
+    if (this.errorDriven) return (opts && opts.trackDelta) ? 0 : undefined;   // the rule lowers wrong cells itself
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return;
 
@@ -1101,6 +1175,73 @@ export class SparseMatrix {
       }
     }
     return trackDelta ? deltaAbs : undefined;
+  }
+
+  /**
+   * Error-driven update — a wire changes only when its cell is WRONG.
+   *
+   *   s[i] = Σ_j w[i,j] · x[j]                      the cell's summed input
+   *   k[i] = how many of its inputs are lit
+   *   should fire  and s[i] < θ + m  →  each lit wire += η · (θ + m − s[i]) ÷ k[i]
+   *   should rest  and s[i] > θ − m  →  each lit wire += η · (θ − m − s[i]) ÷ k[i]
+   *   otherwise                      →  nothing changes
+   *
+   * THE STEP CLOSES THE GAP. A wrong cell's lit wires share out exactly what it
+   * is short of (or over by), so with η = 1 it is right after one teach,
+   * whatever number of lit inputs it has. (A fixed step per wire needed 15 ÷ k
+   * teaches at η 0.05; measured at 8 lit inputs a cell, 4 passes: fixed step
+   * 85.6 % of taught cells past threshold, this step 99.4 %.) A cell with no
+   * lit input cannot be changed by this input and is left alone.
+   *
+   * `postSpikes` is the TEACHING pattern (which target cells should fire for
+   * this input), not what the cells did. The rule is local to a cell: its own
+   * inputs, its own summed input, and whether it should be firing.
+   *
+   * Why this and not Oja for taught associations: Oja pulls every wire of a
+   * lit cell toward the current input each time, so each lesson partly
+   * overwrites the last and a cell that is already right keeps moving. Here a
+   * cell that is already right is left alone, and a cell that fires for the
+   * wrong input is pushed down — the part Oja has no term for. Measured on
+   * the same projection, codes and wiring (400 pairs, 100 wires per cell):
+   * Oja 242 recalled, this rule 400. docs/WHOLE-BRAIN-DESIGN.md.
+   *
+   * Unlike `ojaUpdate`, every row is visited (a resting cell can be wrong).
+   * `opts.rowStart` / `opts.rowEnd` slice the pass, as in `ojaUpdate`.
+   * Returns the number of cells that were changed.
+   *
+   * @param {ArrayLike<number>} preSpikes   source activity (0/1)
+   * @param {ArrayLike<number>} postSpikes  which target cells should fire (0/1)
+   * @param {number} eta                    share of the gap closed in one teach (1 = all of it)
+   * @param {object} [opts]  theta (0.5), margin (0.25), rowStart, rowEnd
+   */
+  errorUpdate(preSpikes, postSpikes, eta, opts) {
+    const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
+    if (!values || !rowPtr || !colIdx) return 0;
+    const theta = (opts && typeof opts.theta === 'number') ? opts.theta : 0.5;
+    const margin = (opts && typeof opts.margin === 'number') ? opts.margin : 0.25;
+    const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
+    const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
+    const hi = theta + margin, lo = theta - margin;
+    let changed = 0;
+    for (let i = rowStart; i < rowEnd; i++) {
+      const start = rowPtr[i], end = rowPtr[i + 1];
+      let s = 0, lit = 0;
+      for (let k = start; k < end; k++) if (preSpikes[colIdx[k]]) { s += values[k]; lit++; }
+      if (lit === 0) continue;
+      let d = 0;
+      if (postSpikes[i]) { if (s < hi) d = eta * (hi - s) / lit; }
+      else if (s > lo) d = eta * (lo - s) / lit;
+      if (d === 0) continue;
+      let touched = false;
+      for (let k = start; k < end; k++) {
+        if (!preSpikes[colIdx[k]]) continue;
+        const v = values[k] + d;
+        values[k] = v > wMax ? wMax : v < wMin ? wMin : v;
+        touched = true;
+      }
+      if (touched) changed++;
+    }
+    return changed;
   }
 
   /**
@@ -1159,7 +1300,17 @@ export class SparseMatrix {
    * CPU CSR free — normalization on those projections happens GPU-
    * side via the shader pipeline, not here).
    */
+  // ⛔ A MATRIX THAT LEARNS ONLY-WHEN-WRONG IS NOT RE-SHAPED AFTERWARDS.
+  // `normalizeRows`, `prune`, `scale` and `pruneTopKPerRow` exist to keep Oja
+  // weights from saturating or blurring. Under the error-driven rule each weight
+  // is what its cell needs to be right: scaling or normalising moves it off the
+  // threshold it was fitted to, and pruning removes WIRES — measured, a lesson's
+  // wrap-up cut a projection from 60 wires a cell to 10, for good, after one
+  // lesson. So on such a matrix these four change nothing and say so in what
+  // they return. The check is here, at the four methods, so every caller is
+  // covered.
   normalizeRows(targetNorm = 1.0) {
+    if (this.errorDriven) return 0;
     const { rows, rowPtr, wMin, wMax } = this;
     const values = this.values;
     if (!values || values.length === 0) return 0;
@@ -1280,6 +1431,7 @@ export class SparseMatrix {
    * @returns {number} — number of connections removed
    */
   prune(threshold = 0.01) {
+    if (this.errorDriven) return 0;
     const { rows, values, colIdx, rowPtr } = this;
     const oldNnz = this.nnz;
 
@@ -1333,7 +1485,7 @@ export class SparseMatrix {
    * @returns {{ before: {mean, max}, after: {mean, max} }} — weight stats
    */
   scale(factor) {
-    if (!Number.isFinite(factor) || factor === 1) {
+    if (this.errorDriven || !Number.isFinite(factor) || factor === 1) {
       return { before: null, after: null };
     }
     let beforeSum = 0, beforeMax = 0;
@@ -1370,7 +1522,7 @@ export class SparseMatrix {
    * @returns {number} — number of connections removed
    */
   pruneTopKPerRow(k) {
-    if (!Number.isFinite(k) || k <= 0) return 0;
+    if (this.errorDriven || !Number.isFinite(k) || k <= 0) return 0;
     const { rows, values, colIdx, rowPtr } = this;
     const oldNnz = this.nnz;
 

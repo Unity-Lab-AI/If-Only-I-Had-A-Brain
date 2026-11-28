@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> # 🛑 2026-11-27 (latest, 54th) — THE SPEECH FIX WAS MEASURED ON FOUR GRADES; AT HER WHOLE LIFE IT HELD 74 %. REBUILT AND MEASURED AT FULL SIZE: 100 %, REWORDINGS, REHEARSAL, MOOD
+> # 🛑 2026-11-27 (latest, 55th) — HER CELLS WERE NOT LEARNING WHAT THEY WERE TAUGHT, ANYWHERE. THE LANGUAGE CORTEX WAS REBUILT ON WHAT MEASURED. NOT BOOTED.
+>
+> **Branch: `feature/whole-brain`.** Gee: *"start an instant wake up 1 minute crone with the task of completeing the whole brasin work 100% completely and appropriately and correctly for a talking brain like we need her to be"* · *"we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit"* · *"no we arent booting her up till everything is done and complete and finished"* · *"you are suppose to be completeing the items so its all done and Unity brain is done and complete for all she needs, not endlessly addding more and more shit to do , only do that if its required for what Unity needs to speak and be her self and train right and work right"*
+>
+> ```
+>   FOUND     100 taught pairs came back as 6–54 on every cell-to-cell pathway · speech answered
+>             the same with every cell silenced · three gates counted a word as read through a
+>             pathway that did not exist · on the card nothing read her wiring
+>   BUILT     a word's own cells · a wire changes only when its cell is wrong · 300 wires a cell
+>             · cells rest silent and fire from their wiring · speech read from her own lit
+>             cells · letters → meaning for reading · gates that measure, with the same
+>             questions asked before the lesson printed beside · size from the card that holds
+>             her · all of it the default for a cortex built with no settings
+>   PROVEN    (production code in instruments + the card's self-test) taught cells past
+>             threshold 95.8–100 % on every pathway, 99.9 % inside · pair lesson 0 → 100/100 ·
+>             on the card 54.0 of 54 taught cells fire, 0.7 of 1,946 others · firing peaks at
+>             1.35 % where it hit 85 % · 7/7 answers, 0/7 with her speech cells dark · read
+>             taught 200/200, untaught 0/200 · a left-out word: taught 99.3 %, untaught 12.2 %
+>   DECIDED   by Gee: cells silent at rest · untaught figures shown, never a pass condition ·
+>             the word-vector table stays · speech wiring stays on the server (row dropped)
+>   NOT YET   booted · walked · the card build released
+>   READ NEXT the table below, BEFORE the fresh start
+> ```
+>
+> ## ⭐ What to look at on the first fresh start — written before it
+>
+> Each line is one fix, the number that shows it reached her, and the number that shows it did not.
+>
+> | Fix | Where to read it | It worked | It did not |
+> |---|---|---|---|
+> | The card build knows the new messages | boot log, after her cortex uploads | "the card confirmed the wiring setting; resident there now: cortex" and "the card confirmed: N pathway(s) set to learn only when wrong, N of them resident" | either line missing, or "0 of them resident" — the card is older than 0.3.58 |
+> | Her cortex comes out as the measured build | boot log, cortex construction | 300 wires a cell inside and on every pathway; 391,524 speech cells; her cell count matching the card's memory (936,958 wired cells on a 6 GB card) | 30 / 10 wires, or no speech cells — old weights were loaded instead of refused |
+> | Cells rest silent and fire from wiring | the cortex row's firing share while nothing is being taught, then during a lesson | near 0 % idle; a few percent while a lesson lights patterns | 3–8 % idle (the rest setting did not arrive), or swings toward 80–90 % (inside wiring did not start small) |
+> | The controller leaves her cortex alone | the firing-controller log line | it keeps printing for the brain as a whole and her cortex's drive stays at its nominal value | her cortex's firing pinned near 7.5 % |
+> | Lessons write | any gate's READ and TALK lines in pre-K | READ and TALK at or near 10/10 on the taught list; "before the lesson (not yet taught)" at or near 0 | TALK 0/10 after a naming lesson, or "before the lesson" equal to the taught score |
+> | Reading holds as she learns more | the READ line of a later vocabulary gate, and of an earlier list asked again | earlier lists still read at 95 % or more | an early list falling while later ones pass |
+> | She speaks from her cells | her inner thoughts and first replies | sentences about what she was just taught, ending | a dozen unrelated words from one small set, or nothing at all after lessons that passed TALK |
+> | Speed | time per word in the lesson log | about as measured: 150–350 ms a word for reading on a small cortex, more at her size | a lesson that takes seconds a word — the look-back is cascading |
+>
+> ⚠ Every number above the table came from her production code in an instrument or from the card's self-test. **None of it has been seen on a walk.**
+>
+> ---
+>
+> # 🛑 2026-11-27 (previous, 54th) — THE SPEECH FIX WAS MEASURED ON FOUR GRADES; AT HER WHOLE LIFE IT HELD 74 %. REBUILT AND MEASURED AT FULL SIZE: 100 %, REWORDINGS, REHEARSAL, MOOD
 >
 > **Branch: `feature/speech-real`.** Gee: *"one last full stack review and check that everything we need for Unity brain to speak like a real person and train properly and all of that is 100% correct for whaty a nuronic brain of Unity's needs"* · *"write the todo for it and fix it all correctly creatively and perfectly for our needs"* · *"did any work effect the equations she runs on. did you proof the eqwuations all of them?"*. **Next launch: `start.bat` — a FRESH WALK** (format 7 refuses older saves; the walk on `42c7bbc4` cannot speak).
 >

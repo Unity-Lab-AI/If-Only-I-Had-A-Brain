@@ -51,7 +51,8 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
                     float noiseAmp, unsigned int seed, unsigned int numRegions,
                     float* state, unsigned int* spikes,
                     const float* currents, const float* regionGates,
-                    float tunnelA, float tunnelKappa, float entangleRho, float refractBeta) {
+                    float tunnelA, float tunnelKappa, float entangleRho, float refractBeta,
+                    const float* syn, float synGain, float restShift) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   const float ALPHA = 4.5f;
@@ -59,7 +60,7 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
   float ed = (i < half) ? effectiveDrive : effectiveDriveR;
   float gate = region_gate(i, numRegions, regionGates);
   float drive = (ed + currents[i]) * gate;
-  float sigmaEff = -1.0f + fminf(fmaxf(drive / 40.0f, 0.0f), 1.0f) * 1.5f;
+  float sigmaEff = -1.0f - restShift + fminf(fmaxf(drive / 40.0f, 0.0f), 1.0f) * 1.5f;
   float xN = state[2u*i];
   float yN = state[2u*i + 1u];
   // Escaped/NaN state reseeds into the bursting-attractor basin — same guard
@@ -84,6 +85,9 @@ __global__ void lif(unsigned int n, float effectiveDrive, float effectiveDriveR,
   }
   float jitter = r * 0.5f * noiseAmp * 0.0001f;
   float xNext = ALPHA / (1.0f + xN * xN) + yN;
+  // SYNAPTIC INPUT — the wiring's input enters the FAST variable (see the
+  // WGSL twin): a cell whose inputs just fired can cross this step.
+  if (synGain != 0.0f) xNext = xNext + synGain * syn[i] * gate;
   float yNext = yN - MU * (xN - sigmaEff) + jitter;
   unsigned int spk = (xN <= 0.0f && xNext > 0.0f) ? 1u : 0u;
   // TUNNELLING (v0.3.48) — WKB-shaped crossing of the barrier left below
@@ -238,6 +242,43 @@ __global__ void plasticity(unsigned int rows, float lr, float reward, float wMin
       if (preSpikes[srcOffset + j] != 0u) {
         values[k] = fminf(fmaxf(values[k] - eta, wMin), wMax);
       }
+    }
+  }
+}
+
+// Error-driven plasticity (port of plasticity_error.wgsl) — a wire changes only
+// when its cell is WRONG. Every row is visited. postSpikes is the teaching
+// pattern. Host twin: SparseMatrix.errorUpdate; the three must agree.
+__global__ void plasticity_error(unsigned int rows, float eta, float theta, float margin,
+                                 float wMin, float wMax,
+                                 unsigned int srcOffset, unsigned int dstOffset,
+                                 unsigned int rowStart, unsigned int rowCount,
+                                 float* values, const unsigned int* colIdx, const unsigned int* rowPtr,
+                                 const unsigned int* preSpikes, const unsigned int* postSpikes) {
+  // rowCount 0 = every row; otherwise the launch is sized to the count and
+  // visits rows rowStart .. rowStart + rowCount.
+  unsigned int t = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int count = rowCount == 0u ? rows : rowCount;
+  if (t >= count) return;
+  unsigned int i = rowStart + t;
+  if (i >= rows) return;
+  unsigned int start = rowPtr[i];
+  unsigned int end   = rowPtr[i + 1u];
+  float s = 0.0f, lit = 0.0f;
+  for (unsigned int k = start; k < end; k++) {
+    if (preSpikes[srcOffset + colIdx[k]] != 0u) { s += values[k]; lit += 1.0f; }
+  }
+  if (lit == 0.0f) return;
+  // The step closes the gap: a wrong cell's lit wires share out what it is short
+  // of (or over by), times eta (1 = all of it in one teach).
+  float hi = theta + margin, lo = theta - margin;
+  float d = 0.0f;
+  if (postSpikes[dstOffset + i] != 0u) { if (s < hi) d = eta * (hi - s) / lit; }
+  else if (s > lo) d = eta * (lo - s) / lit;
+  if (d == 0.0f) return;
+  for (unsigned int k = start; k < end; k++) {
+    if (preSpikes[srcOffset + colIdx[k]] != 0u) {
+      values[k] = fminf(fmaxf(values[k] + d, wMin), wMax);
     }
   }
 }

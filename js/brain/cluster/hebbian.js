@@ -129,7 +129,17 @@
 //   file). The bucket counter added below is what answers it on the next press;
 //   until then no claim is made about how much was lost. Correctness first: we
 //   do not trade her training for wall clock while the number is unknown.
-const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 16);
+// The cap follows the card that holds her cortex: `setRangeMaxRuns` is called
+// with that donor's own limit when it takes the cortex (16 before the build
+// that raised it), so this side never ships a frame the peer would discard.
+const _RANGE_RUNS_ENV = (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 0;
+let RANGE_MAX_RUNS = Math.max(1, _RANGE_RUNS_ENV || 16);
+function setRangeMaxRuns(n) {
+  if (_RANGE_RUNS_ENV) return RANGE_MAX_RUNS;          // an explicit setting wins
+  const v = Math.floor(Number(n));
+  if (v >= 1) RANGE_MAX_RUNS = v;
+  return RANGE_MAX_RUNS;
+}
 const RANGE_MAX_TOTAL = 2_000_000;
 // Why the LAST range-compression refusal happened. Module-scoped because the
 // caller reads it on the very next line — the helpers return null either way and
@@ -225,7 +235,7 @@ function indexRanges(sortedIdx) {
   rangeFail.runs = out.length;
   return out;
 }
-export { denseActiveRanges, indexRanges, rangeFail, RANGE_MAX_RUNS, RANGE_MAX_TOTAL };
+export { denseActiveRanges, indexRanges, rangeFail, RANGE_MAX_RUNS, RANGE_MAX_TOTAL, setRangeMaxRuns };
 
 export const CLUSTER_HEBBIAN_MIXIN = {
   /**
@@ -583,6 +593,29 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const preF = preS2.vec;
       const postF = postS2.vec;
       const activeRows2 = postS2.active;
+      // ERROR-DRIVEN TEACHING (`opts.errorDriven`): the lit target cells are the
+      // pattern that SHOULD fire for the lit source cells, and a wire changes
+      // only where a target cell is wrong (`SparseMatrix.errorUpdate`). Every
+      // row is visited, so it is sliced by time like the Oja path. This is the
+      // host path; the card needs the same rule as a kernel mode.
+      // A projection can also carry the mode itself (`proj.errorDriven = { eta,
+      // theta, margin }`, set when the cortex is built) — then EVERY lesson that
+      // teaches it learns this way without passing anything, the same switch the
+      // card holds per matrix. A caller's `opts.errorDriven` still forces it.
+      const _ed = opts.errorDriven
+        ? { eta: opts.errorEta, theta: opts.errorTheta, margin: opts.errorMargin }
+        : (proj.errorDriven || null);
+      if (_ed) {
+        const eOpts = { theta: _ed.theta, margin: _ed.margin };
+        const eta = (typeof _ed.eta === 'number') ? _ed.eta : 1;
+        const step = 200000;
+        let sliceAt = Date.now();
+        for (let rs = 0; rs < proj.rows; rs += step) {
+          proj.errorUpdate(preF, postF, eta, { ...eOpts, rowStart: rs, rowEnd: Math.min(proj.rows, rs + step) });
+          if (Date.now() - sliceAt > 40) { await new Promise((resolve) => setImmediate(resolve)); sliceAt = Date.now(); }
+        }
+        continue;
+      }
       // CPU Hebbian OOM fix — route through worker pool when
       // available. AWAIT the pool job so
       // pending cross-projection Hebbians don't pile up in semi-space
@@ -1170,6 +1203,43 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    * `cluster.synapses.hebbianUpdate` directly so intra-cluster
    * weights stay in sync between CPU and GPU.
    */
+  /**
+   * The host's error-driven pass over the inside wiring: lit `post` cells are the
+   * pattern that should fire for the lit `pre` cells, and a wire changes only
+   * where a cell is wrong. Rows are visited only in the regions the taught
+   * pattern lies in (overlapping sub-bands merged), sliced by time.
+   */
+  /** Set how many index runs a directed inside-wiring lesson may ship (the holding card's limit). */
+  setRangeMaxRuns(n) { return setRangeMaxRuns(n); },
+
+  async _intraErrorUpdate(pre, post) {
+    const mode = this.synapses.errorDriven;
+    const act = [];
+    for (let i = 0; i < post.length; i++) { if (post[i]) act.push(i); }
+    if (act.length === 0) return;
+    const spans = [];
+    for (const r of Object.values(this.regions || {})) {
+      if (!r || !(r.end > r.start)) continue;
+      let lo = 0, hi = act.length - 1, hit = false;      // lit cells are ascending
+      while (lo <= hi) { const mid = (lo + hi) >> 1; const v = act[mid]; if (v < r.start) lo = mid + 1; else if (v >= r.end) hi = mid - 1; else { hit = true; break; } }
+      if (hit) spans.push([r.start, r.end]);
+    }
+    spans.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const s of spans) { const m = merged[merged.length - 1]; if (m && s[0] <= m[1]) { if (s[1] > m[1]) m[1] = s[1]; } else merged.push([s[0], s[1]]); }
+    const eta = (typeof mode.eta === 'number') ? mode.eta : 1;
+    const eOpts = { theta: mode.theta, margin: mode.margin };
+    let sliceAt = Date.now();
+    for (const [a, b] of merged) {
+      for (let rs = a; rs < b; rs += 200000) {
+        this.synapses.errorUpdate(pre, post, eta, { ...eOpts, rowStart: rs, rowEnd: Math.min(b, rs + 200000) });
+        if (Date.now() - sliceAt > 40) { await new Promise((resolve) => setImmediate(resolve)); sliceAt = Date.now(); }
+      }
+    }
+    const st = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+    st.errorDriven = (st.errorDriven || 0) + 1;
+  },
+
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady('intraSynapsesHebbian')) return;
@@ -1291,6 +1361,11 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // pool since compute cost dominates and external alloc is tiny.
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
+    // The inside wiring in error-driven mode: below the size split the host is
+    // the only copy, so it learns here. Above it the card dispatches further
+    // down still run (the card picks the same rule by the matrix's mode) and
+    // the host pass they are followed by is `_intraErrorUpdate`.
+    if (this.synapses.errorDriven && !atBioScale) { await this._intraErrorUpdate(pre, post); return; }
 
     if (atBioScale) {
       // Biological scale — sync-math path, zero external-memory allocation.
@@ -1437,7 +1512,8 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         //   `cpuMs` is the shadow's own wall cost, so "what would widening the
         //   cadence buy?" becomes a subtraction on the board.
         const _shadow0 = Date.now();
-        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
+        if (this.synapses.errorDriven) await this._intraErrorUpdate(pre, post);
+        else await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
         const _cpuDt = Date.now() - _shadow0;
         _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
         // ⭐ `SHADOWCOST.5` — SPLIT THE TWO CPU COSTS. `cpuMs` alone cannot say

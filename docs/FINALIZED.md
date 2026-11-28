@@ -61720,4 +61720,266 @@ He was right: none of them needed her running to do the work — only to read th
 - **Still open, and why:** SPEECHPATH.READ (a read — the first start on this build), SPEECHPATH.10's second half (needs its instrument), SPEECHREAL.13 (a decision).
 - **Docs in the same commit:** `docs/` — NOW, ARCHITECTURE (floor, pop-ups), THRESHOLD-DERIVATION (mid-line floor, thoughts, memory, why the host, quarantine hold, lane recovery), ADMIN-CONTROLS (`DREAM_QUARANTINE_HOLD_MS`), WEBSOCKET (lane recovery, lesson-event detail, quarantine refusal), TODO, RESUME, this ledger · `README.md` (pop-ups) · `wiki/` — 16 pages + log · `html/` — unaffected this batch (the pop-up change rides the bundle) · `deploy/` — unaffected (the new knob has a default and no launcher sets it) · `.claude/` — unaffected.
 
+## 2026-11-27 (late night) — WHOLEBRAIN.4, .5, .7 CLOSED ON THEIR MEASUREMENTS (branch `feature/whole-brain`, nothing booted)
+
+Gee (verbatim, the order these rows were filed under): *"we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit"* · *"no we arent booting her up till everything is done and complete and finished, then when we dop start her fresh we check that the fixes worked. not start her, with nothing to checvk if its working"*. And tonight (verbatim): *"1-10 start getting shit done and checking off the todo items and finalized.md them"*.
+
+Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were filed out of the ones closed here (.10, .11). Nothing is pushed or cascaded; that waits for every row.
+
+### WHOLEBRAIN.4 — closed on its acceptance test
+- **The row, as filed (verbatim):** **WHOLEBRAIN.4 — speech moves into her cells.** The state she speaks from becomes activity her own cells produce (meaning, memory, mood); the word she says is her word-motor cells firing; the learning is her synapses. The host table goes. **Acceptance: silence her cells and she goes silent.**
+- **What was built:** a cell of her cortex for every unit of the speaking state — 391,524 cells, a fixed run at the end of the cortex that takes no inside wires (`NeuronCluster opts.speechUnitCells`, `regions.speech`, `cluster.wiredCells`). One writer lights the state in her spike sheet (`setSpeechUnits` → `_lightSpeechCells`, mirrored to the card); her next word is read from the cells that are lit (`currentSpeechUnits` → `_speechCellsLit`); the gates and `hasTaughtReply` read through the same path (`speechStateFor`). What was the table's row for a unit is now the wires leaving that unit's cell. Her production build passes the option.
+- **The acceptance test, through the real compose loop** (4 taught questions + 3 thoughts; `.scratch/speech-wiring-check.mjs … units`, section 7):
+
+  | | she says something to |
+  |---|---|
+  | as she is | **7 / 7** |
+  | her speech cells held dark | **0 / 7** |
+  | cells let go again | **7 / 7**, identical |
+  | every learned weight gone | **0 / 7** |
+  | every cell of her cortex put out before each word | **0 / 7** |
+  | the build as it was before this row, every cell put out | 7 / 7 — the bolt-on, measured |
+
+- **Quality against the table it replaces** (same lessons, same corpus): naming 900 / 900 · TALK naming 400 / 400 · TALK continuing 96.7 % · the taught questions word for word · save and restore unchanged.
+- **Built, measured and dropped on the way:** a pathway of fixed random wiring onto word cells with a word-level correction (and its card call). It recalled what it was taught (99.8 % of 6,006 steps) and was silent when zeroed, but answered 39–43 of 60 rewordings right and 16–21 wrong against the table's 50 and 6, because about 78 state units folded onto each state cell. Removed from the brain, the readout and the donor.
+- **Not done under this row — live as WHOLEBRAIN.10:** the wiring is held on the host. "The word she says is her word-motor cells firing" is true of the read path's dependence on her cells, not yet of the card driving those cells.
+- **Commits:** `3da2750c`, `26a61c8d`, `1f3b3611`, `13d53c5b`, `d4c51592`, `00ad3593` (and the dropped design: `ca2230e8` … `65148848`).
+
+### WHOLEBRAIN.5 — closed; reading exists and is measured
+- **The row, as filed (verbatim):** **WHOLEBRAIN.5 — she has no pathway from letters to meaning.** `letter → phon → sem` exists in two hops; nothing teaches or tests reading a word into what it means. Decide the pathway from how reading works, build it, measure it.
+- **Decided:** a written word is its letters in order. Its page code is each letter at its place from the front, each letter at its place from the back, each neighbouring pair, and the length — every part lighting a few cells, so any string of letters has a code and words spelled alike share parts. It goes straight onto the word's own meaning cells (reading by sight), beside the sounding-out route that was already there.
+- **Built:** the `letter ↔ sem` pathways (`cluster.js` pairs, the server's sizing list), `Curriculum._spellingCells` / `_writeSpelling`, the lesson `_teachReadingBySight` (called first inside her word lesson), and the measure `_readsWord` / `_readsAll` that three READ gates now call. The gates' first-letter probe and their pass-when-the-pathway-is-missing branch are gone.
+- **Measured** (`.scratch/lane-read.mjs`, 200 words, pathway at 300 wires, the real lesson and the real read):
+
+  | times the list is gone over | taught words read | untaught words read |
+  |---|---|---|
+  | before any lesson | 0 / 200 | 0 / 200 |
+  | 1 | 107 / 200 | 0 / 200 |
+  | 3 | 197 / 200 | 0 / 200 |
+  | 6 | **200 / 200** | **0 / 200** |
+
+- **Open — live as WHOLEBRAIN.11:** one visit to a second 200 words leaves 69 of the first 200 read. New words disturb old ones until they are gone over again.
+- **Commits:** `3fddd35c`, `d735650a`, `ea382bfb`, `199a7a11`.
+
+### WHOLEBRAIN.7 — answered
+- **The row, as filed (verbatim):** **WHOLEBRAIN.7 — does she compose, or recite?** Asked things she was never taught word for word — held-out questions, new combinations of known words — and the answer stated plainly either way.
+- **The answer: she recites, and she reaches across wordings.**
+  - 60 rewordings of 20 taught questions, none of them heard in a lesson: **50 right · 6 wrong · 4 nothing.** 12 unrelated lines: nothing to all 12. (`.scratch/speech-heldout-check.mjs … table`, floor 0.04.)
+  - Her own thoughts about the 12 things her sentences are most often about: 12 of 12 are three words or more; **11 of 12 are word for word a sentence she was taught.**
+- So a question asked a different way finds its taught answer five times in six, and a thought is one of her own sentences coming back. Putting known words together into a sentence she never heard is not something she does today.
+
+### What changed underneath all three, the same night
+- **Ranked first is not firing.** Every earlier pathway figure asked whether the right pattern was the best match. Asked instead whether the taught cells pass their firing threshold: 2–8 % at the wiring first switched on. By lit inputs a cell receives for one word: 0.8 → 2 % · 2.7 → 20 % · 5.3 → 60 % · 8 → 99.3 % · 16 → 100 %, with other cells past threshold at 0.02 % or less. Lighting more of a region per word instead made other cells fire.
+- **So:** 300 wires a cell inside a region and on every pathway, no cut between cluster groups, inside wires drawn from across a cell's own region (98.1 % inside `sem`; 78.8 % from neighbours only); the learning step closes a wrong cell's whole gap in one teach — on the host and in both card kernels (11 of 11 weights match on the RTX 4070 Ti SUPER, rows outside a lesson untouched).
+- **Sizing follows the machine** (Gee, verbatim: *"build it correclty, im not sure the language cortex size should be sleectable its based on the perticular system running the brain"*): the wiring is fixed first and the cell count is what the card that holds her affords at it — 936,958 wired cells on a 6 GB share, 2,499,584 on 16 GB, plus the 391,524 speaking-state cells. A size pin from another wiring is set aside; saves from before are refused (format 8).
+- **Verified by:** `.scratch/speech-wiring-check.mjs`, `speech-heldout-check.mjs`, `lane-read.mjs`, `threshold-check.mjs`, `sizing-calc.mjs`, the donor's `--self-test` on the card; `node --check` on every changed file.
+- **Docs in the same commit:** `docs/` — TODO (the three rows + two new), this ledger · `wiki/` — language-emission, cortex-cluster, curriculum, brain-server, neural-substrate, donor-lane and the gotcha pages, with the log (local, not tracked) · **NOT yet brought up to date, owed under WHOLEBRAIN.8 before any push:** `docs/NOW.md`, `ARCHITECTURE.md`, `EQUATIONS.md`, `WHOLE-BRAIN-DESIGN.md`, `RESUME.md`, `README.md`, `html/*`, `deploy/*` · `.claude/` — unaffected.
+
+## 2026-11-27 (late night, second entry) — WHOLEBRAIN.2 CLOSED: READ AND COMPREHEND MEASURE WHAT THEY NAME
+
+- **The row, as filed (verbatim):** **WHOLEBRAIN.2 — every figure a gate prints must measure something.** READ is counted as passed when its projection is missing (three gates); the comprehension gate returns "no letter_to_sem projection" for the same reason; TALK asks the table that was just taught those exact lines. Each figure is fixed to measure what it names on something she was not handed, or it is removed.
+- **READ** — `_gateVocabList`, `_gateSentenceList` and the concept-name gate call `_readsWord` / `_readsAll`: the whole written word through the letters→meaning pathway, passing only when its own meaning cells fire ahead of every other word's. Taught words **200 / 200**, untaught **0 / 200** (`.scratch/lane-read.mjs`).
+- **COMPREHEND** — `_gateComprehension` puts the prompt to her as something said and passes when the word she says is the answer (`_fillsTheGap`); the lesson `_teachFillTheGap` (called on a lesson's own sentences before its gate) teaches every word of a sentence as the missing one. Through the real curriculum (`.scratch/lane-gap-real.mjs`, 300 of her sentences, the same on the build with her speaking state in her own cells):
+
+  | | a word left out, she says it |
+  |---|---|
+  | sentences she was taught | **1,954 / 1,967 = 99.3 %** (11 wrong, 2 nothing) |
+  | the same, the other words reversed | 93.8 % |
+  | sentences she was not taught | **257 / 2,105 = 12.2 %** (1,336 wrong, 512 nothing) |
+  | the gate on a taught set | **PASS 10 / 10** |
+  | the gate on an untaught set | **FAIL 1 / 10** |
+
+- **Deleted:** the first-letter probes, the 300-number read-back and its cosine, the bag-of-letters comprehension probe, `"no letter_to_sem projection"`, and the branch that counted a word as read when the pathway was missing. A first try at comprehension through the wiring inside her meaning region scored 16.1 % and was not kept.
+- **Where this stops short of the row's own words:** it asked for each figure "on something she was not handed". Both figures now tell taught from untaught — which the old ones could not — but neither passes on untaught material, because she answers 12 % of it. The gate certifies what she was taught. Printing the untaught figure beside every gate, and whether it should ever gate, is the live row **WHOLEBRAIN.12** (the second half is Gee's decision). TALK was not changed.
+- **Cost, re-priced:** 0.19 ms a taught gap (0.37 ms with the state in her cells) → 1,000 sentences of 7 words ≈ 1.3–2.6 s a pass.
+- **Commits:** `ea382bfb`, `199a7a11`, `21f5309b`.
+- **Docs in the same commit:** `docs/` — TODO (the row + WHOLEBRAIN.12), this ledger · `wiki/` — curriculum, language-emission, instruments-that-lie + log (local) · owed under WHOLEBRAIN.8 as listed in the entry above.
+
+## 2026-11-27 (late night, third entry) — WHOLEBRAIN.13 FILED AND CLOSED THE SAME NIGHT: FIVE LETTERS HAD NO SOUND OF THEIR OWN
+
+- **The row, as filed (verbatim):** **WHOLEBRAIN.13 — five of her letters have no sound of their own.** Filed 2026-11-27 out of WHOLEBRAIN.3. The sound pattern a letter lesson writes (`_phonemeFeatureForLetter`, 24 features, 4 lit) is the same for **a and i**, for **l and r**, and for **c, k, q and x** — 21 patterns for 26 letters. So sound → letter can name at most 21, and measured it ranks 16 of 26 right with 1.1 % of other letter cells past threshold (letter → sound: 99.9 % of taught cells fire). c / k / q sharing a sound is true to English; a = i and l = r are not. **Closes on:** every letter that has its own sound in English gets its own pattern, and sound → letter is measured again.
+- **How it was found:** checking each pathway for taught cells that actually fire, the letter ↔ sound pathways scored 58 % and 91 %. Two causes. They were wired by position as though a letter's place lined up with its sound's place — it does not (26 letter blocks against 24 sound features), so that pathway is now wired evenly (`cluster.js`, `TOPOGRAPHIC_PAIRS` = letter ↔ motor only). And the sound code itself gave two pairs of different letters one pattern.
+- **The fix:** short a (cat) and short i (sit) are both front and unrounded and differ in how high the tongue is — a low, i high; l differs from r in being lateral (the air goes round the sides of the tongue). Three of the reserved features now say so (`curriculum.js`: `height` on a and i, `lateral` on l; features 19, 20, 21).
+- **Measured** (`.scratch/threshold-check.mjs letters:…`, the letter lessons' own patterns, 300 wires):
+
+  | | before | after |
+  |---|---|---|
+  | distinct sound patterns for 26 letters | 21 | **23** (c / k / q / x share one, as in English) |
+  | letter → sound: taught cells past threshold / other cells | 58.5 % / 0 % | **100.0 % / 0.000 %** |
+  | sound → letter: letters ranked right, 4 visits | 13 of 26 | 18 of 26 |
+  | sound → letter: letters ranked right, 16 visits | — | **23 of 26 — the most possible** |
+  | letter → motor (unchanged, wired by position because it IS aligned) | 100 %, 26 of 26 | 100 %, 26 of 26 |
+
+- **Commits:** `41a5febe` (the wiring), `b71f160b` (the sounds).
+- **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — cortex-cluster, curriculum + log (local) · owed under WHOLEBRAIN.8 as listed above.
+
+## 2026-11-27 (late night, fourth entry) — WHOLEBRAIN.3 CLOSED: HER CELLS LEARN ON THEIR WIRING — AND WHAT THAT DOES NOT YET MEAN
+
+- **The row, as filed (verbatim):** **WHOLEBRAIN.3 — her cell-to-cell learning barely learns.** Fix it with what speech proved: change a weight only when the wrong thing wins, give a target cell enough inputs to tell things apart, keep codes from overlapping, rehearse. Measured by WHOLEBRAIN.1, lane by lane.
+- **Four things were wrong, each found by a number:**
+
+  | what | as she was | now | the number that showed it |
+  |---|---|---|---|
+  | the rule | every lesson pulled a lit cell's wires toward the current input, overwriting the last | a wire changes only where a cell is wrong, and the step closes that cell's whole gap in one teach | 400 pairs, same wiring: 242 → 400 recalled; at 8 lit inputs a fixed step fires 85.6 % of taught cells, the gap-closing step 99.4 % |
+  | the word code | a word's identity sat in cells that a tenth of all words also lit | a word lights cells of its own (a few for its meaning, the rest hashed from the word) | 400 pairs, same rule: 41 → 242 |
+  | the wiring | 3–30 wires a target cell; pathways between cluster groups cut to 30 % ; inside wires from a cell's ±200 neighbours | 300 wires on every pathway, no cut; inside wires drawn from across the cell's own region | taught cells past threshold by lit inputs a cell: 0.8 → 2 % · 2.7 → 20 % · 5.3 → 60 % · 8 → 99 % ; inside a region 78.8 % (neighbours) → 98 % |
+  | the measure | "is the right pattern the best match" | "do the taught cells pass their firing threshold, and do others stay under it" | the first wiring that ranked 60 of 60 right fired 2–8 % of its taught cells |
+
+- **At her production build** (1,328,482 cells — 936,958 wired + the 391,524 speaking-state cells — built with the server's own options; `.scratch/threshold-check.mjs prod`, 200 taught pairs a pathway, the real `_teachHebbian` / `intraSynapsesHebbian`):
+
+  | pathway | taught cells past threshold | other cells past it |
+  |---|---|---|
+  | meaning → motor | **100.0 %** | 0.000 % |
+  | motor → meaning | **100.0 %** | 0.001 % |
+  | sound → meaning | **99.4 %** | 0.021 % |
+  | meaning → sound | **99.3 %** | 0.020 % |
+  | letters → meaning | **99.4 %** | 0.018 % |
+  | meaning → letters | **99.4 %** | 0.022 % |
+  | meaning → fine type | **99.3 %** | 0.018 % |
+  | fine type → meaning | **99.4 %** | 0.018 % |
+  | motor → letter | 95.8 % | 0.091 % |
+  | letter → motor | 95.9 % (100.0 % with the letter lessons' own patterns) | 0.082 % |
+  | letter → sound | 100.0 % (letter lessons' own patterns; 58.5 % while it was wired by position) | 0.000 % |
+  | inside meaning / letter / motor | **97.9 % / 98.0 % / 98.1 %** | 0.029–0.030 % |
+
+- **Her real lessons at that build:** the pair lesson — the right partner answered **0 / 100 before → 100 / 100 after** (as she was: 3 / 100), and its wrap-up no longer cuts the pathway's wires down behind it. The word lesson — the first letter from a word's meaning **4 / 40 → 40 / 40** (as she was: 22–24 / 200); measured one build earlier at 100 wires, the 300-wire run was still going when this was written.
+- **On the card:** both engines apply the rule the host applies — all 11 test weights match, a lesson leaves rows outside its region untouched, 2.77 ms per 100 million wires. A matrix carries its own learning mode, so every lesson that reaches it learns this way.
+- **What this row does NOT establish — the live row WHOLEBRAIN.14.** These figures are the input a cell receives through its learned wiring when a pattern is sent through it. The card's step does not deliver that input while she runs: a cell there fires from its drive, its noise and what a lesson writes into it. Until .14, "taught cells fire" is true of the wiring and not yet of her running cells.
+- **Also left to other rows:** rehearsal for reading as her vocabulary grows (WHOLEBRAIN.11); the old paths still in the code beside the new ones (to be removed before the push).
+- **Commits:** `332eb0ff` … `ab895b78` (rule, word code, first wiring), `65348762`, `44438714`, `5b455632`, `165f2ee0`, `3a95bcb0`, `15c4b318`, `b35ecc8c`, `ec3fbc75`, `2b69adea`, `00ad3593`, `2ac9a653`, `6430794d`, `41a5febe`.
+- **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — cortex-cluster + log (local) · owed under WHOLEBRAIN.8 as listed above.
+
+---
+
+## 2026-11-27 (night, fifth entry) — WHOLEBRAIN.14 and WHOLEBRAIN.6 closed; WHOLEBRAIN.10 dropped
+
+**Gee's words that govern this entry (verbatim):** "we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit" · "no we arent booting her up till everything is done and complete and finished" · "you are suppose to be completeing the items so its all done and Unity brain is done and complete for all she needs, not endlessly addding more and more shit to do , only do that if its required for what Unity needs to speak and be her self and train right and work right". His two decisions, each asked as a question with options: "Silent at rest (Recommended)" and, for row .10, "Drop it (Recommended)". On the word-vector table he chose "Keep it".
+
+**WHOLEBRAIN.14 — on the card, her cells do not fire from her wiring. CLOSED.** Row text as filed stays on the board.
+- What was wrong: the card's step read a cell's drive, noise and lesson-injected current and nothing else. No pathway and no inside wiring reached a cell while she ran.
+- What was built: per cluster, a buffer that holds each cell's input from its wiring; each step, every matrix bound into the cluster adds the weights from cells that fired the step before; the step adds gain × that input to the cell's fast variable. A rest setting lowers the point an undriven cell sits at. Both engines, the same arithmetic. A `delivery` message sets both per cluster and is answered; the card keeps the setting by cluster name. The server sends gain 5 / rest 1.75 for her cortex and stops scaling her cortex's drive with the firing controller.
+- Measured (donor self-test, her real step terms, 20 taught pairs of 54 cells):
+
+| rest | drive | gain | taught cells firing (of 54) | other cells firing (of 1,946) |
+|---|---|---|---|---|
+| 0 | 0 | 0 | 1.6 | 64.8 |
+| 0 | 0 | 4 | 53.6 | 24.6 |
+| 1 | 0 | 4 | 53.9 | 4.9 |
+| 1.75 | 0 | 0 | 0.0 | 0.2 |
+| 1.75 | 0 | 5 | 54.0 | 0.7 |
+| 1.75 | 18 | 5 | 53.9 | 4.5 |
+| 1.75 | 18 | 3 | 2.5 | 0.6 |
+
+- Three wrong readings on the way, each caught by a measurement: a bench on the bare map said 7–16 % of her cells fire on their own (her real step: 3.5 %); the wgpu per-cell readback had always returned zeros (its buffer could not be copied out); a table of inside-weight variants run back to back measured the previous variant's hangover and was thrown out.
+- Not yet true for her: the released card build is 0.3.57 and ignores the message. Releasing the build is in the wrap-up.
+
+**WHOLEBRAIN.6 — her neurons must stay in range when they run together. CLOSED,** its premise changed by "Silent at rest". Row text as filed stays on the board.
+- Measured (same self-test, 400 steps, pathway and inside wiring both delivering, a taught pattern lit every 50th step; share of all cells firing a step, min / mean / max %):
+
+| inside wiring starts at | gain 3 | gain 4 | gain 6 |
+|---|---|---|---|
+| the old size | 0.00 / 1.80 / 85.08 | 0.00 / 5.36 / 87.33 | 0.00 / 28.47 / 86.72 |
+| half positive, half negative | 0.00 / 10.19 / 36.65 | 0.00 / 0.03 / 0.33 | 1.48 / 15.86 / 47.20 |
+| a tenth the size (what she builds now) | 0.00 / 0.06 / 1.35 | 0.00 / 0.06 / 1.35 | 0.00 / 0.07 / 1.38 |
+
+- Production build (1,328,482 cells), inside learning from that start: taught cells past threshold 99.9 % in sem, motor and letter (it was 97.9–98.1 % from the old start); other cells 0.004–0.008 %.
+
+**WHOLEBRAIN.10 — her speech wiring on the card. TOMBSTONE, not built,** on Gee's word. She speaks from her own lit speech cells through wiring held on the server; the card pathway tried earlier answered reworded questions worse (39–43 of 60 against 50 of 60).
+
+- **Files:** `donor-app/src/compute.rs`, `cuda.rs`, `donor.rs`, `cuda_kernels.cu`, `kernels.ptx`, `shaders/lif.wgsl` · `server/brain-server.js` · `js/brain/cluster.js`.
+- **Commits:** `71db68bf`, `7d9d9e52`, `95625930`, `8fb4ee54`, and the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — ten pages + log (local). NOW, ARCHITECTURE, EQUATIONS, WHOLE-BRAIN-DESIGN, RESUME, README, `html/`, `deploy/` are NOT updated here and are owed under WHOLEBRAIN.8.
+
+---
+
+## 2026-11-27 (night, sixth entry) — WHOLEBRAIN.1, WHOLEBRAIN.9 and WHOLEBRAIN.12 closed
+
+**Gee's words that govern this entry (verbatim):** "start an instant wake up 1 minute crone with the task of completeing the whole brasin work 100% completely and appropriately and correctly for a talking brain like we need her to be" · "whats up with all this stuff that is off by default... wtf is up with that and when do they turn on and why would stuff be turned off by default does something activate it ewhne needed? i guess i dont fully understand" · "why arent you doing them?" On the untaught figure he chose, from options, "Show only (Recommended)".
+
+**WHOLEBRAIN.1 — an instrument for the whole brain. CLOSED.** Row text as filed stays on the board.
+- It is a set of instruments, one per lane, each on her production code:
+
+| Lane | Number |
+|---|---|
+| read | taught 200 / 200, untaught 0 / 200 |
+| define (one word's cells calling up another's, inside the meaning region) | taught cells past threshold 99.9 % at 1,328,482 cells |
+| recall (her real pair lesson) | 0 → 100 of 100 |
+| name | 900 / 900 |
+| sentence order (next word of a taught line) | 96.7 % |
+| reply | 7 / 7; 0 / 7 with her speech cells dark; 50 / 60 reworded |
+| a sentence with a word left out | taught 99.3 %, never taught 12.2 % |
+
+- The per-equation count, during her real vocabulary (20 words) and sentence (12) lessons on a 700,000-cell cortex built with no options:
+
+| Function the equations doc names | Calls | Changed |
+|---|---|---|
+| only-when-wrong step | 14,495 | 31,339,429 wires |
+| speech lesson | 267 | — |
+| speech rehearsal | 267 | 221 corrections |
+| reading lesson | 20 | — |
+| word-left-out lesson | 12 | — |
+| lateral inhibition | 207 | **nothing** |
+| Oja / anti-Hebbian / plain Hebbian | 0 | — |
+
+- Found by that count and fixed inside the row: the lateral-inhibition pass wrote through a verb that does nothing on only-when-wrong wiring, on host and card. It now returns at once there.
+
+**WHOLEBRAIN.12 — every gate prints the untaught figure beside the taught one. CLOSED,** in the form "asked before the lesson". Row text as filed stays on the board.
+- Each list lesson puts the gate's questions to its own items before teaching them (first ten in the lesson's order, once per list); both list gates print it; it never decides a pass.
+- A real gate run on her grade-1 material: vocabulary "READ 10/10 (100%) … before the lesson (not yet taught): READ 0/10, TALK 0/10"; sentences "COMPREHEND 9/10 (90%) … TALK 58/58 next words (100%) · before the lesson (not yet taught): COMPREHEND 0/10, TALK 0/16 next words".
+
+**WHOLEBRAIN.9 — what to look at on the first fresh start. CLOSED.** It is the eight-line table at the top of `docs/RESUME.md`, written before any start.
+
+**Also in these commits, as the answer to "off by default":** a cluster named `cortex` that is large enough to hold her speech cells is built as the measured build with no options (`CORTEX_BUILD` in `js/brain/cluster.js`), and a curriculum on it uses one code a word untold. Checked: 300 wires inside and on all 16 pathways, every one only-when-wrong, 391,524 speech cells; a 6,700-cell cortex and another cluster unchanged.
+
+- **Files:** `js/brain/cluster.js`, `js/brain/curriculum.js`.
+- **Commits:** `bdf771ef`, `75e03050`, `8f22bfb7`.
+- **Docs in the same commits:** `docs/` — TODO, this ledger, NOW (overwritten), RESUME (55th block), EQUATIONS (§3 wiring, §4 only-when-wrong, §5, the contents table's "Shown by an instrument?" column, the claim restated), EQUATIONS-TECHNICAL (note under the claim), WHOLE-BRAIN-DESIGN (§4–§6), ARCHITECTURE (change-history entry, "What is true now", the wiring block marked superseded, "The state lives in her cells") · `README.md` · `html/` — brain-equations (wiring line, only-when-wrong card, fan-out block, each with its tooltip), unity-guide (plain-words paragraph, three tooltips), legend; docs.html, teachview.html, the dashboards, compute.html, gpu-configure, minds-eye, runpod, webgpu-prep checked and unaffected · `.claude/CLAUDE.md` (current-state block) · `deploy/` — unaffected until the card release, which carries its own note · `wiki/` — stamped per page, local.
+
+---
+
+## 2026-11-27 (night, seventh entry) — WHOLEBRAIN.11 closed
+
+**Gee's words that govern this entry (verbatim):** "so wtf are you telling me" reading upkeep by look-backs alone fails once she knows 600 words — 505 of 600 read," ... that she can only learn 600 words?" · "make sure u commit to all remotes we have" · "and if we need to deploy a doner build do it correctly".
+
+**WHOLEBRAIN.11 — reading has to hold as her vocabulary grows. CLOSED.** Row text as filed stays on the board.
+- The answer to his question, kept here because my wording caused it: **no.** 600 words was the size of the test — three sets of 200, each word shown once. The pathway is sized for her whole vocabulary. What failed at that point was my first fix, not her.
+- What was wrong: (1) every cell a written word lit was shared with other words spelled like it — its letters at their places, its letter pairs, its length — so each new word's lesson lowered the cells of every word spelled alike; (2) nothing went back over earlier words.
+- What was built: half of a written word's cells are the whole word seen at once, half its parts (`_spellingCells`); after each new word the reading lesson goes round the words she has been taught to read and re-teaches one that has stopped reading (`_teachReadingBySight`, `_ownCellsFire`); the list is saved and restored with her weights (`readTaughtWords`).
+- Measured — three sets of 200 words taught one after another, each word met once, every set asked again at the end (read of 200):
+
+| How | Set 1 | Set 2 | Set 3 | Untaught words read | Time a word |
+|---|---|---|---|---|---|
+| As it was (every cell shared, no going back) | 0 | 12 | 112 | 0 | 167 ms |
+| Whole-word half, no going back (two sets) | 59 | 200 | — | 0 | 166 ms |
+| Whole-word half, looks at 64 earlier words, re-teaches the broken ones (the server's way) | **198** | **198** | **199** | 0 | 350 ms |
+| Whole-word half, re-teaches 16 earlier words without looking (the card's way) | **200** | **200** | **200** | 0 | 832 ms on the server; on the card each re-lesson is one short kernel |
+
+- Tried, measured and deleted: looking only at words spelled like the new one (191 / 190 over two sets at 32 looks); that plus asking whether the new word's cells answer to the older word's spelling (197 / 187 at 8 looks, three times the time). Both lost to going round the list in turn.
+- Caught by reading her production wiring before it shipped: the look reads the server's copy of the pathway's weights, and where a card does the teaching that copy is not kept current. On a card-bound pathway the older word is re-taught without looking.
+- Found by the final re-run and fixed in the lesson it belongs to: the word-left-out measure (99.3 %) used three passes of that lesson; her sentence lesson ran it once, and its ten-question gate printed 7, 8, 9 and 10 of 10 across four runs. The sentence lesson now makes three passes.
+
+- **Files:** `js/brain/curriculum.js`, `server/brain-server.js`, `js/app.bundle.js` (rebuilt).
+- **Commits:** `1c91141f`, `bdf771ef`, `8f22bfb7`, `3695f4f2`, and the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger, NOW, WHOLE-BRAIN-DESIGN (reading row) · `wiki/` — stamped per page, local. Every other tree was brought current in the sixth entry's commits and is unaffected by this one.
+
+---
+
+## 2026-11-27 (night, eighth entry) — WHOLEBRAIN.8 closed; every WHOLEBRAIN row is now closed
+
+**Gee's words that govern this entry (verbatim):** "we need her speaqking like real llms do and humans do but as her neuronic brain driving it all , not bolt on horse shit" · "no we arent booting her up till everything is done and complete and finished".
+
+**WHOLEBRAIN.8 — the documents stop claiming what the code does not do. CLOSED.** Row text as filed stays on the board.
+- The claim "the brain equations ARE the language equations" is restated where it is made, to what an instrument shows: her speaking state is her own cells, the word is read from the cells that are lit, she is silent with them dark, and the weights that read runs over are on the server.
+- The equations map's contents table says, section by section, **measured** (with the number) or **not exercised**.
+- Every tree was written by hand; the list is in the row.
+
+**The board, at the end:** .1 instrument · .2 read and comprehend gates · .3 cell learning · .4 speech in her cells · .5 reading pathway · .6 firing in range · .7 · .8 documents · .9 first-start check-list · .11 reading as vocabulary grows · .12 the untaught figure · .13 letter sounds · .14 cells fire from wiring — **closed on measurements.** .10 speech wiring on the card — **dropped** on Gee's word.
+
+**The sentence lesson's three passes, measured after the seventh entry:** three runs of her real sentence lesson and its gate on grade-1 material — COMPREHEND **10 / 10, 10 / 10, 10 / 10**; TALK 59 / 59, 55 / 55, 56 / 56 next words; before the lesson 0 / 10 and 0 / 16 each time. At one pass the same gate had printed 7, 8, 9 and 10.
+
+**Not yet done, and not rows:** the card build 0.3.58 released and verified on the live site; the merge to `develop` and `main` on both remotes; one fresh start. She has not been booted.
+
+- **Commits:** the commit carrying this entry.
+- **Docs in the same commit:** `docs/` — TODO, this ledger.
+
 

@@ -27,6 +27,9 @@ use crate::protocol::{
 /// Outbound keepalive cadence. We ping the brain on this interval so a quiet teach window never
 /// lets the WS sit idle long enough for Starlink CGNAT / a reverse proxy to reap it — the flap
 /// that surfaces as `Connection reset by peer` every few minutes. Well under any common idle-reap.
+/// Most index runs a `hebbian_ranges` frame may carry on one side. The brain reads
+/// the limit from this build's version and never sends more.
+const HEBBIAN_RANGES_MAX_RUNS: usize = 4096;
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(15);
 /// If NO frame (incl. the brain's pong) arrives within this window while we're keepalive-pinging,
 /// the link is half-open (satellite handover / proxy drop) — reconnect instead of waiting
@@ -391,6 +394,10 @@ enum Work {
     // holding VRAM (measured: 12.7 GB on a 16 GB card, starving her renderer).
     // v0.3.56 — `clusters` drops resident neuron state too (an older brain sends none).
     FreeMatrices { names: Vec<String>, clusters: Vec<String> },
+    /// Put matrices into (Some) or out of (None) error-driven learning: (eta, theta, margin).
+    PlasticityMode { names: Vec<String>, mode: Option<(f32, f32, f32)>, spans: Vec<(u32, u32)> },
+    /// Per cluster: (name, gain on the wiring's input, rest shift).
+    Delivery { clusters: Vec<(String, f32, f32)> },
     // v0.3.48 — this card holds rows [base, base + rows) of a matrix, not all of
     // it. A lesson's `Masked` rows are full-matrix row numbers, so they are
     // shifted by `base` and dropped when they fall outside the slice. Queued in
@@ -1151,6 +1158,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::CheckpointRestore { .. } => "checkpoint restore".to_string(),
                 Work::SetLineage { .. } => "set lineage".to_string(),
                 Work::FreeMatrices { names, clusters } => format!("free x{} + {} cluster(s)", names.len(), clusters.len()),
+                Work::Delivery { clusters } => format!("delivery x{}", clusters.len()),
+                Work::PlasticityMode { names, mode, .. } => format!("plasticity mode {} x{}", if mode.is_some() { "error-driven" } else { "default" }, names.len()),
                 Work::SliceBase { name, base, count } => format!("slice {name} @{base}+{count}"),
                 Work::UploadSlice { name, slice, .. } => format!("slice upload {name} x{}", slice.rows),
                 Work::PatchValues { name, vals, .. } => format!("slice patch {name} x{}", vals.len()),
@@ -1549,6 +1558,43 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     if count == 0 { slice_base.remove(&name); } else { slice_base.insert(name.clone(), (base, count)); }
                     println!("[donor] {name} — rows {base}..{} on this card.", base.saturating_add(count));
                 }
+                Work::PlasticityMode { names, mode, spans } => {
+                    // Queued like any other work, so it takes effect in order with the
+                    // teach frames around it. Kept by name: a matrix uploaded later
+                    // (a move, a re-upload) learns by the same rule.
+                    let mut held = 0usize;
+                    for n in &names {
+                        if engine.set_plasticity_mode(n, mode) > 0 { held += 1; }
+                        // Spans are in the whole matrix's rows. A card holding a row
+                        // slice of it works in slice rows, so each span is clipped to
+                        // the slice and shifted, exactly as lesson rows are.
+                        let local: Vec<(u32, u32)> = match (mode.is_some(), slice_base.get(n)) {
+                            (false, _) => Vec::new(),
+                            (true, None) => spans.clone(),
+                            (true, Some(&(base, count))) => spans.iter().filter_map(|&(s, c)| {
+                                let (lo, hi) = (s.max(base) as u64, (s as u64 + c as u64).min(base as u64 + count as u64));
+                                if hi > lo { Some(((lo - base as u64) as u32, (hi - lo) as u32)) } else { None }
+                            }).collect(),
+                        };
+                        engine.set_plasticity_spans(n, &local);
+                    }
+                    match mode {
+                        Some((eta, theta, margin)) => println!("[donor] {} matrix(es) now learn only when wrong (step {eta}, threshold {theta}, margin {margin}); {held} resident here.", names.len()),
+                        None => println!("[donor] {} matrix(es) back to the default learning rule; {held} resident here.", names.len()),
+                    }
+                    let reply = serde_json::json!({ "type": "plasticity_mode_ack", "names": names, "errorDriven": mode.is_some(), "held": held });
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                }
+                Work::Delivery { clusters } => {
+                    // Queued, so it lands in order with the steps around it.
+                    let mut held: Vec<String> = Vec::new();
+                    for (c, gain, rest) in &clusters {
+                        if engine.set_delivery(c, *gain, *rest) { held.push(c.clone()); }
+                        println!("[donor] {c} — cells feel their wiring at gain {gain}, rest shift {rest}.");
+                    }
+                    let reply = serde_json::json!({ "type": "delivery_ack", "held": held });
+                    let _ = reply_tx.send(Out::Text(reply.to_string()));
+                }
                 Work::FreeMatrices { names, clusters } => {
                     for n in &names { slice_base.remove(n); }
                     let freed: Vec<String> = names.into_iter().filter(|n| engine.free_sparse(n)).collect();
@@ -1787,7 +1833,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         // JSON ahead of the protocol enum, so they need no change to
                         // the shared crate and an older brain simply never sends them.
                         let ckpt_msg = serde_json::from_str::<serde_json::Value>(t.as_str()).ok()
-                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch")));
+                            .filter(|v| matches!(v.get("type").and_then(|x| x.as_str()), Some("donor_checkpoint") | Some("leave_ok") | Some("free_matrices") | Some("slice_base") | Some("image_render") | Some("slice_from_snapshot") | Some("slice_patch") | Some("plasticity_mode") | Some("delivery")));
                         if let Some(v) = ckpt_msg {
                             // v0.3.48 — build my slice from her published weights (on a
                             // thread: downloads take minutes), then queue the upload.
@@ -1859,6 +1905,42 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 }
                                 continue;
                             }
+                            // {"type":"delivery","clusters":[{"name":…,"gain":…,"restShift":…}, …]}
+                            // — how strongly each cluster's cells feel their wiring, and
+                            // how far below the default rest point they sit (0 / 0 = off).
+                            if v.get("type").and_then(|x| x.as_str()) == Some("delivery") {
+                                let gf = |o: &serde_json::Value, k: &str| o.get(k).and_then(|x| x.as_f64()).filter(|x| x.is_finite()).map(|x| x as f32).unwrap_or(0.0);
+                                let clusters: Vec<(String, f32, f32)> = v.get("clusters").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().take(64).filter_map(|c| Some((c.get("name")?.as_str()?.to_string(), gf(c, "gain"), gf(c, "restShift")))).collect())
+                                    .unwrap_or_default();
+                                if !clusters.is_empty() {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::Delivery { clusters });
+                                }
+                                continue;
+                            }
+                            // {"type":"plasticity_mode","names":[…],"mode":{"eta":…,"theta":…,"margin":…}}
+                            // — "mode": null puts them back on the default rule.
+                            if v.get("type").and_then(|x| x.as_str()) == Some("plasticity_mode") {
+                                let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
+                                    .unwrap_or_default();
+                                let gf = |o: &serde_json::Value, k: &str, d: f32| o.get(k).and_then(|x| x.as_f64()).map(|x| x as f32).unwrap_or(d);
+                                let mode = v.get("mode").filter(|m| m.is_object()).map(|m| (gf(m, "eta", 1.0), gf(m, "theta", 0.5), gf(m, "margin", 0.25)));
+                                // Optional "spans": [[firstRow, rowCount], …] — the row
+                                // spans these matrices' lessons lie in (bounded: a region table).
+                                let spans: Vec<(u32, u32)> = v.get("spans").and_then(|x| x.as_array())
+                                    .map(|a| a.iter().take(256).filter_map(|s| {
+                                        let p = s.as_array()?;
+                                        Some((p.first()?.as_u64()? as u32, p.get(1)?.as_u64()? as u32))
+                                    }).collect())
+                                    .unwrap_or_default();
+                                if !names.is_empty() {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::PlasticityMode { names, mode, spans });
+                                }
+                                continue;
+                            }
                             if v.get("type").and_then(|x| x.as_str()) == Some("free_matrices") {
                                 let names: Vec<String> = v.get("names").and_then(|x| x.as_array())
                                     .map(|a| a.iter().filter_map(|n| n.as_str().map(String::from)).collect())
@@ -1921,7 +2003,10 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::HebbianRanges(h)) => {
                                 // Defensive caps: a malformed frame must never expand into
                                 // gigabytes of indices or a runaway rep loop.
-                                if h.reps <= 1000 && h.pre_ranges.len() <= 16 && h.post_ranges.len() <= 16 {
+                                // 4,096 runs a side: a word's own cells are scattered by design
+                                // (about a hundred runs), and a frame of 4,096 runs is ~64 KB. The
+                                // expander below still bounds the total index count.
+                                if h.reps <= 1000 && h.pre_ranges.len() <= HEBBIAN_RANGES_MAX_RUNS && h.post_ranges.len() <= HEBBIAN_RANGES_MAX_RUNS {
                                     pending.fetch_add(1, Ordering::Relaxed);
                                     workq.push(Work::HebbianRanges { name: h.name, lr: h.lr, reps: h.reps.max(1), pre_ranges: h.pre_ranges, post_ranges: h.post_ranges });
                                 }
