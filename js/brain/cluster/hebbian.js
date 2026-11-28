@@ -1347,10 +1347,12 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // overhead. Sync wins anyway. Browser-scale (<100K) keeps worker
     // pool since compute cost dominates and external alloc is tiny.
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
-    // The inside wiring in error-driven mode has ONE host path at every size.
-    if (this.synapses.errorDriven) { await this._intraErrorUpdate(pre, post); return; }
-
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
+    // The inside wiring in error-driven mode: below the size split the host is
+    // the only copy, so it learns here. Above it the card dispatches further
+    // down still run (the card picks the same rule by the matrix's mode) and
+    // the host pass they are followed by is `_intraErrorUpdate`.
+    if (this.synapses.errorDriven && !atBioScale) { await this._intraErrorUpdate(pre, post); return; }
 
     if (atBioScale) {
       // Biological scale — sync-math path, zero external-memory allocation.
@@ -1378,15 +1380,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // Oja so the result is BIT-IDENTICAL.
       const _act = [];
       for (let _i = 0; _i < post.length; _i++) { if (post[_i]) _act.push(_i); }
-      // ERROR-DRIVEN INSIDE WIRING (`this.synapses.errorDriven`). The lit cells
-      // of `post` are the pattern that SHOULD fire for the lit cells of `pre`;
-      // a wire changes only where a cell is wrong. Only the regions the taught
-      // pattern lies in are visited — a lesson about meaning does not sweep the
-      // whole cortex — and within them an unlit cell that the input would fire
-      // is lowered. The card holds the same mode for this matrix, so the bound
-      // dispatch above (and the masked / step lessons) already learn this way
-      // there; this is the host's copy of the same rule.
-      // (handled before the size split: see `_intraErrorUpdate`, called above.)
       // GPUVERB.2 (2026-08-21) — the intra pass joins the GPU. T18.18 removed
       // the old dispatch because gpuSparseHebbian densified pre/post into
       // ~856MB frames; hebbian_ranges (donor v0.3.18) ships the SAME index
@@ -1506,7 +1499,8 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         //   `cpuMs` is the shadow's own wall cost, so "what would widening the
         //   cadence buy?" becomes a subtraction on the board.
         const _shadow0 = Date.now();
-        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
+        if (this.synapses.errorDriven) await this._intraErrorUpdate(pre, post);
+        else await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
         const _cpuDt = Date.now() - _shadow0;
         _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
         // ⭐ `SHADOWCOST.5` — SPLIT THE TWO CPU COSTS. `cpuMs` alone cannot say
