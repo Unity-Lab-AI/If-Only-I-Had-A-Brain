@@ -61890,4 +61890,49 @@ Six rows of this section are still open (.1, .2, .3, .6, .8, .9) and two were fi
 - **Commits:** `71db68bf`, `7d9d9e52`, `95625930`, `8fb4ee54`, and the commit carrying this entry.
 - **Docs in the same commit:** `docs/` — TODO, this ledger · `wiki/` — ten pages + log (local). NOW, ARCHITECTURE, EQUATIONS, WHOLE-BRAIN-DESIGN, RESUME, README, `html/`, `deploy/` are NOT updated here and are owed under WHOLEBRAIN.8.
 
+---
+
+## 2026-11-27 (night, sixth entry) — WHOLEBRAIN.1, WHOLEBRAIN.9 and WHOLEBRAIN.12 closed
+
+**Gee's words that govern this entry (verbatim):** "start an instant wake up 1 minute crone with the task of completeing the whole brasin work 100% completely and appropriately and correctly for a talking brain like we need her to be" · "whats up with all this stuff that is off by default... wtf is up with that and when do they turn on and why would stuff be turned off by default does something activate it ewhne needed? i guess i dont fully understand" · "why arent you doing them?" On the untaught figure he chose, from options, "Show only (Recommended)".
+
+**WHOLEBRAIN.1 — an instrument for the whole brain. CLOSED.** Row text as filed stays on the board.
+- It is a set of instruments, one per lane, each on her production code:
+
+| Lane | Number |
+|---|---|
+| read | taught 200 / 200, untaught 0 / 200 |
+| define (one word's cells calling up another's, inside the meaning region) | taught cells past threshold 99.9 % at 1,328,482 cells |
+| recall (her real pair lesson) | 0 → 100 of 100 |
+| name | 900 / 900 |
+| sentence order (next word of a taught line) | 96.7 % |
+| reply | 7 / 7; 0 / 7 with her speech cells dark; 50 / 60 reworded |
+| a sentence with a word left out | taught 99.3 %, never taught 12.2 % |
+
+- The per-equation count, during her real vocabulary (20 words) and sentence (12) lessons on a 700,000-cell cortex built with no options:
+
+| Function the equations doc names | Calls | Changed |
+|---|---|---|
+| only-when-wrong step | 14,495 | 31,339,429 wires |
+| speech lesson | 267 | — |
+| speech rehearsal | 267 | 221 corrections |
+| reading lesson | 20 | — |
+| word-left-out lesson | 12 | — |
+| lateral inhibition | 207 | **nothing** |
+| Oja / anti-Hebbian / plain Hebbian | 0 | — |
+
+- Found by that count and fixed inside the row: the lateral-inhibition pass wrote through a verb that does nothing on only-when-wrong wiring, on host and card. It now returns at once there.
+
+**WHOLEBRAIN.12 — every gate prints the untaught figure beside the taught one. CLOSED,** in the form "asked before the lesson". Row text as filed stays on the board.
+- Each list lesson puts the gate's questions to its own items before teaching them (first ten in the lesson's order, once per list); both list gates print it; it never decides a pass.
+- A real gate run on her grade-1 material: vocabulary "READ 10/10 (100%) … before the lesson (not yet taught): READ 0/10, TALK 0/10"; sentences "COMPREHEND 9/10 (90%) … TALK 58/58 next words (100%) · before the lesson (not yet taught): COMPREHEND 0/10, TALK 0/16 next words".
+
+**WHOLEBRAIN.9 — what to look at on the first fresh start. CLOSED.** It is the eight-line table at the top of `docs/RESUME.md`, written before any start.
+
+**Also in these commits, as the answer to "off by default":** a cluster named `cortex` that is large enough to hold her speech cells is built as the measured build with no options (`CORTEX_BUILD` in `js/brain/cluster.js`), and a curriculum on it uses one code a word untold. Checked: 300 wires inside and on all 16 pathways, every one only-when-wrong, 391,524 speech cells; a 6,700-cell cortex and another cluster unchanged.
+
+- **Files:** `js/brain/cluster.js`, `js/brain/curriculum.js`.
+- **Commits:** `bdf771ef`, `75e03050`, `8f22bfb7`.
+- **Docs in the same commits:** `docs/` — TODO, this ledger, NOW (overwritten), RESUME (55th block), EQUATIONS (§3 wiring, §4 only-when-wrong, §5, the contents table's "Shown by an instrument?" column, the claim restated), EQUATIONS-TECHNICAL (note under the claim), WHOLE-BRAIN-DESIGN (§4–§6), ARCHITECTURE (change-history entry, "What is true now", the wiring block marked superseded, "The state lives in her cells") · `README.md` · `html/` — brain-equations (wiring line, only-when-wrong card, fan-out block, each with its tooltip), unity-guide (plain-words paragraph, three tooltips), legend; docs.html, teachview.html, the dashboards, compute.html, gpu-configure, minds-eye, runpod, webgpu-prep checked and unaffected · `.claude/CLAUDE.md` (current-state block) · `deploy/` — unaffected until the card release, which carries its own note · `wiki/` — stamped per page, local.
+
 
